@@ -33,10 +33,11 @@
 #include <vector>
 
 #include <persist/block.hpp>
+#include <persist/exceptions.hpp>
 
 using namespace persist;
 
-class DataBlockHeaderTestFixture : public ::testing::Test {
+class DataBlockHeaderParseTestFixture : public ::testing::Test {
 protected:
   std::vector<uint8_t> input;
   const DataBlockId blockId = 12;
@@ -59,7 +60,7 @@ protected:
   }
 };
 
-TEST_F(DataBlockHeaderTestFixture, TestLoad) {
+TEST_F(DataBlockHeaderParseTestFixture, TestLoad) {
   DataBlockHeader _header;
   _header.load(input);
 
@@ -72,7 +73,20 @@ TEST_F(DataBlockHeaderTestFixture, TestLoad) {
   }
 }
 
-TEST_F(DataBlockHeaderTestFixture, TestDump) {
+TEST_F(DataBlockHeaderParseTestFixture, TestLoadError) {
+  try {
+    std::vector<uint8_t> _input;
+    DataBlockHeader _header;
+    _header.load(_input);
+    FAIL() << "Expected DataBlockParseError Exception.";
+  } catch (DataBlockParseError &err) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected DataBlockParseError Exception.";
+  }
+}
+
+TEST_F(DataBlockHeaderParseTestFixture, TestDump) {
   std::vector<uint8_t> output;
   header->dump(output);
 

@@ -30,14 +30,22 @@
 #define EXCEPTIONS_HPP
 
 #include <exception>
+#include <string>
 
 namespace persist {
 /**
  * Data Block Parsing Error
  */
 class DataBlockParseError : public std::exception {
+private:
+  std::string msg;
+
 public:
-  const char *what() const throw() { return "Data block parsing error."; }
+  DataBlockParseError() : msg("Data block parsing error.") {}
+  DataBlockParseError(const char *msg) : msg(msg) {}
+  DataBlockParseError(std::string &msg) : msg(msg) {}
+
+  const char *what() const throw() { return msg.c_str(); }
 };
 
 } // namespace persist

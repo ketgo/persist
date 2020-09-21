@@ -67,7 +67,7 @@ public:
    * Constructors
    */
   DataBlockHeader() {}
-  DataBlockHeader(DataBlockId blockId) : blockId(blockId), tail(BLOCK_SIZE) {}
+  DataBlockHeader(DataBlockId blockId);
 
   void load(std::vector<uint8_t> &input) override;
   void dump(std::vector<uint8_t> &output) override;
@@ -85,17 +85,39 @@ class DataBlock : public Serializable {
 private:
   DataBlockHeader header;
   std::unordered_map<RecordId, DataRecord>
-      records; //<- collection of records stored in the block
+      cache; //<- cached collection of records stored in the block
 
 public:
   /**
    * Constructor
    */
   DataBlock() {}
-  DataBlock(DataBlockId blockId) : header(blockId) {}
+  DataBlock(DataBlockId blockId);
 
   void load(std::vector<uint8_t> &input) override;
   void dump(std::vector<uint8_t> &output) override;
+
+  /**
+   * Get DataRecord object with given identifier
+   *
+   * @param recordId data record identifier
+   * @returns reference to DataRecord object
+   */
+  DataRecord &get(RecordId &recordId);
+
+  /**
+   * Add DataRecord object to block
+   *
+   * @param dataRecord data record object to be added
+   */
+  void add(DataRecord &dataRecord);
+
+  /**
+   * Remove DataRecord object with given identifier
+   *
+   * @param recordId data record identifier
+   */
+  void remove(RecordId &recordId);
 };
 
 } // namespace persist

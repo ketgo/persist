@@ -35,48 +35,69 @@ using json = nlohmann::json;
 
 namespace persist {
 /************************
- * Block Data Header
+ * Data Block Header
  ***********************/
 
-void DataBlockHeader::load(std::vector<uint8_t> &input) {
-  // Check if output buffer is emtpy
-  if (input.empty()) {
-    throw DataBlockParseError();
-  }
+DataBlockHeader::DataBlockHeader(DataBlockId blockId)
+    : blockId(blockId), tail(BLOCK_SIZE) {}
 
+void DataBlockHeader::load(std::vector<uint8_t> &input) {
   // Load JSON from UBJSON
-  json data = json::from_ubjson(input);
-  data.at("blockId").get_to(this->blockId);
-  data.at("tail").get_to(this->tail);
-  json entries_data = data.at("entries");
-  this->entries.clear();
-  for (auto &entry_data : entries_data) {
-    DataBlockHeader::Entry entry;
-    entry_data.at("offset").get_to(entry.offset);
-    entry_data.at("size").get_to(entry.size);
-    this->entries.push_back(entry);
+  try {
+    json data = json::from_ubjson(input);
+    data.at("blockId").get_to(this->blockId);
+    data.at("tail").get_to(this->tail);
+    json entries_data = data.at("entries");
+    this->entries.clear();
+    for (auto &entry_data : entries_data) {
+      DataBlockHeader::Entry entry;
+      entry_data.at("offset").get_to(entry.offset);
+      entry_data.at("size").get_to(entry.size);
+      this->entries.push_back(entry);
+    }
+  } catch (json::parse_error &err) {
+    throw DataBlockParseError(err.what());
   }
 }
 
 void DataBlockHeader::dump(std::vector<uint8_t> &output) {
+  // Create JSON object from header
+  try {
+    json data;
+    data["blockId"] = this->blockId;
+    data["tail"] = this->tail;
+    data["entries"] = json::array();
+    for (auto &entry : this->entries) {
+      json entry_data;
+      entry_data["offset"] = entry.offset;
+      entry_data["size"] = entry.size;
+      data["entries"].push_back(entry_data);
+    }
+    // Convert JSON to UBJSON
+    output = json::to_ubjson(data);
+  } catch (json::parse_error &err) {
+    throw DataBlockParseError(err.what());
+  }
+}
+
+/************************
+ * Data Block
+ ***********************/
+
+DataBlock::DataBlock(DataBlockId blockId) : header(blockId) {}
+
+void DataBlock ::load(std::vector<uint8_t> &input) {
+  // Check if input buffer is emtpy
+  if (input.empty()) {
+    throw DataBlockParseError();
+  }
+}
+
+void DataBlock ::dump(std::vector<uint8_t> &output) {
   // Check if output buffer is emtpy
   if (!output.empty()) {
     throw DataBlockParseError();
   }
-
-  // Create JSON object from header
-  json data;
-  data["blockId"] = this->blockId;
-  data["tail"] = this->tail;
-  data["entries"] = json::array();
-  for (auto &entry : this->entries) {
-    json entry_data;
-    entry_data["offset"] = entry.offset;
-    entry_data["size"] = entry.size;
-    data["entries"].push_back(entry_data);
-  }
-  // Convert JSON to UBJSON
-  output = json::to_ubjson(data);
 }
 
 } // namespace persist
