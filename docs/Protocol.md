@@ -1,5 +1,5 @@
 <!--
- Design.md - Persist
+ Protocol.md - Persist
  
  Copyright 2020 Ketan Goyal
  
@@ -22,14 +22,13 @@
  SOFTWARE.
 -->
 
-# Design
+# Protocol
 
-This document describes the different components of the Persist package.
+This document explains the protocol followed by the persist package to maintain
+ACID data transactions.
 
-## Storage
+## Operation Log
 
-### DataBlock
+### Actions
 
-### MetaData
-
-### Manager
+### Optimistic Concurrency Control
