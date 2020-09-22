@@ -26,8 +26,6 @@
  * Data Block Header Unit Tests
  */
 
-#include <iostream>
-
 #include <gtest/gtest.h>
 #include <memory>
 #include <vector>

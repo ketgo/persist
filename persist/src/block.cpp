@@ -33,6 +33,12 @@
 
 using json = nlohmann::json;
 
+// ---------------------------------------------------------------------------
+// TODO:
+// - Increase performance by moveing away from JSON based block serialization.
+// - Improved caching
+// ---------------------------------------------------------------------------
+
 namespace persist {
 
 /************************
@@ -40,11 +46,39 @@ namespace persist {
  ***********************/
 
 RecordBlock::Header::Header(RecordBlockId recordBlockId)
-    : recordBlockId(recordBlockId) {}
+    : recordBlockId(recordBlockId), nextDataBlockId(0), prevDataBlockId(0) {}
 
-void RecordBlock::Header::load(std::vector<uint8_t> &input) {}
+void RecordBlock::Header::load(std::vector<uint8_t> &input) {
+  // Load JSON from UBJSON
+  try {
+    json data = json::from_ubjson(input, false);
+    data.at("recordBlockId").get_to(recordBlockId);
+    data.at("nextBlockId").get_to(nextDataBlockId);
+    data.at("prevBlockId").get_to(prevDataBlockId);
+  } catch (json::parse_error &err) {
+    throw RecordBlockParseError(err.what());
+  }
+}
 
-void RecordBlock::Header::dump(std::vector<uint8_t> &output) {}
+void RecordBlock::Header::dump(std::vector<uint8_t> &output) {
+  // Create JSON object from header
+  try {
+    json data;
+    data["recordBlockId"] = recordBlockId;
+    data["nextBlockId"] = nextDataBlockId;
+    data["prevBlockId"] = prevDataBlockId;
+    // Convert JSON to UBJSON
+    output = json::to_ubjson(data);
+  } catch (json::parse_error &err) {
+    throw DataBlockParseError(err.what());
+  }
+}
+
+uint64_t RecordBlock::Header::size() {
+  std::vector<uint8_t> output;
+  dump(output);
+  return output.size();
+}
 
 /************************
  * Record Block
@@ -52,21 +86,42 @@ void RecordBlock::Header::dump(std::vector<uint8_t> &output) {}
 
 RecordBlock::RecordBlock(RecordBlockId recordBlockId) : header(recordBlockId) {}
 
-RecordBlock::RecordBlock(RecordBlockId recordBlockId, std::string data)
-    : header(recordBlockId), data(data) {}
+RecordBlock::RecordBlock(RecordBlock::Header &header) : header(header) {}
 
 void RecordBlock::load(std::vector<uint8_t> &input) {
   // Check if input buffer is emtpy
   if (input.empty()) {
-    throw RecordBlockParseError();
+    throw RecordBlockParseError("Input buffer empty.");
   }
+  header.load(input);
+  data.insert(data.begin(), input.begin() + header.size(), input.end());
 }
 
 void RecordBlock::dump(std::vector<uint8_t> &output) {
   // Check if output buffer is emtpy
   if (!output.empty()) {
-    throw RecordBlockParseError();
+    throw RecordBlockParseError("Output buffer not empty.");
   }
+  header.dump(output);
+  output.insert(output.end(), data.begin(), data.end());
+}
+
+RecordBlockId &RecordBlock::getId() { return header.recordBlockId; }
+
+RecordBlockId &RecordBlock::getNextDataBlockId() {
+  return header.nextDataBlockId;
+}
+
+void RecordBlock::setNextDataBlockId(DataBlockId blockId) {
+  header.nextDataBlockId = blockId;
+}
+
+RecordBlockId &RecordBlock::getPrevDataBlockId() {
+  return header.prevDataBlockId;
+}
+
+void RecordBlock::setPrevDataBlockId(DataBlockId blockId) {
+  header.prevDataBlockId = blockId;
 }
 
 /************************
@@ -80,10 +135,10 @@ void DataBlock::Header::load(std::vector<uint8_t> &input) {
   // Load JSON from UBJSON
   try {
     json data = json::from_ubjson(input, false);
-    data.at("blockId").get_to(this->blockId);
-    data.at("tail").get_to(this->tail);
+    data.at("blockId").get_to(blockId);
+    data.at("tail").get_to(tail);
     json entries_data = data.at("entries");
-    this->entries.clear();
+    entries.clear();
     for (auto &entry_data : entries_data) {
       DataBlock::Header::Entry entry;
       entry_data.at("offset").get_to(entry.offset);
@@ -99,10 +154,10 @@ void DataBlock::Header::dump(std::vector<uint8_t> &output) {
   // Create JSON object from header
   try {
     json data;
-    data["blockId"] = this->blockId;
-    data["tail"] = this->tail;
+    data["blockId"] = blockId;
+    data["tail"] = tail;
     data["entries"] = json::array();
-    for (auto &entry : this->entries) {
+    for (auto &entry : entries) {
       json entry_data;
       entry_data["offset"] = entry.offset;
       entry_data["size"] = entry.size;
@@ -127,10 +182,12 @@ uint64_t DataBlock::Header::size() {
 
 DataBlock::DataBlock(DataBlockId blockId) : header(blockId) {}
 
+DataBlock::DataBlock(DataBlock::Header &header) : header(header) {}
+
 void DataBlock::load(std::vector<uint8_t> &input) {
   // Check if input buffer is emtpy
   if (input.empty()) {
-    throw DataBlockParseError();
+    throw DataBlockParseError("Input buffer empty.");
   }
   // Load data block header
   header.load(input);
@@ -139,7 +196,7 @@ void DataBlock::load(std::vector<uint8_t> &input) {
 void DataBlock::dump(std::vector<uint8_t> &output) {
   // Check if output buffer is emtpy
   if (!output.empty()) {
-    throw DataBlockParseError();
+    throw DataBlockParseError("Output buffer not empty.");
   }
   // Dump data block header
   header.dump(output);

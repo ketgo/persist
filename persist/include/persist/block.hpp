@@ -69,8 +69,9 @@ public:
   class Header : public Serializable {
   public:
     RecordBlockId recordBlockId; //<- record identifier
-    DataBlockId nextBlockId;     //<- block ID containing next record block
-    DataBlockId prevBlockId;     //<- block ID containing previous record block
+    DataBlockId nextDataBlockId; //<- data block ID containing next record block
+    DataBlockId
+        prevDataBlockId; //<- data block ID containing previous record block
 
     /**
      * Constructors
@@ -88,16 +89,17 @@ public:
   };
 
 private:
-  Header header;    //<- record block header
-  std::string data; //<- data contained in the record block
+  Header header; //<- record block header
 
 public:
+  std::string data; //<- data contained in the record block
+
   /**
    * Constructors
    */
   RecordBlock() {}
   RecordBlock(RecordBlockId recordBlockId);
-  RecordBlock(RecordBlockId recordBlockId, std::string data);
+  RecordBlock(RecordBlock::Header &header);
 
   void load(std::vector<uint8_t> &input) override;
   void dump(std::vector<uint8_t> &output) override;
@@ -106,6 +108,26 @@ public:
    * Get record block ID
    */
   RecordBlockId &getId();
+
+  /**
+   * Get next data block ID
+   */
+  DataBlockId &getNextDataBlockId();
+
+  /**
+   * Set next data block ID
+   */
+  void setNextDataBlockId(DataBlockId blockId);
+
+  /**
+   * Get previous data block ID
+   */
+  DataBlockId &getPrevDataBlockId();
+
+  /**
+   * Set previous data block ID
+   */
+  void setPrevDataBlockId(DataBlockId blockId);
 };
 
 /**
@@ -165,6 +187,7 @@ public:
    */
   DataBlock() {}
   DataBlock(DataBlockId blockId);
+  DataBlock(DataBlock::Header &header);
 
   void load(std::vector<uint8_t> &input) override;
   void dump(std::vector<uint8_t> &output) override;
@@ -175,7 +198,7 @@ public:
    * @param recordId data record identifier
    * @returns reference to DataRecord object
    */
-  RecordBlock &get(RecordBlockId &recordBlockId);
+  RecordBlock &get(RecordBlockId recordBlockId);
 
   /**
    * Add RecordBlock object to the data block
@@ -189,7 +212,7 @@ public:
    *
    * @param recordBlockId data record identifier
    */
-  void remove(RecordBlockId &recordBlockId);
+  void remove(RecordBlockId recordBlockId);
 
   /**
    * Get block free space size in bytes in the data block
