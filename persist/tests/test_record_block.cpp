@@ -26,8 +26,6 @@
  * Record Block Unit Tests
  */
 
-#include <iostream>
-
 #include <gtest/gtest.h>
 #include <memory>
 #include <vector>
@@ -53,11 +51,10 @@ protected:
     block = std::make_unique<RecordBlock>(header);
     block->data = data;
 
-    input = {123, 105, 11,  110, 101, 120, 116, 66,  108, 111, 99,  107,
-             73,  100, 105, 12,  105, 11,  112, 114, 101, 118, 66,  108,
-             111, 99,  107, 73,  100, 105, 1,   105, 13,  114, 101, 99,
-             111, 114, 100, 66,  108, 111, 99,  107, 73,  100, 105, 10,
-             125, 116, 101, 115, 116, 105, 110, 103};
+    input = {123, 105, 7,   98,  108, 111, 99,  107, 73,  100, 105, 10,  105,
+             11,  110, 101, 120, 116, 66,  108, 111, 99,  107, 73,  100, 105,
+             12,  105, 11,  112, 114, 101, 118, 66,  108, 111, 99,  107, 73,
+             100, 105, 1,   125, 116, 101, 115, 116, 105, 110, 103};
   }
 };
 
@@ -113,4 +110,11 @@ TEST_F(RecordBlockTestFixture, TestDump) {
   block->dump(output);
 
   ASSERT_EQ(input, output);
+}
+
+TEST_F(RecordBlockTestFixture, TestSize) {
+  std::vector<uint8_t> output;
+  block->dump(output);
+
+  ASSERT_EQ(block->size(), output.size());
 }

@@ -40,14 +40,56 @@ using namespace persist;
 class DataBlockTestFixture : public ::testing::Test {
 protected:
   std::vector<uint8_t> input;
-  std::vector<uint8_t> extra;
   const DataBlockId blockId = 12;
+  const uint64_t blockSize = DEFAULT_DATA_BLOCK_SIZE;
   std::unique_ptr<DataBlock> block;
 
-  void SetUp() override { block = std::make_unique<DataBlock>(blockId); }
+  void SetUp() override {
+    block = std::make_unique<DataBlock>(blockId, blockSize);
+    input = {123, 105, 11,  110, 101, 120, 116, 66,  108, 111, 99,  107,
+             73,  100, 105, 12,  105, 11,  112, 114, 101, 118, 66,  108,
+             111, 99,  107, 73,  100, 105, 1,   105, 13,  114, 101, 99,
+             111, 114, 100, 66,  108, 111, 99,  107, 73,  100, 105, 10,
+             125, 116, 101, 115, 116, 105, 110, 103};
+  }
 };
 
 TEST_F(DataBlockTestFixture, TestFreeSize) {
-  size_t freeSize = block->freeSize();
-  std::cout << freeSize << std::endl;
+  DataBlock::Header header(blockId, blockSize);
+
+  ASSERT_EQ(block->freeSize(), blockSize - header.size());
 }
+
+/*
+TEST_F(DataBlockTestFixture, TestLoad) {
+  DataBlock _block;
+  _block.load(input);
+
+  ASSERT_EQ(_block.getId(), block->getId());
+}
+
+TEST_F(DataBlockTestFixture, TestLoadError) {
+  try {
+    std::vector<uint8_t> _input;
+    RecordBlock _block;
+    _block.load(_input);
+    FAIL() << "Expected RecordBlockParseError Exception.";
+  } catch (RecordBlockParseError &err) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected RecordBlockParseError Exception.";
+  }
+}
+
+TEST_F(DataBlockTestFixture, TestDump) {
+  std::vector<uint8_t> output;
+  block->dump(output);
+
+  for (int c : output) {
+    std::cout << c << ",";
+  }
+  std::cout << "\n";
+
+  ASSERT_EQ(input, output);
+}
+*/

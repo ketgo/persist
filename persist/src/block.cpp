@@ -26,10 +26,10 @@
  * Data Block Implementation
  */
 
+#include <nlohmann/json.hpp>
+
 #include <persist/block.hpp>
 #include <persist/exceptions.hpp>
-
-#include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
 
@@ -45,14 +45,14 @@ namespace persist {
  * Record Block Header
  ***********************/
 
-RecordBlock::Header::Header(RecordBlockId recordBlockId)
-    : recordBlockId(recordBlockId), nextDataBlockId(0), prevDataBlockId(0) {}
+RecordBlock::Header::Header(RecordBlockId blockId)
+    : blockId(blockId), nextDataBlockId(0), prevDataBlockId(0) {}
 
 void RecordBlock::Header::load(std::vector<uint8_t> &input) {
   // Load JSON from UBJSON
   try {
     json data = json::from_ubjson(input, false);
-    data.at("recordBlockId").get_to(recordBlockId);
+    data.at("blockId").get_to(blockId);
     data.at("nextBlockId").get_to(nextDataBlockId);
     data.at("prevBlockId").get_to(prevDataBlockId);
   } catch (json::parse_error &err) {
@@ -64,7 +64,7 @@ void RecordBlock::Header::dump(std::vector<uint8_t> &output) {
   // Create JSON object from header
   try {
     json data;
-    data["recordBlockId"] = recordBlockId;
+    data["blockId"] = blockId;
     data["nextBlockId"] = nextDataBlockId;
     data["prevBlockId"] = prevDataBlockId;
     // Convert JSON to UBJSON
@@ -84,7 +84,7 @@ uint64_t RecordBlock::Header::size() {
  * Record Block
  ***********************/
 
-RecordBlock::RecordBlock(RecordBlockId recordBlockId) : header(recordBlockId) {}
+RecordBlock::RecordBlock(RecordBlockId blockId) : header(blockId) {}
 
 RecordBlock::RecordBlock(RecordBlock::Header &header) : header(header) {}
 
@@ -106,7 +106,7 @@ void RecordBlock::dump(std::vector<uint8_t> &output) {
   output.insert(output.end(), data.begin(), data.end());
 }
 
-RecordBlockId &RecordBlock::getId() { return header.recordBlockId; }
+RecordBlockId &RecordBlock::getId() { return header.blockId; }
 
 RecordBlockId &RecordBlock::getNextDataBlockId() {
   return header.nextDataBlockId;
@@ -124,12 +124,17 @@ void RecordBlock::setPrevDataBlockId(DataBlockId blockId) {
   header.prevDataBlockId = blockId;
 }
 
+uint64_t RecordBlock::size() { return header.size() + data.size(); }
+
 /************************
  * Data Block Header
  ***********************/
 
 DataBlock::Header::Header(DataBlockId blockId)
-    : blockId(blockId), tail(BLOCK_SIZE) {}
+    : blockId(blockId), tail(DEFAULT_DATA_BLOCK_SIZE) {}
+
+DataBlock::Header::Header(DataBlockId blockId, uint64_t tail)
+    : blockId(blockId), tail(tail) {}
 
 void DataBlock::Header::load(std::vector<uint8_t> &input) {
   // Load JSON from UBJSON
@@ -180,14 +185,16 @@ uint64_t DataBlock::Header::size() {
  * Data Block
  ***********************/
 
-DataBlock::DataBlock(DataBlockId blockId) : header(blockId) {}
+DataBlock::DataBlock(DataBlockId blockId)
+    : blockSize(DEFAULT_DATA_BLOCK_SIZE), header(blockId) {}
 
-DataBlock::DataBlock(DataBlock::Header &header) : header(header) {}
+DataBlock::DataBlock(DataBlockId blockId, uint64_t blockSize)
+    : blockSize(blockSize), header(blockId, blockSize) {}
 
 void DataBlock::load(std::vector<uint8_t> &input) {
-  // Check if input buffer is emtpy
-  if (input.empty()) {
-    throw DataBlockParseError("Input buffer empty.");
+  // Check input buffer size
+  if (input.size() != blockSize) {
+    throw DataBlockParseError("Input buffer size does not match block size.");
   }
   // Load data block header
   header.load(input);
@@ -200,8 +207,19 @@ void DataBlock::dump(std::vector<uint8_t> &output) {
   }
   // Dump data block header
   header.dump(output);
+  // Dump free space
+  output.insert(output.end(), freeSize(), 0);
+  // Dump record blocks
 }
 
+DataBlockId &DataBlock::getId() { return header.blockId; }
+
 uint64_t DataBlock::freeSize() { return header.tail - header.size(); }
+
+RecordBlock &DataBlock::getRecordBlock(RecordBlockId recordBlockId) {}
+
+void DataBlock::addRecordBlock(RecordBlock &recordBlock) {}
+
+void DataBlock::removeRecordBlock(RecordBlockId recordBlockId) {}
 
 } // namespace persist

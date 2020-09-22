@@ -32,7 +32,7 @@
 
 #include <persist/common.hpp>
 
-#define BLOCK_SIZE 1024
+#define DEFAULT_DATA_BLOCK_SIZE 1024
 
 namespace persist {
 
@@ -68,7 +68,7 @@ public:
    */
   class Header : public Serializable {
   public:
-    RecordBlockId recordBlockId; //<- record identifier
+    RecordBlockId blockId;       //<- record identifier
     DataBlockId nextDataBlockId; //<- data block ID containing next record block
     DataBlockId
         prevDataBlockId; //<- data block ID containing previous record block
@@ -77,15 +77,15 @@ public:
      * Constructors
      */
     Header() {}
-    Header(RecordBlockId recordBlockId);
-
-    void load(std::vector<uint8_t> &input) override;
-    void dump(std::vector<uint8_t> &output) override;
+    Header(RecordBlockId blockId);
 
     /**
      * Get storage size of header.
      */
     uint64_t size();
+
+    void load(std::vector<uint8_t> &input) override;
+    void dump(std::vector<uint8_t> &output) override;
   };
 
 private:
@@ -98,11 +98,8 @@ public:
    * Constructors
    */
   RecordBlock() {}
-  RecordBlock(RecordBlockId recordBlockId);
+  RecordBlock(RecordBlockId blockId);
   RecordBlock(RecordBlock::Header &header);
-
-  void load(std::vector<uint8_t> &input) override;
-  void dump(std::vector<uint8_t> &output) override;
 
   /**
    * Get record block ID
@@ -128,6 +125,14 @@ public:
    * Set previous data block ID
    */
   void setPrevDataBlockId(DataBlockId blockId);
+
+  /**
+   * Get storage size of record block.
+   */
+  uint64_t size();
+
+  void load(std::vector<uint8_t> &input) override;
+  void dump(std::vector<uint8_t> &output) override;
 };
 
 /**
@@ -166,53 +171,36 @@ public:
      */
     Header() {}
     Header(DataBlockId blockId);
-
-    void load(std::vector<uint8_t> &input) override;
-    void dump(std::vector<uint8_t> &output) override;
+    Header(DataBlockId blockId, uint64_t tail);
 
     /**
      * Get storage size of header.
      */
     uint64_t size();
+
+    void load(std::vector<uint8_t> &input) override;
+    void dump(std::vector<uint8_t> &output) override;
   };
 
 private:
-  Header header; //<- block header
-  std::unordered_map<RecordBlockId, RecordBlock>
-      cache; //<- cached collection of records stored in the block
+  uint64_t blockSize; //<- data block storage size
+  Header header;      //<- data block header
+
+  typedef std::unordered_map<RecordBlockId, RecordBlock> RecordBlockCache;
+  RecordBlockCache cache; //<- cached collection of records stored in the block
 
 public:
   /**
-   * Constructor
+   * Constructors
    */
   DataBlock() {}
   DataBlock(DataBlockId blockId);
-  DataBlock(DataBlock::Header &header);
-
-  void load(std::vector<uint8_t> &input) override;
-  void dump(std::vector<uint8_t> &output) override;
+  DataBlock(DataBlockId blockId, uint64_t blockSize);
 
   /**
-   * Get DataRecord object with given identifier
-   *
-   * @param recordId data record identifier
-   * @returns reference to DataRecord object
+   * Get data block ID
    */
-  RecordBlock &get(RecordBlockId recordBlockId);
-
-  /**
-   * Add RecordBlock object to the data block
-   *
-   * @param dataRecord data record object to be added
-   */
-  void add(RecordBlock &recordBlock);
-
-  /**
-   * Remove RecordBlock object with given identifier
-   *
-   * @param recordBlockId data record identifier
-   */
-  void remove(RecordBlockId recordBlockId);
+  DataBlockId &getId();
 
   /**
    * Get block free space size in bytes in the data block
@@ -222,9 +210,29 @@ public:
   uint64_t freeSize();
 
   /**
-   * Get data block ID
+   * Get RecordBlock object with given identifier
+   *
+   * @param recordId data record identifier
+   * @returns reference to RecordBlock object
    */
-  DataBlockId &getId();
+  RecordBlock &getRecordBlock(RecordBlockId recordBlockId);
+
+  /**
+   * Add RecordBlock object to the data block
+   *
+   * @param recordBlock recRecordBlock object to be added
+   */
+  void addRecordBlock(RecordBlock &recordBlock);
+
+  /**
+   * Remove RecordBlock object with given identifier
+   *
+   * @param recordBlockId record block identifier
+   */
+  void removeRecordBlock(RecordBlockId recordBlockId);
+
+  void load(std::vector<uint8_t> &input) override;
+  void dump(std::vector<uint8_t> &output) override;
 };
 
 } // namespace persist
