@@ -1,5 +1,5 @@
 /**
- * exceptions.hpp - Persist
+ * test_block.cpp - Persist
  *
  * Copyright 2020 Ketan Goyal
  *
@@ -23,47 +23,31 @@
  */
 
 /**
- * The header file contains all the exceptions used in the package
+ * Data Block Unit Tests
  */
 
-#ifndef EXCEPTIONS_HPP
-#define EXCEPTIONS_HPP
+#include <iostream>
 
-#include <exception>
-#include <string>
+#include <gtest/gtest.h>
+#include <memory>
+#include <vector>
 
-namespace persist {
+#include <persist/block.hpp>
+#include <persist/exceptions.hpp>
 
-/**
- * Data Block Parsing Error
- */
-class RecordBlockParseError : public std::exception {
-private:
-  std::string msg;
+using namespace persist;
 
-public:
-  RecordBlockParseError() : msg("Record block parsing error.") {}
-  RecordBlockParseError(const char *msg) : msg(msg) {}
-  RecordBlockParseError(std::string &msg) : msg(msg) {}
+class DataBlockTestFixture : public ::testing::Test {
+protected:
+  std::vector<uint8_t> input;
+  std::vector<uint8_t> extra;
+  const DataBlockId blockId = 12;
+  std::unique_ptr<DataBlock> block;
 
-  const char *what() const throw() { return msg.c_str(); }
+  void SetUp() override { block = std::make_unique<DataBlock>(blockId); }
 };
 
-/**
- * Data Block Parsing Error
- */
-class DataBlockParseError : public std::exception {
-private:
-  std::string msg;
-
-public:
-  DataBlockParseError() : msg("Data block parsing error.") {}
-  DataBlockParseError(const char *msg) : msg(msg) {}
-  DataBlockParseError(std::string &msg) : msg(msg) {}
-
-  const char *what() const throw() { return msg.c_str(); }
-};
-
-} // namespace persist
-
-#endif /* EXCEPTIONS_HPP */
+TEST_F(DataBlockTestFixture, TestFreeSize) {
+  size_t freeSize = block->freeSize();
+  std::cout << freeSize << std::endl;
+}
