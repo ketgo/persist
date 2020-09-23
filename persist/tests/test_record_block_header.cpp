@@ -83,8 +83,7 @@ TEST_F(RecordBlockHeaderTestFixture, TestLoadError) {
 }
 
 TEST_F(RecordBlockHeaderTestFixture, TestDump) {
-  std::vector<uint8_t> output;
-  header->dump(output);
+  ByteBuffer &output = header->dump();
 
   ASSERT_EQ(input, output);
 }

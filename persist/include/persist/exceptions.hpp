@@ -32,10 +32,14 @@
 #include <exception>
 #include <string>
 
+#include <persist/block.hpp>
+
 namespace persist {
 
 /**
- * Data Block Parsing Error
+ * Record Block Parsing Error
+ *
+ * This error is thrown if unable to parse record block.
  */
 class RecordBlockParseError : public std::exception {
 private:
@@ -50,7 +54,42 @@ public:
 };
 
 /**
+ * Record Block Not Found Error
+ *
+ * This error is thrown when a record block does not exists inside
+ * a data block.
+ */
+class RecordBlockNotFoundError : public std::exception {
+private:
+  std::string msg;
+
+public:
+  RecordBlockNotFoundError(persist::RecordBlockId &blockId)
+      : msg(std::string("Record Block '") + std::to_string(blockId) +
+            std::string("' not found.")) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
+ * Record Block Exists Error
+ */
+class RecordBlockExistsError : public std::exception {
+private:
+  std::string msg;
+
+public:
+  RecordBlockExistsError(persist::RecordBlockId &blockId)
+      : msg(std::string("Record Block '") + std::to_string(blockId) +
+            std::string("' exists.")) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
  * Data Block Parsing Error
+ *
+ * This error is thrown if unable to parse data block.
  */
 class DataBlockParseError : public std::exception {
 private:

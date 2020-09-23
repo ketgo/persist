@@ -84,8 +84,8 @@ public:
      */
     uint64_t size();
 
-    void load(std::vector<uint8_t> &input) override;
-    void dump(std::vector<uint8_t> &output) override;
+    void load(ByteBuffer &input) override;
+    ByteBuffer &dump() override;
   };
 
 private:
@@ -131,8 +131,8 @@ public:
    */
   uint64_t size();
 
-  void load(std::vector<uint8_t> &input) override;
-  void dump(std::vector<uint8_t> &output) override;
+  void load(ByteBuffer &input) override;
+  ByteBuffer &dump() override;
 };
 
 /**
@@ -141,7 +141,7 @@ public:
  * A block is a unit chunk of data upon which atomic operations are performed
  * in a transaction. The backend storage is divided into a contiguous set of
  * data blocks. This increases IO performance. Each block contains a collection
- * of data records.
+ * of record blocks.
  */
 class DataBlock : public Serializable {
 public:
@@ -149,7 +149,7 @@ public:
    * Data Block Header Class
    *
    * Header data type for Data Block. It contains the metadata information for
-   * facilitating read write operations of record blocks on the block.
+   * facilitating read write operations of data on the block.
    */
   class Header : public Serializable {
   public:
@@ -164,7 +164,8 @@ public:
       uint64_t offset; //<- location offset from end of block
       uint64_t size;   //<- size of record stored
     };
-    std::vector<Entry> entries; //<- block entries
+    typedef std::vector<Entry> Entries;
+    Entries entries; //<- block entries
 
     /**
      * Constructors
@@ -178,22 +179,40 @@ public:
      */
     uint64_t size();
 
-    void load(std::vector<uint8_t> &input) override;
-    void dump(std::vector<uint8_t> &output) override;
+    /**
+     * @brief Use up chunk of space of given size from the available free space
+     * of the data block.
+     *
+     * @param size amount of space in bytes to occupy
+     * @returns iterator pointing to the entry for newly occupied chunk of space
+     */
+    Entries::iterator useSpace(uint64_t size);
+
+    /**
+     * @brief Free up used chunk of space in the data block.
+     *
+     * @param it iterator pointing to the chunk of space to free
+     */
+    void freeSpace(Entries::iterator it);
+
+    void load(ByteBuffer &input) override;
+    ByteBuffer &dump() override;
   };
 
 private:
   uint64_t blockSize; //<- data block storage size
   Header header;      //<- data block header
 
-  typedef std::unordered_map<RecordBlockId, RecordBlock> RecordBlockCache;
+  typedef std::unordered_map<RecordBlockId,
+                             std::pair<Header::Entries::iterator, RecordBlock>>
+      RecordBlockCache;
   RecordBlockCache cache; //<- cached collection of records stored in the block
 
 public:
   /**
    * Constructors
    */
-  DataBlock() {}
+  DataBlock();
   DataBlock(DataBlockId blockId);
   DataBlock(DataBlockId blockId, uint64_t blockSize);
 
@@ -207,7 +226,7 @@ public:
    *
    * @returns free space available in data block
    */
-  uint64_t freeSize();
+  uint64_t freeSpace();
 
   /**
    * Get RecordBlock object with given identifier
@@ -231,8 +250,8 @@ public:
    */
   void removeRecordBlock(RecordBlockId recordBlockId);
 
-  void load(std::vector<uint8_t> &input) override;
-  void dump(std::vector<uint8_t> &output) override;
+  void load(ByteBuffer &input) override;
+  ByteBuffer &dump() override;
 };
 
 } // namespace persist

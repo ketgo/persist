@@ -106,15 +106,13 @@ TEST_F(RecordBlockTestFixture, TestLoadError) {
 }
 
 TEST_F(RecordBlockTestFixture, TestDump) {
-  std::vector<uint8_t> output;
-  block->dump(output);
+  ByteBuffer &output = block->dump();
 
   ASSERT_EQ(input, output);
 }
 
 TEST_F(RecordBlockTestFixture, TestSize) {
-  std::vector<uint8_t> output;
-  block->dump(output);
+  ByteBuffer &output = block->dump();
 
   ASSERT_EQ(block->size(), output.size());
 }
