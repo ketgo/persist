@@ -287,13 +287,13 @@ ByteBuffer &DataBlock::dump() {
   for (auto &element : cache) {
     ByteBuffer &recordBlockBuffer = element.second.first.dump();
     uint64_t offset = element.second.second->offset;
-    fillByteBuffer(buffer, recordBlockBuffer, offset);
+    write(buffer, recordBlockBuffer, offset);
   }
   // Add header to buffer
   ByteBuffer &head = header.dump();
-  fillByteBuffer(buffer, head, 0);
+  write(buffer, head, 0);
   // Dump free space
-  fillByteBuffer(buffer, 0, head.size(), freeSpace());
+  write(buffer, 0, head.size(), freeSpace());
 
   return buffer;
 }

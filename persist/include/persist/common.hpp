@@ -74,7 +74,12 @@ public:
  * @param buffer_2 buffer from which to retrive values
  * @param offset offset at which to start filling values in buffer
  */
-void fillByteBuffer(ByteBuffer &buffer_1, ByteBuffer &buffer_2, size_t offset);
+template <class T>
+void write(std::vector<T> &buffer_1, std::vector<T> &buffer_2, size_t offset) {
+  for (size_t i = 0; i < buffer_2.size(); ++i) {
+    buffer_1[i + offset] = buffer_2[i];
+  }
+}
 
 /**
  * @brief Utility function to fill values in buffer for given value, starting
@@ -85,8 +90,12 @@ void fillByteBuffer(ByteBuffer &buffer_1, ByteBuffer &buffer_2, size_t offset);
  * @param offset offset at which to start filling buffer
  * @param limit amount of values to fill
  */
-void fillByteBuffer(ByteBuffer &buffer, uint8_t value, size_t offset,
-                    size_t limit);
+template <class T>
+void write(std::vector<T> &buffer, uint8_t value, size_t offset, size_t limit) {
+  for (size_t i = offset; i < offset + limit; ++i) {
+    buffer[i] = value;
+  }
+}
 
 } // namespace persist
 
