@@ -23,7 +23,7 @@
  */
 
 /**
- * This header file contains common Classes and methods used in the package.
+ * This header file contains common classes and methods used in the package.
  */
 
 #ifndef COMMON_HPP
@@ -33,9 +33,20 @@
 
 namespace persist {
 /**
+ * @brief Byte buffer type
+ */
+typedef std::vector<uint8_t> ByteBuffer;
+
+/**
  * Abstract Base Serializable class
  */
 class Serializable {
+protected:
+  /**
+   * @brief Internal buffer to store serialization result
+   */
+  ByteBuffer buffer;
+
 public:
   virtual ~Serializable() {} //<- Virtual Destructor
 
@@ -44,15 +55,38 @@ public:
    *
    * @param input input buffer to load
    */
-  virtual void load(std::vector<uint8_t> &input) = 0;
+  virtual void load(ByteBuffer &input) = 0;
 
   /**
    * Dump object as byte string
    *
-   * @param output output buffer to dump
+   * @returns reference to the buffer with results
    */
-  virtual void dump(std::vector<uint8_t> &output) = 0;
+  virtual ByteBuffer &dump() = 0;
 };
+
+/**
+ * @brief Utility function to fill values in one vector from another starting
+ * at given offset.
+ *
+ * @param buffer_1 buffer to fill
+ * @param buffer_2 buffer from which to retrive values
+ * @param offset offset at which to start filling values in buffer
+ */
+void fillByteBuffer(ByteBuffer &buffer_1, ByteBuffer &buffer_2, size_t offset);
+
+/**
+ * @brief Utility function to fill values in buffer for given value, starting
+ * offset and limit.
+ *
+ * @param buffer buffer to fill
+ * @param value value to fill
+ * @param offset offset at which to start filling buffer
+ * @param limit amount of values to fill
+ */
+void fillByteBuffer(ByteBuffer &buffer, uint8_t value, size_t offset,
+                    size_t limit);
+
 } // namespace persist
 
 #endif /* COMMON_HPP */

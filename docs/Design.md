@@ -28,8 +28,17 @@ This document describes the different components of the Persist package.
 
 ## Storage
 
-### DataBlock
+### Data Block
+
+A data block is unit chunk of data stored on the storage. Each block comprises
+of header, free space and stored [record blocks](#record-block).
 
 ### MetaData
 
-### Manager
+### Storage Manager
+
+## Records
+
+### Record Block
+
+### Record Manager

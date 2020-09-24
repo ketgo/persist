@@ -1,5 +1,5 @@
 /**
- * record.hpp - Persist
+ * common.cpp - Persist
  *
  * Copyright 2020 Ketan Goyal
  *
@@ -22,31 +22,21 @@
  * SOFTWARE.
  */
 
-#ifndef RECORD_HPP
-#define RECORD_HPP
-
-#include <vector>
-
 #include <persist/common.hpp>
 
 namespace persist {
 
-/**
- * Record identifer type
- */
-typedef uint64_t RecordId;
-/**
- * Data Record Class
- *
- * The class represents a single logical data entity stored in backend
- * storage. An end user performs operations on one or more data records.
- */
-class DataRecord : public Serializable {
-public:
-  void load(std::vector<uint8_t> &input) override;
-  void dump(std::vector<uint8_t> &output) override;
-};
+void fillByteBuffer(ByteBuffer &buffer_1, ByteBuffer &buffer_2, size_t offset) {
+  for (size_t i = 0; i < buffer_2.size(); ++i) {
+    buffer_1[i + offset] = buffer_2[i];
+  }
+}
+
+void fillByteBuffer(ByteBuffer &buffer, uint8_t value, size_t offset,
+                    size_t limit) {
+  for (size_t i = offset; i < offset + limit; ++i) {
+    buffer[i] = value;
+  }
+}
 
 } // namespace persist
-
-#endif /* RECORD_HPP */

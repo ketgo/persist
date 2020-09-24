@@ -26,51 +26,113 @@
 #define BLOCK_HPP
 
 #include <cstdint>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
 #include <persist/common.hpp>
-#include <persist/record.hpp>
+
+#define DEFAULT_DATA_BLOCK_SIZE 1024
 
 namespace persist {
 
-#define BLOCK_SIZE 1024
+/**
+ * Record Block identifer type
+ *
+ * NOTE: An ID with value 0 is considered NULL
+ */
+typedef uint64_t RecordBlockId;
 
 /**
  * Data block identifier type
+ *
+ * NOTE: An ID with value 0 is considered NULL
  */
 typedef uint64_t DataBlockId;
 
 /**
- * Data Block Header Class
+ * Record Block Class
  *
- * Header data type for Data Block. It contains
- * the metadata information for facilitating read
- * write operations of records on the block.
+ * The class represents a single chunk of a data record stored in backend
+ * storage. A data record consits of collection of recordblock objects. The
+ * package stores a data record as linked list of record blocks.
  */
-class DataBlockHeader : public Serializable {
+class RecordBlock : public Serializable {
 public:
-  DataBlockId blockId; //<- block identifier
-  uint64_t tail;       //<- starting index of the free space in block
   /**
-   * Data Block Header Record Entries
+   * Record Block Header Class
    *
-   * Contains location information of records stored in the block.
+   * Header data type for Record Block. It contains the metadata information for
+   * facilitating read write operations of records. Since a record is stored as
+   * linked list of record blocks, the header contains this linking information.
    */
-  struct Entry {
-    uint64_t offset; //<- location offset from end of block
-    uint64_t size;   //<- size of record stored
+  class Header : public Serializable {
+  public:
+    RecordBlockId blockId;       //<- record identifier
+    DataBlockId nextDataBlockId; //<- data block ID containing next record block
+    DataBlockId
+        prevDataBlockId; //<- data block ID containing previous record block
+
+    /**
+     * Constructors
+     */
+    Header() {}
+    Header(RecordBlockId blockId);
+
+    /**
+     * Get storage size of header.
+     */
+    uint64_t size();
+
+    void load(ByteBuffer &input) override;
+    ByteBuffer &dump() override;
   };
-  std::vector<Entry> entries; //<- block entries
+
+private:
+  Header header; //<- record block header
+
+public:
+  std::string data; //<- data contained in the record block
 
   /**
    * Constructors
    */
-  DataBlockHeader() {}
-  DataBlockHeader(DataBlockId blockId);
+  RecordBlock() {}
+  RecordBlock(RecordBlockId blockId);
+  RecordBlock(RecordBlock::Header &header);
 
-  void load(std::vector<uint8_t> &input) override;
-  void dump(std::vector<uint8_t> &output) override;
+  /**
+   * Get record block ID
+   */
+  RecordBlockId &getId();
+
+  /**
+   * Get next data block ID
+   */
+  DataBlockId &getNextDataBlockId();
+
+  /**
+   * Set next data block ID
+   */
+  void setNextDataBlockId(DataBlockId blockId);
+
+  /**
+   * Get previous data block ID
+   */
+  DataBlockId &getPrevDataBlockId();
+
+  /**
+   * Set previous data block ID
+   */
+  void setPrevDataBlockId(DataBlockId blockId);
+
+  /**
+   * Get storage size of record block.
+   */
+  uint64_t size();
+
+  void load(ByteBuffer &input) override;
+  ByteBuffer &dump() override;
 };
 
 /**
@@ -79,45 +141,114 @@ public:
  * A block is a unit chunk of data upon which atomic operations are performed
  * in a transaction. The backend storage is divided into a contiguous set of
  * data blocks. This increases IO performance. Each block contains a collection
- * of data records.
+ * of record blocks.
  */
 class DataBlock : public Serializable {
+public:
+  /**
+   * Data Block Header Class
+   *
+   * Header data type for Data Block. It contains the metadata information for
+   * facilitating read write operations of data on the block.
+   */
+  class Header : public Serializable {
+  public:
+    DataBlockId blockId; //<- block identifier
+    uint64_t tail;       //<- starting index of the free space in block
+    /**
+     * Data Block Header Record Entries
+     *
+     * Contains location information of records stored in the block.
+     */
+    struct Entry {
+      uint64_t offset; //<- location offset from end of block
+      uint64_t size;   //<- size of record stored
+    };
+    typedef std::vector<Entry> Entries;
+    Entries entries; //<- block entries
+
+    /**
+     * Constructors
+     */
+    Header() {}
+    Header(DataBlockId blockId);
+    Header(DataBlockId blockId, uint64_t tail);
+
+    /**
+     * Get storage size of header.
+     */
+    uint64_t size();
+
+    /**
+     * @brief Use up chunk of space of given size from the available free space
+     * of the data block.
+     *
+     * @param size amount of space in bytes to occupy
+     */
+    void useSpace(uint64_t size);
+
+    /**
+     * @brief Free up used chunk of space of given size in the data block.
+     *
+     * @param size amount of space in bytes to free
+     */
+    void freeSpace(uint64_t size);
+
+    void load(ByteBuffer &input) override;
+    ByteBuffer &dump() override;
+  };
+
 private:
-  DataBlockHeader header;
-  std::unordered_map<RecordId, DataRecord>
-      cache; //<- cached collection of records stored in the block
+  uint64_t blockSize; //<- data block storage size
+  Header header;      //<- data block header
+
+  typedef std::unordered_map<RecordBlockId, RecordBlock> RecordBlockCache;
+  RecordBlockCache cache; //<- cached collection of records stored in the block
 
 public:
   /**
-   * Constructor
+   * Constructors
    */
-  DataBlock() {}
+  DataBlock();
   DataBlock(DataBlockId blockId);
-
-  void load(std::vector<uint8_t> &input) override;
-  void dump(std::vector<uint8_t> &output) override;
+  DataBlock(DataBlockId blockId, uint64_t blockSize);
 
   /**
-   * Get DataRecord object with given identifier
+   * Get data block ID
+   */
+  DataBlockId &getId();
+
+  /**
+   * Get free space in bytes available in the data block
+   *
+   * @returns free space available in data block
+   */
+  uint64_t freeSpace();
+
+  /**
+   * Get RecordBlock object with given identifier
    *
    * @param recordId data record identifier
-   * @returns reference to DataRecord object
+   * @returns reference to RecordBlock object
    */
-  DataRecord &get(RecordId &recordId);
+  RecordBlock &getRecordBlock(RecordBlockId recordBlockId);
 
   /**
-   * Add DataRecord object to block
+   * Add RecordBlock object to the data block
    *
-   * @param dataRecord data record object to be added
+   * @param recordBlock recRecordBlock object to be added
    */
-  void add(DataRecord &dataRecord);
+  void addRecordBlock(RecordBlock &recordBlock);
 
   /**
-   * Remove DataRecord object with given identifier
+   * Remove RecordBlock object with given identifier
    *
-   * @param recordId data record identifier
+   * @param recordBlockId record block identifier
    */
-  void remove(RecordId &recordId);
+  void removeRecordBlock(RecordBlockId recordBlockId);
+
+  void load(ByteBuffer &input) override;
+  ByteBuffer &dump() override;
 };
 
 } // namespace persist
