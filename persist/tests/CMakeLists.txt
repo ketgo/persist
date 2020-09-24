@@ -1,4 +1,7 @@
-cmake_minimum_required(VERSION 2.8.9)
+cmake_minimum_required(VERSION 3.1)
+
+# Check for dependencies
+include(CMakeLists.txt.in)
 
 # Get source files
 file(
@@ -31,5 +34,5 @@ target_include_directories(
 target_link_libraries(
     ${BINARY}
     ${PROJECT_NAME}_lib
-    gtest
+    ${GTEST_LIBRARIES}
 )

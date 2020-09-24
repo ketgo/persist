@@ -1,4 +1,7 @@
-cmake_minimum_required(VERSION 2.8.9)
+cmake_minimum_required(VERSION 3.1)
+
+# Check for dependencies
+include(CMakeLists.txt.in)
 
 # Get source files
 file(
@@ -27,9 +30,7 @@ add_library(
 # Add libraries to link
 target_link_libraries(
     ${BINARY}
-    boost_thread-mt
-    boost_log-mt
-    boost_log_setup-mt
+    nlohmann_json::nlohmann_json
 )
 
 # Set compiler flags
