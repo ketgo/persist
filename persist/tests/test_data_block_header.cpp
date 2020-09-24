@@ -26,8 +26,6 @@
  * Data Block Header Unit Tests
  */
 
-#include <iostream>
-
 #include <gtest/gtest.h>
 #include <memory>
 #include <vector>
@@ -50,16 +48,15 @@ protected:
     header->entries.push_back({DEFAULT_DATA_BLOCK_SIZE - 10, 10});
     header->entries.push_back({DEFAULT_DATA_BLOCK_SIZE - 15, 5});
     header->entries.push_back({DEFAULT_DATA_BLOCK_SIZE - 18, 3});
-    header->tail = DEFAULT_DATA_BLOCK_SIZE - 18;
 
-    input = {123, 105, 7,   98,  108, 111, 99,  107, 73,  100, 105, 12,
-             105, 7,   101, 110, 116, 114, 105, 101, 115, 91,  123, 105,
-             6,   111, 102, 102, 115, 101, 116, 73,  3,   246, 105, 4,
-             115, 105, 122, 101, 105, 10,  125, 123, 105, 6,   111, 102,
-             102, 115, 101, 116, 73,  3,   241, 105, 4,   115, 105, 122,
-             101, 105, 5,   125, 123, 105, 6,   111, 102, 102, 115, 101,
-             116, 73,  3,   238, 105, 4,   115, 105, 122, 101, 105, 3,
-             125, 93,  105, 4,   116, 97,  105, 108, 73,  3,   238, 125};
+    input = {123, 105, 7,   98,  108, 111, 99,  107, 73,  100, 105, 12,  105,
+             9,   98,  108, 111, 99,  107, 83,  105, 122, 101, 73,  4,   0,
+             105, 7,   101, 110, 116, 114, 105, 101, 115, 91,  123, 105, 6,
+             111, 102, 102, 115, 101, 116, 73,  3,   246, 105, 4,   115, 105,
+             122, 101, 105, 10,  125, 123, 105, 6,   111, 102, 102, 115, 101,
+             116, 73,  3,   241, 105, 4,   115, 105, 122, 101, 105, 5,   125,
+             123, 105, 6,   111, 102, 102, 115, 101, 116, 73,  3,   238, 105,
+             4,   115, 105, 122, 101, 105, 3,   125, 93,  125};
     extra = {42, 0, 0, 0, 21, 48, 4};
   }
 };
@@ -72,11 +69,14 @@ TEST_F(DataBlockHeaderTestFixture, TestLoad) {
   _header.load(_input);
 
   ASSERT_EQ(_header.blockId, header->blockId);
-  ASSERT_EQ(_header.tail, header->tail);
   ASSERT_EQ(_header.entries.size(), header->entries.size());
-  for (size_t i = 0; i < _header.entries.size(); i++) {
-    ASSERT_EQ(_header.entries[i].offset, header->entries[i].offset);
-    ASSERT_EQ(_header.entries[i].size, header->entries[i].size);
+  DataBlock::Header::Entries::iterator _it = _header.entries.begin();
+  DataBlock::Header::Entries::iterator it = header->entries.begin();
+  while (_it != _header.entries.end() && it != header->entries.end()) {
+    ASSERT_EQ(_it->offset, it->offset);
+    ASSERT_EQ(_it->size, it->size);
+    ++_it;
+    ++it;
   }
 }
 
@@ -105,16 +105,17 @@ TEST_F(DataBlockHeaderTestFixture, TestSize) {
 
 TEST_F(DataBlockHeaderTestFixture, TestUseSpace) {
   uint64_t size = 100;
-  uint64_t tail = header->tail;
+  uint64_t tail = header->tail();
   header->useSpace(size);
-  ASSERT_EQ(header->tail, tail - size);
+  ASSERT_EQ(header->tail(), tail - size);
 }
 
 TEST_F(DataBlockHeaderTestFixture, TestFreeSpace) {
-  uint64_t tail = header->tail;
-  DataBlock::Header::Entries::iterator it = header->entries.begin() + 1;
+  uint64_t tail = header->tail();
+  DataBlock::Header::Entries::iterator it = header->entries.begin();
+  ++it;
   uint64_t entrySize = it->size;
 
-  header->freeSpace(entrySize);
-  ASSERT_EQ(header->tail, tail + entrySize);
+  header->freeSpace(&(*it));
+  ASSERT_EQ(header->tail(), tail + entrySize);
 }
