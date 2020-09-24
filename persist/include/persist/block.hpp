@@ -26,9 +26,9 @@
 #define BLOCK_HPP
 
 #include <cstdint>
+#include <list>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 #include <persist/common.hpp>
 
@@ -149,30 +149,32 @@ public:
    * Data Block Header Class
    *
    * Header data type for Data Block. It contains the metadata information for
-   * facilitating read write operations of data on the block.
+   * facilitating read write operations of data in the block.
    */
   class Header : public Serializable {
   public:
     DataBlockId blockId; //<- block identifier
-    uint64_t tail;       //<- starting index of the free space in block
+    uint64_t blockSize;  //<- data block storage size
+
     /**
-     * Data Block Header Record Entries
+     * Data Entry
      *
-     * Contains location information of records stored in the block.
+     * Contains location and size information of data stored in the
+     * data block.
      */
     struct Entry {
       uint64_t offset; //<- location offset from end of block
-      uint64_t size;   //<- size of record stored
+      uint64_t size;   //<- size of stored data
     };
-    typedef std::vector<Entry> Entries;
-    Entries entries; //<- block entries
+    typedef std::list<Entry> Entries;
+    Entries entries; //<- data entries
 
     /**
      * Constructors
      */
     Header() {}
     Header(DataBlockId blockId);
-    Header(DataBlockId blockId, uint64_t tail);
+    Header(DataBlockId blockId, uint64_t blockSize);
 
     /**
      * Get storage size of header.
@@ -180,29 +182,38 @@ public:
     uint64_t size();
 
     /**
+     * @brief Ending offset of the free space in the block
+     *
+     * @returns free space ending offset
+     */
+    uint64_t tail();
+
+    /**
      * @brief Use up chunk of space of given size from the available free space
      * of the data block.
      *
      * @param size amount of space in bytes to occupy
+     * @returns pointer to the new entry
      */
-    void useSpace(uint64_t size);
+    Entry *useSpace(uint64_t size);
 
     /**
-     * @brief Free up used chunk of space of given size in the data block.
+     * @brief Free up used chunk of space occupied by given data entry.
      *
-     * @param size amount of space in bytes to free
+     * @param entry poiter to entry to free
      */
-    void freeSpace(uint64_t size);
+    void freeSpace(Entry *entry);
 
     void load(ByteBuffer &input) override;
     ByteBuffer &dump() override;
   };
 
 private:
-  uint64_t blockSize; //<- data block storage size
-  Header header;      //<- data block header
+  Header header; //<- data block header
 
-  typedef std::unordered_map<RecordBlockId, RecordBlock> RecordBlockCache;
+  typedef std::unordered_map<RecordBlockId,
+                             std::pair<RecordBlock, Header::Entry *>>
+      RecordBlockCache;
   RecordBlockCache cache; //<- cached collection of records stored in the block
 
 public:

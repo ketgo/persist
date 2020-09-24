@@ -129,17 +129,17 @@ uint64_t RecordBlock::size() { return header.size() + data.size(); }
  ***********************/
 
 DataBlock::Header::Header(DataBlockId blockId)
-    : blockId(blockId), tail(DEFAULT_DATA_BLOCK_SIZE) {}
+    : blockId(blockId), blockSize(DEFAULT_DATA_BLOCK_SIZE) {}
 
 DataBlock::Header::Header(DataBlockId blockId, uint64_t tail)
-    : blockId(blockId), tail(tail) {}
+    : blockId(blockId), blockSize(tail) {}
 
 void DataBlock::Header::load(ByteBuffer &input) {
   // Load JSON from UBJSON
   try {
     json data = json::from_ubjson(input, false);
     data.at("blockId").get_to(blockId);
-    data.at("tail").get_to(tail);
+    data.at("blockSize").get_to(blockSize);
     json entries_data = data.at("entries");
     entries.clear();
     for (auto &entry_data : entries_data) {
@@ -158,7 +158,7 @@ ByteBuffer &DataBlock::Header::dump() {
   try {
     json data;
     data["blockId"] = blockId;
-    data["tail"] = tail;
+    data["blockSize"] = blockSize;
     data["entries"] = json::array();
     for (auto &entry : entries) {
       json entry_data;
@@ -177,40 +177,54 @@ ByteBuffer &DataBlock::Header::dump() {
 
 uint64_t DataBlock::Header::size() { return dump().size(); }
 
-void DataBlock::Header::useSpace(uint64_t size) {
-  // Decrease the size of available free space
-  tail -= size;
+uint64_t DataBlock::Header::tail() {
+  if (entries.empty()) {
+    return blockSize;
+  }
+  return entries.back().offset;
 }
 
-void DataBlock::Header::freeSpace(uint64_t size) {
-  // Adjust free space size
-  tail += size;
+DataBlock::Header::Entry *DataBlock::Header::useSpace(uint64_t size) {
+  // Add record block entry
+  entries.push_back({tail() - size, size});
+  return &entries.back();
+}
+
+void DataBlock::Header::freeSpace(Entry *entry) {
+  // Adjust entry offsets
+  Entries::iterator it = std::prev(entries.end());
+  while (it->offset < entry->offset) {
+    it->offset += entry->size;
+    --it;
+  }
+  if (it->offset == entry->offset) {
+    entries.erase(it);
+  }
 }
 
 /************************
  * Data Block
  ***********************/
 
-DataBlock::DataBlock() : blockSize(DEFAULT_DATA_BLOCK_SIZE) {
+DataBlock::DataBlock() {
   // Resize internal buffer to specified block size
-  buffer.resize(blockSize);
+  buffer.resize(DEFAULT_DATA_BLOCK_SIZE);
 }
 
-DataBlock::DataBlock(DataBlockId blockId)
-    : blockSize(DEFAULT_DATA_BLOCK_SIZE), header(blockId) {
+DataBlock::DataBlock(DataBlockId blockId) : header(blockId) {
   // Resize internal buffer to specified block size
-  buffer.resize(blockSize);
+  buffer.resize(DEFAULT_DATA_BLOCK_SIZE);
 }
 
 DataBlock::DataBlock(DataBlockId blockId, uint64_t blockSize)
-    : blockSize(blockSize), header(blockId, blockSize) {
+    : header(blockId, blockSize) {
   // Resize internal buffer to specified block size
   buffer.resize(blockSize);
 }
 
 DataBlockId &DataBlock::getId() { return header.blockId; }
 
-uint64_t DataBlock::freeSpace() { return header.tail - header.size(); }
+uint64_t DataBlock::freeSpace() { return header.tail() - header.size(); }
 
 RecordBlock &DataBlock::getRecordBlock(RecordBlockId recordBlockId) {
   // Check if record block exists
@@ -218,8 +232,7 @@ RecordBlock &DataBlock::getRecordBlock(RecordBlockId recordBlockId) {
   if (it == cache.end()) {
     throw RecordBlockNotFoundError(recordBlockId);
   }
-
-  return it->second;
+  return it->second.first;
 }
 
 void DataBlock::addRecordBlock(RecordBlock &recordBlock) {
@@ -232,10 +245,10 @@ void DataBlock::addRecordBlock(RecordBlock &recordBlock) {
     throw RecordBlockExistsError(recordBlockId);
   }
   // Append storage location entry to header for record block
-  header.useSpace(recordBlock.size());
+  Header::Entry *entry = header.useSpace(recordBlock.size());
   // Insert record block to cache
   // TODO: Use move simantic instead of copy
-  cache.insert({recordBlockId, recordBlock});
+  cache.insert({recordBlockId, {recordBlock, entry}});
 }
 
 void DataBlock::removeRecordBlock(RecordBlockId recordBlockId) {
@@ -246,7 +259,7 @@ void DataBlock::removeRecordBlock(RecordBlockId recordBlockId) {
   }
 
   // Adjusting header
-  header.freeSpace(it->second.size());
+  header.freeSpace(it->second.second);
   // Removing record block from cache
   cache.erase(it);
 }
@@ -264,19 +277,16 @@ void DataBlock::load(ByteBuffer &input) {
     ByteBuffer _input(start, end);
     RecordBlock recordBlock;
     recordBlock.load(_input);
-    cache.insert({recordBlock.getId(), recordBlock});
+    cache.insert({recordBlock.getId(), {recordBlock, &(*it)}});
   }
 }
 
 ByteBuffer &DataBlock::dump() {
   // Dump record blocks
-  header.entries.clear();
   std::vector<uint8_t> _output;
-  uint64_t offset = blockSize;
   for (auto &element : cache) {
-    ByteBuffer &recordBlockBuffer = element.second.dump();
-    offset -= recordBlockBuffer.size();
-    header.entries.push_back({offset, recordBlockBuffer.size()});
+    ByteBuffer &recordBlockBuffer = element.second.first.dump();
+    uint64_t offset = element.second.second->offset;
     fillByteBuffer(buffer, recordBlockBuffer, offset);
   }
   // Add header to buffer

@@ -32,6 +32,7 @@
 #include <vector>
 
 namespace persist {
+
 /**
  * @brief Byte buffer type
  */
