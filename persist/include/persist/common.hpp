@@ -23,7 +23,7 @@
  */
 
 /**
- * This header file contains common Classes and methods used in the package.
+ * This header file contains common classes and methods used in the package.
  */
 
 #ifndef COMMON_HPP
@@ -64,6 +64,29 @@ public:
    */
   virtual ByteBuffer &dump() = 0;
 };
+
+/**
+ * @brief Utility function to fill values in one vector from another starting
+ * at given offset.
+ *
+ * @param buffer_1 buffer to fill
+ * @param buffer_2 buffer from which to retrive values
+ * @param offset offset at which to start filling values in buffer
+ */
+void fillByteBuffer(ByteBuffer &buffer_1, ByteBuffer &buffer_2, size_t offset);
+
+/**
+ * @brief Utility function to fill values in buffer for given value, starting
+ * offset and limit.
+ *
+ * @param buffer buffer to fill
+ * @param value value to fill
+ * @param offset offset at which to start filling buffer
+ * @param limit amount of values to fill
+ */
+void fillByteBuffer(ByteBuffer &buffer, uint8_t value, size_t offset,
+                    size_t limit);
+
 } // namespace persist
 
 #endif /* COMMON_HPP */

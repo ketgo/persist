@@ -26,8 +26,6 @@
  * Data Block Unit Tests
  */
 
-#include <iostream>
-
 #include <gtest/gtest.h>
 #include <memory>
 #include <vector>
@@ -60,8 +58,10 @@ protected:
     input = {
         123, 105, 7,   98,  108, 111, 99,  107, 73,  100, 105, 12,  105, 7,
         101, 110, 116, 114, 105, 101, 115, 91,  123, 105, 6,   111, 102, 102,
-        115, 101, 116, 73,  3,   206, 105, 4,   115, 105, 122, 101, 105, 50,
-        125, 93,  105, 4,   116, 97,  105, 108, 73,  3,   206, 125, 0,   0,
+        115, 101, 116, 73,  3,   204, 105, 4,   115, 105, 122, 101, 105, 52,
+        125, 123, 105, 6,   111, 102, 102, 115, 101, 116, 73,  3,   152, 105,
+        4,   115, 105, 122, 101, 105, 52,  125, 93,  105, 4,   116, 97,  105,
+        108, 73,  3,   152, 125, 0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -121,17 +121,15 @@ protected:
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   123, 105, 7,   98,  108, 111,
-        99,  107, 73,  100, 105, 1,   105, 11,  110, 101, 120, 116, 66,  108,
-        111, 99,  107, 73,  100, 105, 0,   105, 11,  112, 114, 101, 118, 66,
-        108, 111, 99,  107, 73,  100, 105, 0,   125, 116, 101, 115, 116, 105,
-        110, 103};
+        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   123, 105, 7,   98,
+        108, 111, 99,  107, 73,  100, 105, 1,   105, 11,  110, 101, 120, 116,
+        66,  108, 111, 99,  107, 73,  100, 105, 0,   105, 11,  112, 114, 101,
+        118, 66,  108, 111, 99,  107, 73,  100, 105, 0,   125, 116, 101, 115,
+        116, 105, 110, 103, 95,  49,  123, 105, 7,   98,  108, 111, 99,  107,
+        73,  100, 105, 2,   105, 11,  110, 101, 120, 116, 66,  108, 111, 99,
+        107, 73,  100, 105, 0,   105, 11,  112, 114, 101, 118, 66,  108, 111,
+        99,  107, 73,  100, 105, 0,   125, 116, 101, 115, 116, 105, 110, 103,
+        95,  50};
   }
 };
 
@@ -198,16 +196,19 @@ TEST_F(DataBlockTestFixture, TestAddRecordBlockError) {
   }
 }
 
-/*
 TEST_F(DataBlockTestFixture, TestLoad) {
   DataBlock _block;
   _block.load(input);
 
   ASSERT_EQ(_block.getId(), block->getId());
 
-  RecordBlock _recordBlock = _block.getRecordBlock(recordBlockId_1);
-  ASSERT_EQ(_recordBlock.getId(), recordBlockId_1);
-  ASSERT_EQ(_recordBlock.data, recordBlockData_1);
+  RecordBlock &_recordBlock_1 = _block.getRecordBlock(recordBlockId_1);
+  ASSERT_EQ(_recordBlock_1.getId(), recordBlockId_1);
+  ASSERT_EQ(_recordBlock_1.data, recordBlockData_1);
+
+  RecordBlock &_recordBlock_2 = _block.getRecordBlock(recordBlockId_2);
+  ASSERT_EQ(_recordBlock_2.getId(), recordBlockId_2);
+  ASSERT_EQ(_recordBlock_2.data, recordBlockData_2);
 }
 
 TEST_F(DataBlockTestFixture, TestLoadError) {
@@ -226,12 +227,6 @@ TEST_F(DataBlockTestFixture, TestLoadError) {
 TEST_F(DataBlockTestFixture, TestDump) {
   ByteBuffer &output = block->dump();
 
-  for (int c : output) {
-    std::cout << c << ",";
-  }
-  std::cout << "\n";
-
   ASSERT_EQ(input, output);
   ASSERT_EQ(output.size(), blockSize);
 }
-*/

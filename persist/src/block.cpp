@@ -26,11 +26,10 @@
  * Data Block Implementation
  */
 
-#include <iostream>
-
 #include <nlohmann/json.hpp>
 
 #include <persist/block.hpp>
+#include <persist/common.hpp>
 #include <persist/exceptions.hpp>
 
 using json = nlohmann::json;
@@ -178,25 +177,14 @@ ByteBuffer &DataBlock::Header::dump() {
 
 uint64_t DataBlock::Header::size() { return dump().size(); }
 
-DataBlock::Header::Entries::iterator
-DataBlock::Header::useSpace(uint64_t size) {
-  // Create entry for chunk of space
-  entries.push_back({tail - size, size});
+void DataBlock::Header::useSpace(uint64_t size) {
   // Decrease the size of available free space
   tail -= size;
-
-  return std::prev(entries.end());
 }
 
-void DataBlock::Header::freeSpace(Entries::iterator it) {
+void DataBlock::Header::freeSpace(uint64_t size) {
   // Adjust free space size
-  tail += it->size;
-  // Adjusting offset of header entries
-  for (Entries::iterator _it = it; _it != entries.end(); ++_it) {
-    _it->offset += it->size;
-  }
-  // Removing entry for the chunk of space freed
-  entries.erase(it);
+  tail += size;
 }
 
 /************************
@@ -204,66 +192,20 @@ void DataBlock::Header::freeSpace(Entries::iterator it) {
  ***********************/
 
 DataBlock::DataBlock() : blockSize(DEFAULT_DATA_BLOCK_SIZE) {
+  // Resize internal buffer to specified block size
   buffer.resize(blockSize);
 }
 
 DataBlock::DataBlock(DataBlockId blockId)
     : blockSize(DEFAULT_DATA_BLOCK_SIZE), header(blockId) {
+  // Resize internal buffer to specified block size
   buffer.resize(blockSize);
 }
 
 DataBlock::DataBlock(DataBlockId blockId, uint64_t blockSize)
     : blockSize(blockSize), header(blockId, blockSize) {
+  // Resize internal buffer to specified block size
   buffer.resize(blockSize);
-}
-
-void DataBlock::load(ByteBuffer &input) {
-  // Load data block header
-  header.load(input);
-  // Load record blocks
-  // TODO: Use spans as no new vector construction is required using it
-  for (Header::Entries::iterator it = header.entries.begin();
-       it != header.entries.end(); it++) {
-    ByteBuffer::iterator start = input.begin() + it->offset;
-    ByteBuffer::iterator end = start + it->size;
-    ByteBuffer _input(start, end);
-    RecordBlock recordBlock;
-    recordBlock.load(_input);
-    cache.insert({recordBlock.getId(), {it, recordBlock}});
-  }
-}
-
-static void printb(ByteBuffer &buff) {
-  for (int c : buff) {
-    std::cout << c << ",";
-  }
-  std::cout << std::endl;
-}
-
-ByteBuffer &DataBlock::dump() {
-  // Check if internal buffer is emtpy
-  if (!buffer.empty()) {
-    buffer.clear();
-  }
-  // Dump data block header
-  ByteBuffer &head = header.dump();
-  buffer.insert(buffer.end(), head.begin(), head.end());
-  // Dump free space
-  buffer.insert(buffer.end(), freeSpace(), 0);
-  // Dump record blocks
-  std::vector<uint8_t> _output;
-  for (auto &element : cache) {
-    uint64_t offset = element.second.first->offset;
-    ByteBuffer &recordBlock = element.second.second.dump();
-    std::cout << "RECORD_BLOCK=" << element.first << " OFFSET=" << offset
-              << " SIZE=" << element.second.first->size
-              << " DUMP_SIZE=" << recordBlock.size() << "\n";
-    buffer.insert(buffer.begin() + offset, recordBlock.begin(),
-                  recordBlock.end());
-    printb(buffer);
-  }
-
-  return buffer;
 }
 
 DataBlockId &DataBlock::getId() { return header.blockId; }
@@ -277,45 +219,73 @@ RecordBlock &DataBlock::getRecordBlock(RecordBlockId recordBlockId) {
     throw RecordBlockNotFoundError(recordBlockId);
   }
 
-  return it->second.second;
+  return it->second;
 }
 
 void DataBlock::addRecordBlock(RecordBlock &recordBlock) {
-  // Check if record block does not exists
+  RecordBlockId recordBlockId = recordBlock.getId();
+  // Check if record block does not exist in the data block
   // NOTE: Storing multiple record block with same ID in a single data
   // is not allowed.
-  RecordBlockId recordBlockId = recordBlock.getId();
   RecordBlockCache::iterator it = cache.find(recordBlockId);
   if (it != cache.end()) {
     throw RecordBlockExistsError(recordBlockId);
   }
-  std::cout << "ADDING RECORD BLOCK " << recordBlockId << "\n";
-
   // Append storage location entry to header for record block
-  Header::Entries::iterator _it = header.useSpace(recordBlock.size());
-  std::cout << "HEADER INFO \n\t";
-  std::cout << "\ttail=" << header.tail << "\n";
-  std::cout << "\tentries:\n";
-  for (auto &entry : header.entries) {
-    std::cout << "\t\toffset=" << entry.offset << " size=" << entry.size
-              << "\n";
-  }
+  header.useSpace(recordBlock.size());
   // Insert record block to cache
   // TODO: Use move simantic instead of copy
-  cache.insert({recordBlockId, {_it, recordBlock}});
+  cache.insert({recordBlockId, recordBlock});
 }
 
 void DataBlock::removeRecordBlock(RecordBlockId recordBlockId) {
-  // Check if record block exists
+  // Check if record block exists in the data block
   RecordBlockCache::iterator it = cache.find(recordBlockId);
   if (it == cache.end()) {
     throw RecordBlockNotFoundError(recordBlockId);
   }
 
   // Adjusting header
-  header.freeSpace(it->second.first);
+  header.freeSpace(it->second.size());
   // Removing record block from cache
   cache.erase(it);
+}
+
+void DataBlock::load(ByteBuffer &input) {
+  // Load data block header
+  header.load(input);
+  // Load record blocks
+  // TODO: Use spans to avoid vector constructions
+  cache.clear();
+  for (Header::Entries::iterator it = header.entries.begin();
+       it != header.entries.end(); it++) {
+    ByteBuffer::iterator start = input.begin() + it->offset;
+    ByteBuffer::iterator end = start + it->size;
+    ByteBuffer _input(start, end);
+    RecordBlock recordBlock;
+    recordBlock.load(_input);
+    cache.insert({recordBlock.getId(), recordBlock});
+  }
+}
+
+ByteBuffer &DataBlock::dump() {
+  // Dump record blocks
+  header.entries.clear();
+  std::vector<uint8_t> _output;
+  uint64_t offset = blockSize;
+  for (auto &element : cache) {
+    ByteBuffer &recordBlockBuffer = element.second.dump();
+    offset -= recordBlockBuffer.size();
+    header.entries.push_back({offset, recordBlockBuffer.size()});
+    fillByteBuffer(buffer, recordBlockBuffer, offset);
+  }
+  // Add header to buffer
+  ByteBuffer &head = header.dump();
+  fillByteBuffer(buffer, head, 0);
+  // Dump free space
+  fillByteBuffer(buffer, 0, head.size(), freeSpace());
+
+  return buffer;
 }
 
 } // namespace persist

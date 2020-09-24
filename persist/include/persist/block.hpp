@@ -184,16 +184,15 @@ public:
      * of the data block.
      *
      * @param size amount of space in bytes to occupy
-     * @returns iterator pointing to the entry for newly occupied chunk of space
      */
-    Entries::iterator useSpace(uint64_t size);
+    void useSpace(uint64_t size);
 
     /**
-     * @brief Free up used chunk of space in the data block.
+     * @brief Free up used chunk of space of given size in the data block.
      *
-     * @param it iterator pointing to the chunk of space to free
+     * @param size amount of space in bytes to free
      */
-    void freeSpace(Entries::iterator it);
+    void freeSpace(uint64_t size);
 
     void load(ByteBuffer &input) override;
     ByteBuffer &dump() override;
@@ -203,9 +202,7 @@ private:
   uint64_t blockSize; //<- data block storage size
   Header header;      //<- data block header
 
-  typedef std::unordered_map<RecordBlockId,
-                             std::pair<Header::Entries::iterator, RecordBlock>>
-      RecordBlockCache;
+  typedef std::unordered_map<RecordBlockId, RecordBlock> RecordBlockCache;
   RecordBlockCache cache; //<- cached collection of records stored in the block
 
 public:
@@ -222,7 +219,7 @@ public:
   DataBlockId &getId();
 
   /**
-   * Get block free space size in bytes in the data block
+   * Get free space in bytes available in the data block
    *
    * @returns free space available in data block
    */

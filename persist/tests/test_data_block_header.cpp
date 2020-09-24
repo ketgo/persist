@@ -108,9 +108,6 @@ TEST_F(DataBlockHeaderTestFixture, TestUseSpace) {
   uint64_t tail = header->tail;
   header->useSpace(size);
   ASSERT_EQ(header->tail, tail - size);
-  DataBlock::Header::Entry entry = header->entries.back();
-  ASSERT_EQ(entry.offset, tail - size);
-  ASSERT_EQ(entry.size, size);
 }
 
 TEST_F(DataBlockHeaderTestFixture, TestFreeSpace) {
@@ -118,20 +115,6 @@ TEST_F(DataBlockHeaderTestFixture, TestFreeSpace) {
   DataBlock::Header::Entries::iterator it = header->entries.begin() + 1;
   uint64_t entrySize = it->size;
 
-  DataBlock::Header::Entries entries;
-  entries.insert(entries.end(), header->entries.begin(), it);
-  DataBlock::Header::Entries updatedEntries;
-  updatedEntries.insert(updatedEntries.end(), it + 1, header->entries.end());
-  for (auto &entry : updatedEntries) {
-    entry.offset += entrySize;
-  }
-  entries.insert(entries.end(), updatedEntries.begin(), updatedEntries.end());
-
-  header->freeSpace(it);
+  header->freeSpace(entrySize);
   ASSERT_EQ(header->tail, tail + entrySize);
-  ASSERT_EQ(header->entries.size(), entries.size());
-  for (size_t i = 0; i < header->entries.size(); ++i) {
-    ASSERT_EQ(header->entries[i].offset, entries[i].offset);
-    ASSERT_EQ(header->entries[i].size, entries[i].size);
-  }
 }
