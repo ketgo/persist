@@ -6,7 +6,7 @@
 language: cpp
 
 # Linux distribution 
-dist: xenial
+dist: trusty
 sudo: required
 group: edge
 
