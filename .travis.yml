@@ -1,0 +1,105 @@
+#########################
+# project configuration #
+#########################
+
+# C++ project
+language: cpp
+
+# Linux distribution 
+dist: trusty
+sudo: required
+group: edge
+
+matrix:
+  include:
+
+    # ================
+    # Linux [Ubuntu]
+    # =================
+
+    # ---------------
+    # GCC Compiler
+    # ---------------
+
+    # works on Precise and Trusty
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-4.9
+            - lcov
+      env:
+        - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
+
+    # works on Precise and Trusty
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-5
+            - lcov
+      env:
+        - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
+
+    # works on Precise and Trusty
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-6
+            - lcov
+      env:
+        - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
+
+    # works on Precise and Trusty
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-7
+            - lcov
+      env:
+        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+
+    # =================
+    # Mac OSX
+    # =================
+
+    # ---------------
+    # CLANG Compiler
+    # ---------------
+
+    - os: osx
+      osx_image: xcode9.4
+      env:
+        - MATRIX_EVAL="brew install lcov"
+
+    - os: osx
+      osx_image: xcode10
+      env:
+        - MATRIX_EVAL="brew install lcov"
+
+    - os: osx
+      osx_image: xcode11
+      env:
+        - MATRIX_EVAL="brew install lcov"
+
+before_install:
+  - eval "${MATRIX_EVAL}"
+
+################
+# Build Script
+################
+
+script:
+  - mkdir -p build && cd build
+  - cmake .. && cmake --build .
+  - ./persist/tests/persist_test 

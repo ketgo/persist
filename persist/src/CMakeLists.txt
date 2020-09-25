@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.9)
+cmake_minimum_required(VERSION 3.1)
 
 # Get source files
 file(
@@ -8,9 +8,6 @@ file(
     ${CMAKE_CURRENT_SOURCE_DIR}/*.c
 )
 
-# Set binary name
-set(BINARY ${PROJECT_NAME})
-
 # Create executable
 add_executable(
     ${BINARY} 
@@ -19,17 +16,23 @@ add_executable(
 
 # Create static lib for running test suits
 add_library(
-    ${BINARY}_lib 
+    ${LIB} 
     STATIC 
     ${SOURCES}
 )
 
-# Add libraries to link
+# Add libraries to link for binary
 target_link_libraries(
     ${BINARY}
-    boost_thread-mt
-    boost_log-mt
-    boost_log_setup-mt
+    PRIVATE 
+    nlohmann_json::nlohmann_json
+)
+
+# Add libraries to link for lib
+target_link_libraries(
+    ${LIB}
+    PRIVATE 
+    nlohmann_json::nlohmann_json
 )
 
 # Set compiler flags
