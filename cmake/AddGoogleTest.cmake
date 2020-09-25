@@ -1,3 +1,5 @@
+# NOT USED AS THE PACKAGE IS EMBEDDED
+
 # 
 #
 # Downloads GTest and provides a helper macro to add tests. Add make check, as well, which

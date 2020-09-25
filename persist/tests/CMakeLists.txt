@@ -1,8 +1,5 @@
 cmake_minimum_required(VERSION 3.1)
 
-# Install dependencies
-include(AddGoogleTest)
-
 # Get source files
 file(
     GLOB_RECURSE 
