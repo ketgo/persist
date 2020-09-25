@@ -1,8 +1,5 @@
 cmake_minimum_required(VERSION 3.1)
 
-# Check for dependencies
-include(CMakeLists.txt.in)
-
 # Get source files
 file(
     GLOB_RECURSE 
@@ -27,9 +24,17 @@ add_library(
     ${SOURCES}
 )
 
-# Add libraries to link
+# Add libraries to link for binary
 target_link_libraries(
     ${BINARY}
+    PRIVATE 
+    nlohmann_json::nlohmann_json
+)
+
+# Add libraries to link for lib
+target_link_libraries(
+    ${BINARY}_lib
+    PRIVATE 
     nlohmann_json::nlohmann_json
 )
 

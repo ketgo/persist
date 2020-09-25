@@ -4,6 +4,9 @@
 # gives output on failed tests without having to set an environment variable.
 #
 #
+
+set(GTEST_VERSION 1.10.0)
+
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
 if(CMAKE_VERSION VERSION_LESS 3.11)
@@ -12,7 +15,7 @@ if(CMAKE_VERSION VERSION_LESS 3.11)
     include(DownloadProject)
     download_project(PROJ                googletest
 		     GIT_REPOSITORY      https://github.com/google/googletest.git
-		     GIT_TAG             release-1.8.0
+		     GIT_TAG             release-${GTEST_VERSION}
 		     UPDATE_DISCONNECTED 1
 		     QUIET
     )
@@ -25,7 +28,7 @@ else()
     include(FetchContent)
     FetchContent_Declare(googletest
         GIT_REPOSITORY      https://github.com/google/googletest.git
-        GIT_TAG             release-1.8.0)
+        GIT_TAG             release-${GTEST_VERSION})
     FetchContent_GetProperties(googletest)
     if(NOT googletest_POPULATED)
         FetchContent_Populate(googletest)
@@ -34,7 +37,6 @@ else()
         unset(CMAKE_SUPPRESS_DEVELOPER_WARNINGS)
     endif()
 endif()
-
 
 if(CMAKE_CONFIGURATION_TYPES)
     add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} 
@@ -45,12 +47,6 @@ else()
         --force-new-ctest-process --output-on-failure)
 endif()
 set_target_properties(check PROPERTIES FOLDER "Scripts")
-
-#include_directories(${gtest_SOURCE_DIR}/include)
-
-# More modern way to do the last line, less messy but needs newish CMake:
-# target_include_directories(gtest INTERFACE ${gtest_SOURCE_DIR}/include)
-
 
 if(GOOGLE_TEST_INDIVIDUAL)
     if(NOT CMAKE_VERSION VERSION_LESS 3.9)

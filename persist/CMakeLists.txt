@@ -1,10 +1,13 @@
 cmake_minimum_required(VERSION 3.1)
 
+# Add project version information
+configure_file (
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/persist/version.hpp.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/persist/version.hpp"
+)
+
 # Set C++ standrard to 17
 set(CMAKE_CXX_STANDARD 17)
-
-# Set common compiler flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -ggdb -Ofast")
 
 # Set compiler flags for code coverage
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
@@ -13,13 +16,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -ggdb -Ofast")
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/include
- #   /usr/local/include
 )
-
-# Set lib directories for all targets
-#link_directories(
-#    /usr/local/lib
-#)
 
 # Source code
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src)

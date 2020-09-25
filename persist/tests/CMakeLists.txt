@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.1)
 
-# Check for dependencies
-include(CMakeLists.txt.in)
+# Install dependencies
+include(AddGoogleTest)
 
 # Get source files
 file(
@@ -34,5 +34,5 @@ target_include_directories(
 target_link_libraries(
     ${BINARY}
     ${PROJECT_NAME}_lib
-    ${GTEST_LIBRARIES}
+    gtest
 )
