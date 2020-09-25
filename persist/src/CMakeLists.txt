@@ -8,9 +8,6 @@ file(
     ${CMAKE_CURRENT_SOURCE_DIR}/*.c
 )
 
-# Set binary name
-set(BINARY ${PROJECT_NAME})
-
 # Create executable
 add_executable(
     ${BINARY} 
@@ -19,7 +16,7 @@ add_executable(
 
 # Create static lib for running test suits
 add_library(
-    ${BINARY}_lib 
+    ${LIB} 
     STATIC 
     ${SOURCES}
 )
@@ -33,7 +30,7 @@ target_link_libraries(
 
 # Add libraries to link for lib
 target_link_libraries(
-    ${BINARY}_lib
+    ${LIB}
     PRIVATE 
     nlohmann_json::nlohmann_json
 )

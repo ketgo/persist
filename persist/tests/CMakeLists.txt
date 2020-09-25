@@ -8,32 +8,25 @@ file(
     ${CMAKE_CURRENT_SOURCE_DIR}/*.c
 )
 
-# Set binary name
-set(BINARY ${PROJECT_NAME}_test)
-
 # Create executable
 add_executable(
-    ${BINARY} 
+    ${TEST_BINARY} 
     ${SOURCES}
 )
 
 # Add executable to run by ctest
-add_test(NAME ${BINARY} COMMAND ${BINARY})
+add_test(NAME ${TEST_BINARY} COMMAND ${TEST_BINARY})
 
 # Add tests folder to targets include directories
 target_include_directories(
-    ${BINARY}
+    ${TEST_BINARY}
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 # Add libraries to link
 target_link_libraries(
-    ${BINARY}
-    ${PROJECT_NAME}_lib
+    ${TEST_BINARY}
+    ${LIB}
     gtest
 )
-
-include(CodeCoverage)
-
-SETUP_TARGET_FOR_COVERAGE(${BINARY}_cov ${BINARY} coverage)
