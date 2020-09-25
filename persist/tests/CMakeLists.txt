@@ -33,3 +33,7 @@ target_link_libraries(
     ${PROJECT_NAME}_lib
     gtest
 )
+
+include(CodeCoverage)
+
+SETUP_TARGET_FOR_COVERAGE(${BINARY}_cov ${BINARY} coverage)

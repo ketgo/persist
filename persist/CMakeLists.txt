@@ -6,8 +6,8 @@ configure_file (
     "${CMAKE_CURRENT_SOURCE_DIR}/include/persist/version.hpp"
 )
 
-# Set C++ standrard to 17
-set(CMAKE_CXX_STANDARD 17)
+# Set C++ standrard to 14
+set(CMAKE_CXX_STANDARD 14)
 
 # Set compiler flags for code coverage
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
