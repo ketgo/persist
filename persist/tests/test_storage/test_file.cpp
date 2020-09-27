@@ -27,6 +27,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <memory>
 
 #include <persist/storage/file.hpp>
 
@@ -45,8 +46,14 @@ protected:
   void TearDown() override { storage->close(); }
 };
 
-TEST_F(FileStorageTestFixture, TestCreate) {}
+TEST_F(FileStorageTestFixture, TestOpenNewFile) {}
 
-TEST_F(FileStorageTestFixture, TestLoad) {}
+TEST_F(FileStorageTestFixture, TestOpenOldFile) {}
 
-TEST_F(FileStorageTestFixture, TestDump) {}
+TEST_F(FileStorageTestFixture, TestReadBlock) {}
+
+TEST_F(FileStorageTestFixture, TestWriteBlock) {}
+
+TEST_F(FileStorageTestFixture, TestReadMetaData) {}
+
+TEST_F(FileStorageTestFixture, TestWriteMetaData) {}

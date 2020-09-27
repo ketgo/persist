@@ -44,30 +44,66 @@ namespace persist {
  */
 class FileStorage : public Storage {
 private:
-  std::string path;  //<- file name with path
-  std::fstream file; //<- IO stream for file
+  uint64_t blockSize; //<- data block size
+  std::string path;   //<- storage file name with path
+  std::fstream file;  //<- IO stream for file
 
 public:
   /**
-   * Default Constructor
+   * Constructors
+   *
+   * The file storage stores data in blocks of fixed size. The size of
+   * the blocks can be specified at initiation. In case of an existing
+   * storage file the block size stored in its metadata is used.
+   *
+   * @param path path to storage file
+   * @param blockSize storage size of data block. Default set to 1024
    */
-  FileStorage() {}
+  FileStorage();
+  FileStorage(std::string path);
+  FileStorage(const char *path);
+  FileStorage(std::string path, uint64_t blockSize);
+  FileStorage(const char *path, uint64_t blockSize);
 
   /**
-   * Constructor
+   * Opens storage file.
    */
-  FileStorage(std::string path) : path(path) {}
-  FileStorage(const char *path) : path(path) {}
+  void open() override;
 
-  void open() override {
-    file.open(path.c_str(), std::fstream::in | std::fstream::out);
-  }
+  /**
+   * Closes opened storage file. No operation is performed if
+   * no file is opened.
+   */
+  void close() override;
 
-  void close() override { file.close(); }
+  /**
+   * Read metadata information from storage file
+   *
+   * @return pointer to MetaData object
+   */
+  std::unique_ptr<Storage::MetaData> read() override;
 
-  std::unique_ptr<DataBlock> create() override;
-  std::unique_ptr<DataBlock> load(DataBlockId blockId) override;
-  void dump(DataBlock &block) override;
+  /**
+   * Reads DataBlock with given identifier from storage file.
+   *
+   * @param blockId block identifier
+   * @returns pointer to requested Block object
+   */
+  std::unique_ptr<DataBlock> read(DataBlockId blockId) override;
+
+  /**
+   * Write MetaData object to storage file.
+   *
+   * @param metadata reference to MetaData object to be written
+   */
+  void write(Storage::MetaData &metadata) override;
+
+  /**
+   * Writes DataBlock to storage file.
+   *
+   * @param block reference to DataBlock object to be written
+   */
+  void write(DataBlock &block) override;
 };
 
 } // namespace persist

@@ -66,6 +66,9 @@
 # - Make all add_custom_target()s VERBATIM to auto-escape wildcard characters
 #   in EXCLUDEs, and remove manual escaping from gcovr targets
 #
+# 2020-09-26, Ketan Goyal
+# - Added scrub target to clean .gcda files
+#
 # USAGE:
 #
 # 1. Copy this file into your cmake modules path.
@@ -176,6 +179,32 @@ endif() # NOT CMAKE_BUILD_TYPE STREQUAL "Debug"
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
     link_libraries(gcov)
 endif()
+
+# Defines a target for cleaning .gcov files. This should be included and run to
+# remove old .gcda files with corrupt arc tags.
+#
+# setup_target_for_coverage_lcov(
+#     NAME testrunner_coverage                    # New target name
+# )
+function(setup_target_for_coverage_clean)
+    
+    set(options)
+    set(oneValueArgs NAME)
+    set(multiValueArgs)
+    cmake_parse_arguments(Coverage "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    file(
+        GLOB_RECURSE 
+        GCDA_FILES 
+        ${CMAKE_BINARY_DIR}/*.gcda
+        ${CMAKE_BINARY_DIR}/*.gcno
+    )
+    add_custom_target(${Coverage_NAME}
+        COMMAND ${CMAKE_MAKE_PROGRAM} clean
+        COMMAND rm -f ${GCDA_FILES}
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+
+endfunction() # setup_target_for_coverage_clean
 
 # Defines a target for running and collection code coverage information
 # Builds dependencies, runs the given executable and outputs reports.

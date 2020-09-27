@@ -36,7 +36,7 @@ using json = nlohmann::json;
 
 // ---------------------------------------------------------------------------
 // TODO:
-// - Increase performance by moveing away from JSON based block serialization.
+// - Increase performance by moving away from JSON based serialization.
 // - Improved caching
 // ---------------------------------------------------------------------------
 
@@ -140,9 +140,9 @@ void DataBlock::Header::load(ByteBuffer &input) {
     json data = json::from_ubjson(input, false);
     data.at("blockId").get_to(blockId);
     data.at("blockSize").get_to(blockSize);
-    json entries_data = data.at("entries");
+    json entriesData = data.at("entries");
     entries.clear();
-    for (auto &entry_data : entries_data) {
+    for (auto &entry_data : entriesData) {
       DataBlock::Header::Entry entry;
       entry_data.at("offset").get_to(entry.offset);
       entry_data.at("size").get_to(entry.size);
@@ -161,10 +161,10 @@ ByteBuffer &DataBlock::Header::dump() {
     data["blockSize"] = blockSize;
     data["entries"] = json::array();
     for (auto &entry : entries) {
-      json entry_data;
-      entry_data["offset"] = entry.offset;
-      entry_data["size"] = entry.size;
-      data["entries"].push_back(entry_data);
+      json entryData;
+      entryData["offset"] = entry.offset;
+      entryData["size"] = entry.size;
+      data["entries"].push_back(entryData);
     }
     // Convert JSON to UBJSON
     buffer = json::to_ubjson(data);

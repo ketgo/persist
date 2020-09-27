@@ -103,6 +103,23 @@ public:
   const char *what() const throw() { return msg.c_str(); }
 };
 
+/**
+ * MetaData Parsing Error
+ *
+ * This error is thrown if unable to parse storage metadata.
+ */
+class MetaDataParseError : public std::exception {
+private:
+  std::string msg;
+
+public:
+  MetaDataParseError() : msg("MetaData parsing error.") {}
+  MetaDataParseError(const char *msg) : msg(msg) {}
+  MetaDataParseError(std::string &msg) : msg(msg) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
 } // namespace persist
 
 #endif /* EXCEPTIONS_HPP */

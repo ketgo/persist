@@ -26,14 +26,69 @@
  * Implementation of File Storage
  */
 
+#include <filesystem>
+#include <fstream>
+
 #include <persist/storage/file.hpp>
 
 namespace persist {
 
-std::unique_ptr<DataBlock> FileStorage::create() {}
+/*********************
+ * Utility Functions
+ ********************/
 
-std::unique_ptr<DataBlock> FileStorage::load(DataBlockId blockId) {}
+static std::fstream open(std::string path) {
+  // TODO: Use cross-platform solution to creating directories
+}
 
-void FileStorage::dump(DataBlock &block) {}
+/***********************
+ * File Storage
+ **********************/
+
+FileStorage::FileStorage() {}
+
+FileStorage::FileStorage(std::string path)
+    : path(path), blockSize(DEFAULT_DATA_BLOCK_SIZE) {}
+
+FileStorage::FileStorage(const char *path)
+    : path(path), blockSize(DEFAULT_DATA_BLOCK_SIZE) {}
+
+FileStorage::FileStorage(std::string path, uint64_t blockSize)
+    : path(path), blockSize(blockSize) {}
+
+FileStorage::FileStorage(const char *path, uint64_t blockSize)
+    : path(path), blockSize(blockSize) {}
+
+void FileStorage::open() {
+  file.open(path.c_str(), std::fstream::in | std::fstream::out);
+}
+
+void FileStorage::close() {
+  // Close storage file if opened
+  if (file.is_open()) {
+    file.close();
+  }
+}
+
+std::unique_ptr<Storage::MetaData> FileStorage::read() {
+  std::fstream metadataFile;
+  std::string metadataPath = path + ".metadata";
+
+  metadataFile.open(metadataPath.c_str(), std::fstream::in);
+
+  return nullptr;
+}
+
+std::unique_ptr<DataBlock> FileStorage::read(DataBlockId blockId) {
+  // The block ID is used to compute the offset of the block in the file.
+
+  return nullptr;
+}
+
+void FileStorage::write(Storage::MetaData &metadata) {}
+
+void FileStorage::write(DataBlock &block) {
+  // The block ID is used to compute the offset of the block in the file.
+}
 
 } // namespace persist
