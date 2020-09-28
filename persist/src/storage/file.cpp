@@ -86,24 +86,24 @@ std::unique_ptr<Storage::MetaData> FileStorage::read() {
   // Open metadata file
   std::fstream metadataFile;
   std::string metadataPath = path + ".metadata";
+  std::unique_ptr<Storage::MetaData> metadataPtr =
+      std::make_unique<Storage::MetaData>();
+  // Set default block size value in metadata. This gets updated once the
+  // content of the saved metadata is loaded
+  metadataPtr->blockSize = blockSize;
 
   metadataFile =
       file::open(metadataPath, std::fstream::in | std::fstream::binary);
 
-  // Check if no metadata file and storage file exists. If so then this is a
-  // newly created storage so return null pointer. Otherwise throw storage
-  // corrupt error.
+  // Check if no metadata file exists. If so then this is a newly created
+  // storage so return pointer to an empty metadata object.
   if (!metadataFile.is_open()) {
-    if (!file.is_open()) {
-      return nullptr;
-    }
-    throw StorageError(
-        "Unable to read storage meatdata. The file may be corrupt.");
+    return metadataPtr;
   }
 
-  // Read the binary metadata file and check for content size. If no
-  // content found then return null pointer otherwise return a serialize
-  // MetaData object.
+  // Read the binary metadata file and check for content size. If nn content
+  // found then return pointer to an empty metadata object otherwise return a
+  // serialize MetaData object.
 
   // Stop eating new lines in binary mode!!!
   file.unsetf(std::ios::skipws);
@@ -111,17 +111,16 @@ std::unique_ptr<Storage::MetaData> FileStorage::read() {
   uint64_t fileSize = file::size(metadataFile);
   // Check if the file is emtpy
   if (fileSize == 0) {
-    return nullptr;
+    return metadataPtr;
   }
 
   ByteBuffer buffer;
   buffer.resize(fileSize);
   file::read(metadataFile, buffer, 0);
 
-  // Create and load MetaData object
-  std::unique_ptr<Storage::MetaData> metadataPtr =
-      std::make_unique<Storage::MetaData>();
+  // Load MetaData object
   metadataPtr->load(buffer);
+  blockSize = metadataPtr->blockSize;
 
   // Close metadata file
   metadataFile.close();
@@ -130,9 +129,27 @@ std::unique_ptr<Storage::MetaData> FileStorage::read() {
 }
 
 std::unique_ptr<DataBlock> FileStorage::read(DataBlockId blockId) {
-  // The block ID is used to compute the offset of the block in the file.
+  try {
+    // The block ID and blockSize is used to compute the offset of the block in
+    // the file.
+    uint64_t offset = blockSize * (blockId - 1);
 
-  return nullptr;
+    // If offset is negative that means blockId is 0 so return null pointer.
+    // This is because blockId of 0 is considered NULL.
+    if (offset < 0) {
+      return nullptr;
+    }
+
+    ByteBuffer buffer(blockSize);
+    std::unique_ptr<DataBlock> dataBlockPtr =
+        std::make_unique<DataBlock>(blockId, blockSize);
+    file::read(file, buffer, offset);
+    dataBlockPtr->load(buffer);
+
+    return dataBlockPtr;
+  } catch (...) {
+    throw DataBlockNotFoundError(blockId);
+  }
 }
 
 void FileStorage::write(Storage::MetaData &metadata) {
@@ -152,7 +169,18 @@ void FileStorage::write(Storage::MetaData &metadata) {
 }
 
 void FileStorage::write(DataBlock &block) {
-  // The block ID is used to compute the offset of the block in the file.
+  // The block ID and blockSize is used to compute the offset of the block
+  // in the file.
+  uint64_t offset = blockSize * (block.getId() - 1);
+
+  // If offset is negative that means blockId is 0 so return. This is because
+  // blockId of 0 is considered NULL.
+  if (offset < 0) {
+    return;
+  }
+
+  ByteBuffer &buffer = block.dump();
+  file::write(file, buffer, offset);
 }
 
 } // namespace persist

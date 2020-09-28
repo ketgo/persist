@@ -104,6 +104,23 @@ public:
 };
 
 /**
+ * Data Block Not Found Error
+ *
+ * This error is thrown if data block is not found.
+ */
+class DataBlockNotFoundError : public std::exception {
+private:
+  std::string msg;
+
+public:
+  DataBlockNotFoundError(persist::DataBlockId &blockId)
+      : msg(std::string("Data Block '") + std::to_string(blockId) +
+            std::string("' not found.")) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
  * MetaData Parsing Error
  *
  * This error is thrown if unable to parse storage metadata.
@@ -116,22 +133,6 @@ public:
   MetaDataParseError() : msg("MetaData parsing error.") {}
   MetaDataParseError(const char *msg) : msg(msg) {}
   MetaDataParseError(std::string &msg) : msg(msg) {}
-
-  const char *what() const throw() { return msg.c_str(); }
-};
-
-/**
- * File Opening Error
- *
- * This error is thrown if unable to open file.
- */
-class FileError : public std::exception {
-private:
-  std::string msg;
-
-public:
-  FileError() : msg("Unable to open file.") {}
-  FileError(std::string &file) : msg("Unable to open file: " + file) {}
 
   const char *what() const throw() { return msg.c_str(); }
 };

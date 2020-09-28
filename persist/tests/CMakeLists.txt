@@ -33,5 +33,7 @@ target_link_libraries(
 )
 
 # Copy test data directory
-add_custom_command(TARGET ${TEST_BINARY} PRE_BUILD
-                   COMMAND ${CMAKE_COMMAND} -E copy_directory  ${CMAKE_CURRENT_SOURCE_DIR}/data/ $<TARGET_FILE_DIR:${TEST_BINARY}>/data)
+add_custom_command(
+    TARGET ${TEST_BINARY} PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E remove_directory $<TARGET_FILE_DIR:${TEST_BINARY}>/data
+    COMMAND ${CMAKE_COMMAND} -E copy_directory  ${CMAKE_CURRENT_SOURCE_DIR}/data/ $<TARGET_FILE_DIR:${TEST_BINARY}>/data)

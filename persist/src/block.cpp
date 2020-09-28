@@ -239,7 +239,7 @@ RecordBlock &DataBlock::getRecordBlock(RecordBlockId recordBlockId) {
 void DataBlock::addRecordBlock(RecordBlock &recordBlock) {
   RecordBlockId recordBlockId = recordBlock.getId();
   // Check if record block does not exist in the data block
-  // NOTE: Storing multiple record block with same ID in a single data
+  // NOTE: Storing multiple record block with same ID in a single data block
   // is not allowed.
   RecordBlockCache::iterator it = cache.find(recordBlockId);
   if (it != cache.end()) {
