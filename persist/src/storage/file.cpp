@@ -27,6 +27,7 @@
  */
 
 #include <fstream>
+#include <iostream>
 
 #include <persist/exceptions.hpp>
 #include <persist/storage/file.hpp>
@@ -103,14 +104,11 @@ std::unique_ptr<Storage::MetaData> FileStorage::read() {
   // Read the binary metadata file and check for content size. If no
   // content found then return null pointer otherwise return a serialize
   // MetaData object.
-  
+
   // Stop eating new lines in binary mode!!!
   file.unsetf(std::ios::skipws);
   // get its size:
-  std::streampos fileSize;
-  metadataFile.seekg(0, std::ios::end);
-  fileSize = metadataFile.tellg();
-  metadataFile.seekg(0, std::ios::beg);
+  uint64_t fileSize = file::size(metadataFile);
   // Check if the file is emtpy
   if (fileSize == 0) {
     return nullptr;
@@ -118,7 +116,7 @@ std::unique_ptr<Storage::MetaData> FileStorage::read() {
 
   ByteBuffer buffer;
   buffer.resize(fileSize);
-  metadataFile.read(reinterpret_cast<char *>(&buffer[0]), fileSize);
+  file::read(metadataFile, buffer, 0);
 
   // Create and load MetaData object
   std::unique_ptr<Storage::MetaData> metadataPtr =
@@ -145,8 +143,9 @@ void FileStorage::write(Storage::MetaData &metadata) {
   std::string metadataPath = path + ".metadata";
 
   metadataFile =
-      file::open(metadataPath, std::fstream::trunc | std::fstream::binary);
-  metadataFile.write(reinterpret_cast<char *>(&buffer[0]), buffer.size());
+      file::open(metadataPath, std::fstream::out | std::fstream::trunc |
+                                   std::fstream::binary);
+  file::write(metadataFile, buffer, 0);
 
   // Close metadata file
   metadataFile.close();

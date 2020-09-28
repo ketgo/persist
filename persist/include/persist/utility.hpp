@@ -31,25 +31,22 @@
 
 #include <fstream>
 
+#include <persist/common.hpp>
+
 namespace persist {
 
 /**
- * @brief Utility function to fill values in one vector from another starting
+ * Utility function to fill values in one ByteBuffer from another starting
  * at given offset.
  *
  * @param buffer_1 buffer to fill
  * @param buffer_2 buffer from which to retrive values
  * @param offset offset at which to start filling values in buffer
  */
-template <class T>
-void write(std::vector<T> &buffer_1, std::vector<T> &buffer_2, size_t offset) {
-  for (size_t i = 0; i < buffer_2.size(); ++i) {
-    buffer_1[i + offset] = buffer_2[i];
-  }
-}
+void write(ByteBuffer &buffer_1, ByteBuffer &buffer_2, size_t offset);
 
 /**
- * @brief Utility function to fill values in buffer for given value, starting
+ * Utility function to fill values in ByteBuffer with given value, at starting
  * offset and limit.
  *
  * @param buffer buffer to fill
@@ -57,12 +54,7 @@ void write(std::vector<T> &buffer_1, std::vector<T> &buffer_2, size_t offset) {
  * @param offset offset at which to start filling buffer
  * @param limit amount of values to fill
  */
-template <class T>
-void write(std::vector<T> &buffer, uint8_t value, size_t offset, size_t limit) {
-  for (size_t i = offset; i < offset + limit; ++i) {
-    buffer[i] = value;
-  }
-}
+void write(ByteBuffer &buffer, uint8_t value, size_t offset, size_t limit);
 
 namespace file {
 
@@ -75,6 +67,37 @@ namespace file {
  * @returns opened file stream object
  */
 std::fstream open(std::string path, std::ios_base::openmode mode);
+
+/**
+ * Get content size of the file
+ *
+ * @param file opened file stream object
+ * @returns size of the file
+ */
+uint64_t size(std::fstream &file);
+
+/**
+ * Read file content starting at given postion into a ByteBuffer. The amount of
+ * data read is determined by the size of the passed ByteBuffer. 
+ * 
+ * Note: 
+ * - If the size of the ByteBuffer is zero then no data will be read.
+ * - The content of the ByteBuffer will be overwritten
+ *
+ * @param file opened file stream object
+ * @param buffer reference to the ByteBuffer where read data is stored
+ * @param offset offset within the file from where to start reading
+ */
+void read(std::fstream &file, ByteBuffer &buffer, std::streampos offset);
+
+/**
+ * Write given ByteBuffer to file starting at specifed offset.
+ *
+ * @param file opened file stream object
+ * @param buffer reference to the ByteBuffer from which data is stored
+ * @param offset offset within the file from where to start writing
+ */
+void write(std::fstream &file, ByteBuffer &buffer, std::streampos offset);
 
 } // namespace file
 

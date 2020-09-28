@@ -22,9 +22,23 @@
  * SOFTWARE.
  */
 
+#include <fstream>
+
 #include <persist/utility.hpp>
 
 namespace persist {
+
+void write(ByteBuffer &buffer_1, ByteBuffer &buffer_2, size_t offset) {
+  for (size_t i = 0; i < buffer_2.size(); ++i) {
+    buffer_1[i + offset] = buffer_2[i];
+  }
+}
+
+void write(ByteBuffer &buffer, uint8_t value, size_t offset, size_t limit) {
+  for (size_t i = offset; i < offset + limit; ++i) {
+    buffer[i] = value;
+  }
+}
 
 namespace file {
 
@@ -32,7 +46,35 @@ std::fstream open(std::string path, std::ios_base::openmode mode) {
   std::fstream file;
   // TODO: Use cross-platform solution for creating sub-directories
   file.open(path.c_str(), mode);
+
   return file;
+}
+
+uint64_t size(std::fstream &file) {
+  std::streampos fileSize;
+  file.seekg(0, std::ios_base::end);
+  fileSize = file.tellg();
+  file.seekg(0, std::ios_base::beg);
+
+  return uint64_t(fileSize);
+}
+
+void read(std::fstream &file, ByteBuffer &buffer, std::streampos offset) {
+  // Get current position of the stream cursor before moving
+  std::streampos original = file.tellg();
+  file.seekg(offset);
+  file.read(reinterpret_cast<char *>(&buffer[0]), buffer.size());
+  // Place the moved cursor back to its original postion
+  file.seekg(original);
+}
+
+void write(std::fstream &file, ByteBuffer &buffer, std::streampos offset) {
+  // Get current position of the stream cursor before moving
+  std::streampos original = file.tellg();
+  file.seekg(offset);
+  file.write(reinterpret_cast<char *>(&buffer[0]), buffer.size());
+  // Place the moved cursor back to its original postion
+  file.seekg(original);
 }
 
 } // namespace file
