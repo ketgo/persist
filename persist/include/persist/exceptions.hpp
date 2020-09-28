@@ -121,6 +121,24 @@ public:
 };
 
 /**
+ * Data Block Size Error
+ *
+ * This error is thrown if data block size is less than minimum required size.
+ */
+class DataBlockSizeError : public std::exception {
+private:
+  std::string msg;
+
+public:
+  DataBlockSizeError(uint64_t &blockSize)
+      : msg(std::string("Data Block size '") + std::to_string(blockSize) +
+            std::string("' less then minimum required size of '") +
+            std::to_string(MINIMUM_DATA_BLOCK_SIZE) + std::string("'.")) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
  * MetaData Parsing Error
  *
  * This error is thrown if unable to parse storage metadata.

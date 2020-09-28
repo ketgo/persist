@@ -43,8 +43,11 @@ void write(ByteBuffer &buffer, uint8_t value, size_t offset, size_t limit) {
 namespace file {
 
 std::fstream open(std::string path, std::ios_base::openmode mode) {
-  std::fstream file;
   // TODO: Use cross-platform solution for creating sub-directories
+  std::fstream file;
+  // Creating file if it does not exist
+  file.open(path.c_str(), std::ios::out | std::ios::app);
+  file.close();
   file.open(path.c_str(), mode);
 
   return file;

@@ -29,12 +29,12 @@
 #include <gtest/gtest.h>
 
 #include <fstream>
-#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include <persist/block.hpp>
+#include <persist/exceptions.hpp>
 #include <persist/storage/file.hpp>
 #include <persist/utility.hpp>
 
@@ -46,7 +46,7 @@ class NewFileStorageTestFixture : public ::testing::Test {
 protected:
   const std::string readPath = base + "/_read.storage";
   const std::string writePath = base + "/_write.storage";
-  const uint64_t blockSize = 64;
+  const uint64_t blockSize = 512;
   std::unique_ptr<FileStorage> readStorage, writeStorage;
 
   void SetUp() override {
@@ -55,9 +55,36 @@ protected:
   }
 };
 
-TEST_F(NewFileStorageTestFixture, TestReadBlock) {}
+TEST_F(NewFileStorageTestFixture, TestReadBlock) {
+  try {
+    std::unique_ptr<DataBlock> dataBlock = readStorage->read(1);
+    FAIL() << "Expected DataBlockNotFoundError Exception.";
+  } catch (DataBlockNotFoundError &err) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected DataBlockNotFoundError Exception.";
+  }
+}
 
-TEST_F(NewFileStorageTestFixture, TestWriteBlock) {}
+TEST_F(NewFileStorageTestFixture, TestWriteBlock) {
+  RecordBlock recordBlock(1);
+  recordBlock.data = "testing";
+
+  DataBlock dataBlock(1, blockSize);
+  dataBlock.addRecordBlock(recordBlock);
+  writeStorage->write(dataBlock);
+
+  std::fstream file = file::open(writePath, std::ios::in | std::ios::binary);
+  ByteBuffer buffer(blockSize);
+  file::read(file, buffer, 0);
+  DataBlock _dataBlock;
+  _dataBlock.load(buffer);
+  RecordBlock &_recordBlock = dataBlock.getRecordBlock(1);
+
+  ASSERT_EQ(dataBlock.getId(), _dataBlock.getId());
+  ASSERT_EQ(recordBlock.getId(), _recordBlock.getId());
+  ASSERT_EQ(recordBlock.data, _recordBlock.data);
+}
 
 TEST_F(NewFileStorageTestFixture, TestReadMetaData) {
   std::unique_ptr<Storage::MetaData> metadata = readStorage->read();
@@ -92,7 +119,7 @@ class ExistingFileStorageTestFixture : public ::testing::Test {
 protected:
   const std::string readPath = base + "/test_read.storage";
   const std::string writePath = base + "/test_write.storage";
-  const uint64_t blockSize = 64;
+  const uint64_t blockSize = 512;
   std::unique_ptr<FileStorage> readStorage, writeStorage;
 
   void SetUp() override {
@@ -101,9 +128,34 @@ protected:
   }
 };
 
-TEST_F(ExistingFileStorageTestFixture, TestReadBlock) {}
+TEST_F(ExistingFileStorageTestFixture, TestReadBlock) {
+  std::unique_ptr<DataBlock> dataBlock = readStorage->read(1);
+  RecordBlock &recordBlock = dataBlock->getRecordBlock(1);
 
-TEST_F(ExistingFileStorageTestFixture, TestWriteBlock) {}
+  ASSERT_EQ(dataBlock->getId(), 1);
+  ASSERT_EQ(recordBlock.getId(), 1);
+  ASSERT_EQ(recordBlock.data, "testing");
+}
+
+TEST_F(ExistingFileStorageTestFixture, TestWriteBlock) {
+  RecordBlock recordBlock(1);
+  recordBlock.data = "testing";
+
+  DataBlock dataBlock(1, blockSize);
+  dataBlock.addRecordBlock(recordBlock);
+  writeStorage->write(dataBlock);
+
+  std::fstream file = file::open(writePath, std::ios::in | std::ios::binary);
+  ByteBuffer buffer(blockSize);
+  file::read(file, buffer, 0);
+  DataBlock _dataBlock;
+  _dataBlock.load(buffer);
+  RecordBlock &_recordBlock = dataBlock.getRecordBlock(1);
+
+  ASSERT_EQ(dataBlock.getId(), _dataBlock.getId());
+  ASSERT_EQ(recordBlock.getId(), _recordBlock.getId());
+  ASSERT_EQ(recordBlock.data, _recordBlock.data);
+}
 
 TEST_F(ExistingFileStorageTestFixture, TestReadMetaData) {
   std::unique_ptr<Storage::MetaData> metadata = readStorage->read();
@@ -117,7 +169,7 @@ TEST_F(ExistingFileStorageTestFixture, TestReadMetaData) {
 
 TEST_F(ExistingFileStorageTestFixture, TestWriteMetaData) {
   Storage::MetaData metadata;
-  metadata.blockSize = DEFAULT_DATA_BLOCK_SIZE;
+  metadata.blockSize = 1024;
   metadata.freeBlocks = {1, 2, 3};
 
   writeStorage->write(metadata);

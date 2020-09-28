@@ -35,6 +35,17 @@
 
 using namespace persist;
 
+TEST(DataBlockTest, DataBlockSizeError) {
+  try {
+    DataBlock block(1, 64);
+    FAIL() << "Expected DataBlockSizeError Exception.";
+  } catch (DataBlockSizeError &err) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected DataBlockSizeError Exception.";
+  }
+}
+
 class DataBlockTestFixture : public ::testing::Test {
 protected:
   std::vector<uint8_t> input;

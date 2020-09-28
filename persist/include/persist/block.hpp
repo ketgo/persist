@@ -32,6 +32,7 @@
 
 #include <persist/common.hpp>
 
+#define MINIMUM_DATA_BLOCK_SIZE 256
 #define DEFAULT_DATA_BLOCK_SIZE 1024
 
 namespace persist {

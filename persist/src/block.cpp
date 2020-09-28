@@ -219,6 +219,10 @@ DataBlock::DataBlock(DataBlockId blockId) : header(blockId) {
 
 DataBlock::DataBlock(DataBlockId blockId, uint64_t blockSize)
     : header(blockId, blockSize) {
+  // Check block size greater than minimum size
+  if (blockSize < MINIMUM_DATA_BLOCK_SIZE) {
+    throw DataBlockSizeError(blockSize);
+  }
   // Resize internal buffer to specified block size
   buffer.resize(blockSize);
 }

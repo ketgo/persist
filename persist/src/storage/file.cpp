@@ -27,7 +27,6 @@
  */
 
 #include <fstream>
-#include <iostream>
 
 #include <persist/exceptions.hpp>
 #include <persist/storage/file.hpp>
@@ -71,8 +70,7 @@ FileStorage::~FileStorage() {
 }
 
 void FileStorage::open() {
-  file = file::open(path, std::fstream::in | std::fstream::out |
-                              std::fstream::binary);
+  file = file::open(path, std::ios::binary | std::ios::in | std::ios::out);
 }
 
 void FileStorage::close() {
@@ -92,16 +90,9 @@ std::unique_ptr<Storage::MetaData> FileStorage::read() {
   // content of the saved metadata is loaded
   metadataPtr->blockSize = blockSize;
 
-  metadataFile =
-      file::open(metadataPath, std::fstream::in | std::fstream::binary);
+  metadataFile = file::open(metadataPath, std::ios::in | std::ios::binary);
 
-  // Check if no metadata file exists. If so then this is a newly created
-  // storage so return pointer to an empty metadata object.
-  if (!metadataFile.is_open()) {
-    return metadataPtr;
-  }
-
-  // Read the binary metadata file and check for content size. If nn content
+  // Read the binary metadata file and check for content size. If no content
   // found then return pointer to an empty metadata object otherwise return a
   // serialize MetaData object.
 
@@ -129,27 +120,33 @@ std::unique_ptr<Storage::MetaData> FileStorage::read() {
 }
 
 std::unique_ptr<DataBlock> FileStorage::read(DataBlockId blockId) {
+  // The block ID and blockSize is used to compute the offset of the block in
+  // the file.
+  uint64_t offset = blockSize * (blockId - 1);
+
+  // If offset is negative that means blockId is 0 so return null pointer.
+  // This is because blockId of 0 is considered NULL.
+  if (offset < 0) {
+    return nullptr;
+  }
+
+  ByteBuffer buffer;
+  buffer.resize(blockSize);
+  std::unique_ptr<DataBlock> dataBlockPtr =
+      std::make_unique<DataBlock>(blockId, blockSize);
+
+  // Load data block from file
+  file::read(file, buffer, offset);
+
+  // TODO: Needs more restrictive exception handling. The block not found error
+  // should be thrown if the offset exceeds EOF
   try {
-    // The block ID and blockSize is used to compute the offset of the block in
-    // the file.
-    uint64_t offset = blockSize * (blockId - 1);
-
-    // If offset is negative that means blockId is 0 so return null pointer.
-    // This is because blockId of 0 is considered NULL.
-    if (offset < 0) {
-      return nullptr;
-    }
-
-    ByteBuffer buffer(blockSize);
-    std::unique_ptr<DataBlock> dataBlockPtr =
-        std::make_unique<DataBlock>(blockId, blockSize);
-    file::read(file, buffer, offset);
     dataBlockPtr->load(buffer);
-
-    return dataBlockPtr;
   } catch (...) {
     throw DataBlockNotFoundError(blockId);
   }
+
+  return dataBlockPtr;
 }
 
 void FileStorage::write(Storage::MetaData &metadata) {
@@ -159,9 +156,8 @@ void FileStorage::write(Storage::MetaData &metadata) {
   std::fstream metadataFile;
   std::string metadataPath = path + ".metadata";
 
-  metadataFile =
-      file::open(metadataPath, std::fstream::out | std::fstream::trunc |
-                                   std::fstream::binary);
+  metadataFile = file::open(metadataPath,
+                            std::ios::out | std::ios::trunc | std::ios::binary);
   file::write(metadataFile, buffer, 0);
 
   // Close metadata file
