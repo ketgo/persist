@@ -1,5 +1,5 @@
 /**
- * common.hpp - Persist
+ * utility.cpp - Persist
  *
  * Copyright 2020 Ketan Goyal
  *
@@ -22,50 +22,19 @@
  * SOFTWARE.
  */
 
-/**
- * This header file contains common classes and methods used in the package.
- */
-
-#ifndef COMMON_HPP
-#define COMMON_HPP
-
-#include <vector>
+#include <persist/utility.hpp>
 
 namespace persist {
 
-/**
- * @brief Byte buffer type
- */
-typedef std::vector<uint8_t> ByteBuffer;
+namespace file {
 
-/**
- * Abstract Base Serializable class
- */
-class Serializable {
-protected:
-  /**
-   * @brief Internal buffer to store serialization result
-   */
-  ByteBuffer buffer;
+std::fstream open(std::string path, std::ios_base::openmode mode) {
+  std::fstream file;
+  // TODO: Use cross-platform solution for creating sub-directories
+  file.open(path.c_str(), mode);
+  return file;
+}
 
-public:
-  virtual ~Serializable() {} //<- Virtual Destructor
-
-  /**
-   * Load object from byte string
-   *
-   * @param input input buffer to load
-   */
-  virtual void load(ByteBuffer &input) = 0;
-
-  /**
-   * Dump object as byte string
-   *
-   * @returns reference to the buffer with results
-   */
-  virtual ByteBuffer &dump() = 0;
-};
+} // namespace file
 
 } // namespace persist
-
-#endif /* COMMON_HPP */

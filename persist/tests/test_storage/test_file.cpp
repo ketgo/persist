@@ -27,33 +27,63 @@
  */
 
 #include <gtest/gtest.h>
-#include <memory>
 
+#include <iostream>
+#include <memory>
+#include <string>
+
+#include <persist/block.hpp>
 #include <persist/storage/file.hpp>
 
 using namespace persist;
 
-class FileStorageTestFixture : public ::testing::Test {
+class NewFileStorageTestFixture : public ::testing::Test {
 protected:
-  const char *path = "./test.storage";
+  const std::string base = "persist/tests/data";
+  const std::string path = base + "/test.storage";
+  const uint64_t blockSize = DEFAULT_DATA_BLOCK_SIZE;
   std::unique_ptr<FileStorage> storage;
 
   void SetUp() override {
-    storage = std::make_unique<FileStorage>(path);
-    storage->open();
+    storage = std::make_unique<FileStorage>(path, blockSize);
   }
-
-  void TearDown() override { storage->close(); }
 };
 
-TEST_F(FileStorageTestFixture, TestOpenNewFile) {}
+TEST_F(NewFileStorageTestFixture, TestReadBlock) {}
 
-TEST_F(FileStorageTestFixture, TestOpenOldFile) {}
+TEST_F(NewFileStorageTestFixture, TestWriteBlock) {}
 
-TEST_F(FileStorageTestFixture, TestReadBlock) {}
+TEST_F(NewFileStorageTestFixture, TestReadMetaData) {
+  std::unique_ptr<Storage::MetaData> metadata = storage->read();
+}
 
-TEST_F(FileStorageTestFixture, TestWriteBlock) {}
+TEST_F(NewFileStorageTestFixture, TestReadNonExistingFileMetaData) {}
 
-TEST_F(FileStorageTestFixture, TestReadMetaData) {}
+TEST_F(NewFileStorageTestFixture, TestWriteMetaData) {}
 
-TEST_F(FileStorageTestFixture, TestWriteMetaData) {}
+class ExistingFileStorageTestFixture : public ::testing::Test {
+protected:
+  const std::string base = "persist/tests/data";
+  const std::string path = base + "/test.storage";
+  const uint64_t blockSize = DEFAULT_DATA_BLOCK_SIZE;
+  std::unique_ptr<FileStorage> storage;
+
+  void SetUp() override {
+    storage = std::make_unique<FileStorage>(path, blockSize);
+  }
+};
+
+TEST_F(ExistingFileStorageTestFixture, TestReadBlock) {}
+
+TEST_F(ExistingFileStorageTestFixture, TestWriteBlock) {}
+
+TEST_F(ExistingFileStorageTestFixture, TestReadMetaData) {
+  std::unique_ptr<Storage::MetaData> metadata = storage->read();
+}
+
+TEST_F(ExistingFileStorageTestFixture, TestReadNonExistingFileMetaData) {
+  FileStorage _storage(base + "/temp.storage");
+  std::unique_ptr<Storage::MetaData> metadata = _storage.read();
+}
+
+TEST_F(ExistingFileStorageTestFixture, TestWriteMetaData) {}

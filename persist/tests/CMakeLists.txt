@@ -15,6 +15,7 @@ add_executable(
 )
 
 # Add executable to run by ctest
+# TODO: This runs all the tests as one test. Need to use gtest_Add_test function.
 add_test(NAME ${TEST_BINARY} COMMAND ${TEST_BINARY})
 
 # Add tests folder to targets include directories
@@ -30,3 +31,7 @@ target_link_libraries(
     ${LIB}
     gtest
 )
+
+# Copy test data directory
+add_custom_command(TARGET ${TEST_BINARY} PRE_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy_directory  ${CMAKE_CURRENT_SOURCE_DIR}/data/ $<TARGET_FILE_DIR:${TEST_BINARY}>/data)

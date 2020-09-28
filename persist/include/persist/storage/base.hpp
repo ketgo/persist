@@ -81,18 +81,6 @@ public:
   virtual ~Storage() {} //<- Virtual destructor
 
   /**
-   * Open storage.
-   *
-   * @returns pointer to Metadata object
-   */
-  virtual void open() = 0;
-
-  /**
-   * Close storage.
-   */
-  virtual void close() = 0;
-
-  /**
    * Read storage metadata information. In case no metadata
    * information is available a null pointer is returned.
    *

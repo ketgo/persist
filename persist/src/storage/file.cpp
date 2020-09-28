@@ -26,20 +26,13 @@
  * Implementation of File Storage
  */
 
-#include <filesystem>
 #include <fstream>
 
+#include <persist/exceptions.hpp>
 #include <persist/storage/file.hpp>
+#include <persist/utility.hpp>
 
 namespace persist {
-
-/*********************
- * Utility Functions
- ********************/
-
-static std::fstream open(std::string path) {
-  // TODO: Use cross-platform solution to creating directories
-}
 
 /***********************
  * File Storage
@@ -48,19 +41,37 @@ static std::fstream open(std::string path) {
 FileStorage::FileStorage() {}
 
 FileStorage::FileStorage(std::string path)
-    : path(path), blockSize(DEFAULT_DATA_BLOCK_SIZE) {}
+    : path(path), blockSize(DEFAULT_DATA_BLOCK_SIZE) {
+  // Open storage file
+  open();
+}
 
 FileStorage::FileStorage(const char *path)
-    : path(path), blockSize(DEFAULT_DATA_BLOCK_SIZE) {}
+    : path(path), blockSize(DEFAULT_DATA_BLOCK_SIZE) {
+  // Open storage file
+  open();
+}
 
 FileStorage::FileStorage(std::string path, uint64_t blockSize)
-    : path(path), blockSize(blockSize) {}
+    : path(path), blockSize(blockSize) {
+  // Open storage file
+  open();
+}
 
 FileStorage::FileStorage(const char *path, uint64_t blockSize)
-    : path(path), blockSize(blockSize) {}
+    : path(path), blockSize(blockSize) {
+  // Open storage file
+  open();
+}
+
+FileStorage::~FileStorage() {
+  // Close opened storage file
+  close();
+}
 
 void FileStorage::open() {
-  file.open(path.c_str(), std::fstream::in | std::fstream::out);
+  file = file::open(path, std::fstream::in | std::fstream::out |
+                              std::fstream::binary);
 }
 
 void FileStorage::close() {
@@ -71,12 +82,53 @@ void FileStorage::close() {
 }
 
 std::unique_ptr<Storage::MetaData> FileStorage::read() {
+  // Open metadata file
   std::fstream metadataFile;
   std::string metadataPath = path + ".metadata";
 
-  metadataFile.open(metadataPath.c_str(), std::fstream::in);
+  metadataFile =
+      file::open(metadataPath, std::fstream::in | std::fstream::binary);
 
-  return nullptr;
+  // Check if no metadata file and storage file exists. If so then this is a
+  // newly created storage so return null pointer. Otherwise throw storage
+  // corrupt error.
+  if (!metadataFile.is_open()) {
+    if (!file.is_open()) {
+      return nullptr;
+    }
+    throw StorageError(
+        "Unable to read storage meatdata. The file may be corrupt.");
+  }
+
+  // Read the binary metadata file and check for content size. If no
+  // content found then return null pointer otherwise return a serialize
+  // MetaData object.
+  
+  // Stop eating new lines in binary mode!!!
+  file.unsetf(std::ios::skipws);
+  // get its size:
+  std::streampos fileSize;
+  metadataFile.seekg(0, std::ios::end);
+  fileSize = metadataFile.tellg();
+  metadataFile.seekg(0, std::ios::beg);
+  // Check if the file is emtpy
+  if (fileSize == 0) {
+    return nullptr;
+  }
+
+  ByteBuffer buffer;
+  buffer.resize(fileSize);
+  metadataFile.read(reinterpret_cast<char *>(&buffer[0]), fileSize);
+
+  // Create and load MetaData object
+  std::unique_ptr<Storage::MetaData> metadataPtr =
+      std::make_unique<Storage::MetaData>();
+  metadataPtr->load(buffer);
+
+  // Close metadata file
+  metadataFile.close();
+
+  return metadataPtr;
 }
 
 std::unique_ptr<DataBlock> FileStorage::read(DataBlockId blockId) {
@@ -85,7 +137,20 @@ std::unique_ptr<DataBlock> FileStorage::read(DataBlockId blockId) {
   return nullptr;
 }
 
-void FileStorage::write(Storage::MetaData &metadata) {}
+void FileStorage::write(Storage::MetaData &metadata) {
+  ByteBuffer &buffer = metadata.dump();
+
+  // Open metadata file
+  std::fstream metadataFile;
+  std::string metadataPath = path + ".metadata";
+
+  metadataFile =
+      file::open(metadataPath, std::fstream::trunc | std::fstream::binary);
+  metadataFile.write(reinterpret_cast<char *>(&buffer[0]), buffer.size());
+
+  // Close metadata file
+  metadataFile.close();
+}
 
 void FileStorage::write(DataBlock &block) {
   // The block ID is used to compute the offset of the block in the file.

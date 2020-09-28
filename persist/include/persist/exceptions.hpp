@@ -120,6 +120,39 @@ public:
   const char *what() const throw() { return msg.c_str(); }
 };
 
+/**
+ * File Opening Error
+ *
+ * This error is thrown if unable to open file.
+ */
+class FileError : public std::exception {
+private:
+  std::string msg;
+
+public:
+  FileError() : msg("Unable to open file.") {}
+  FileError(std::string &file) : msg("Unable to open file: " + file) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
+ * Storage Error
+ *
+ * This error is thrown if unable to open backend storage.
+ */
+class StorageError : public std::exception {
+private:
+  std::string msg;
+
+public:
+  StorageError() : msg("Unable to open Storage.") {}
+  StorageError(const char *msg) : msg(msg) {}
+  StorageError(std::string &msg) : msg(msg) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
 } // namespace persist
 
 #endif /* EXCEPTIONS_HPP */

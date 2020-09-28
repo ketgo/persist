@@ -31,6 +31,7 @@
 #include <persist/block.hpp>
 #include <persist/common.hpp>
 #include <persist/exceptions.hpp>
+#include <persist/utility.hpp>
 
 using json = nlohmann::json;
 

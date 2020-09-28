@@ -48,6 +48,17 @@ private:
   std::string path;   //<- storage file name with path
   std::fstream file;  //<- IO stream for file
 
+  /**
+   * Opens storage file.
+   */
+  void open();
+
+  /**
+   * Closes opened storage file. No operation is performed if
+   * no file is opened.
+   */
+  void close();
+
 public:
   /**
    * Constructors
@@ -66,15 +77,9 @@ public:
   FileStorage(const char *path, uint64_t blockSize);
 
   /**
-   * Opens storage file.
+   * Destructor
    */
-  void open() override;
-
-  /**
-   * Closes opened storage file. No operation is performed if
-   * no file is opened.
-   */
-  void close() override;
+  ~FileStorage();
 
   /**
    * Read metadata information from storage file
