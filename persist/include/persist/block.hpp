@@ -149,8 +149,8 @@ public:
   /**
    * Data Block Header Class
    *
-   * Header data type for Data Block. It contains the metadata information for
-   * facilitating read write operations of data in the block.
+   * Header data type for Data Block. It contains the metadata information
+   * for facilitating read write operations of data in the block.
    */
   class Header : public Serializable {
   public:
@@ -183,14 +183,14 @@ public:
     uint64_t size();
 
     /**
-     * @brief Ending offset of the free space in the block
+     * Ending offset of the free space in the block
      *
      * @returns free space ending offset
      */
     uint64_t tail();
 
     /**
-     * @brief Use up chunk of space of given size from the available free space
+     * Use up chunk of space of given size from the available free space
      * of the data block.
      *
      * @param size amount of space in bytes to occupy
@@ -199,9 +199,9 @@ public:
     Entry *useSpace(uint64_t size);
 
     /**
-     * @brief Free up used chunk of space occupied by given data entry.
+     * Free up used chunk of space occupied by given data entry.
      *
-     * @param entry poiter to entry to free
+     * @param entry pointer to the entry to free
      */
     void freeSpace(Entry *entry);
 
