@@ -28,8 +28,8 @@
 
 #include <nlohmann/json.hpp>
 
-#include <persist/exceptions.hpp>
-#include <persist/storage/base.hpp>
+#include <persist/core/exceptions.hpp>
+#include <persist/core/storage/base.hpp>
 
 using json = nlohmann::json;
 

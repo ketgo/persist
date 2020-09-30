@@ -28,9 +28,10 @@
 
 #include <fstream>
 
-#include <persist/exceptions.hpp>
-#include <persist/storage/file.hpp>
-#include <persist/utility.hpp>
+#include "utility.hpp"
+
+#include <persist/core/exceptions.hpp>
+#include <persist/core/storage/file.hpp>
 
 namespace persist {
 

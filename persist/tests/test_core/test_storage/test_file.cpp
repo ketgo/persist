@@ -33,10 +33,11 @@
 #include <string>
 #include <vector>
 
-#include <persist/block.hpp>
-#include <persist/exceptions.hpp>
-#include <persist/storage/file.hpp>
-#include <persist/utility.hpp>
+#include <persist/core/block.hpp>
+#include <persist/core/exceptions.hpp>
+#include <persist/core/storage/file.hpp>
+
+#include <utility.hpp>
 
 using namespace persist;
 

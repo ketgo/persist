@@ -32,7 +32,7 @@
 #include <exception>
 #include <string>
 
-#include <persist/block.hpp>
+#include <persist/core/block.hpp>
 
 namespace persist {
 

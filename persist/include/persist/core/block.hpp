@@ -30,7 +30,7 @@
 #include <string>
 #include <unordered_map>
 
-#include <persist/common.hpp>
+#include <persist/core/common.hpp>
 
 #define MINIMUM_DATA_BLOCK_SIZE 256
 #define DEFAULT_DATA_BLOCK_SIZE 1024

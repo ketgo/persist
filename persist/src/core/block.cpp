@@ -28,10 +28,11 @@
 
 #include <nlohmann/json.hpp>
 
-#include <persist/block.hpp>
-#include <persist/common.hpp>
-#include <persist/exceptions.hpp>
-#include <persist/utility.hpp>
+#include "utility.hpp"
+
+#include <persist/core/block.hpp>
+#include <persist/core/common.hpp>
+#include <persist/core/exceptions.hpp>
 
 using json = nlohmann::json;
 

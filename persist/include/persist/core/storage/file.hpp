@@ -33,7 +33,7 @@
 #include <memory>
 #include <string>
 
-#include <persist/storage/base.hpp>
+#include <persist/core/storage/base.hpp>
 
 namespace persist {
 /**

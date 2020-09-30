@@ -27,11 +27,12 @@
  */
 
 #include <gtest/gtest.h>
+
 #include <memory>
 #include <vector>
 
-#include <persist/block.hpp>
-#include <persist/exceptions.hpp>
+#include <persist/core/block.hpp>
+#include <persist/core/exceptions.hpp>
 
 using namespace persist;
 
