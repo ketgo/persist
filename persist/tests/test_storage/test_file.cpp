@@ -33,14 +33,19 @@
 #include <string>
 #include <vector>
 
-#include <persist/block.hpp>
+#include <utility.hpp>
+
+#include <persist/data_block.hpp>
 #include <persist/exceptions.hpp>
 #include <persist/storage/file.hpp>
-#include <persist/utility.hpp>
 
 using namespace persist;
 
 const std::string base = "persist/tests/data";
+
+/********************************
+ * Testing for Next Storage
+ ********************************/
 
 class NewFileStorageTestFixture : public ::testing::Test {
 protected:
@@ -114,6 +119,10 @@ TEST_F(NewFileStorageTestFixture, TestWriteMetaData) {
   ASSERT_EQ(metadata.freeBlocks, _metadata.freeBlocks);
   ASSERT_EQ(metadata.blockSize, _metadata.blockSize);
 }
+
+/********************************
+ * Testing for Existing Storage
+ ********************************/
 
 class ExistingFileStorageTestFixture : public ::testing::Test {
 protected:

@@ -24,7 +24,7 @@
 
 #include <fstream>
 
-#include <persist/utility.hpp>
+#include "utility.hpp"
 
 namespace persist {
 

@@ -1,5 +1,5 @@
 /**
- * base.hpp - Persist
+ * storage/base.hpp - Persist
  *
  * Copyright 2020 Ketan Goyal
  *
@@ -34,8 +34,8 @@
 #include <list>
 #include <memory>
 
-#include <persist/block.hpp>
 #include <persist/common.hpp>
+#include <persist/data_block.hpp>
 
 namespace persist {
 /**
