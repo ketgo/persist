@@ -27,10 +27,11 @@
  */
 
 #include <gtest/gtest.h>
+
 #include <memory>
 #include <vector>
 
-#include <persist/block.hpp>
+#include <persist/data_block.hpp>
 #include <persist/exceptions.hpp>
 
 using namespace persist;
@@ -40,23 +41,30 @@ protected:
   std::vector<uint8_t> input;
   std::vector<uint8_t> extra;
   const DataBlockId blockId = 12;
+  const DataBlockId nextBlockId = 15;
+  const DataBlockId prevBlockId = 1;
   std::unique_ptr<DataBlock::Header> header;
 
   void SetUp() override {
     header = std::make_unique<DataBlock::Header>(blockId);
     // setup valid header
+    header->nextBlockId = nextBlockId;
+    header->prevBlockId = prevBlockId;
     header->entries.push_back({DEFAULT_DATA_BLOCK_SIZE - 10, 10});
     header->entries.push_back({DEFAULT_DATA_BLOCK_SIZE - 15, 5});
     header->entries.push_back({DEFAULT_DATA_BLOCK_SIZE - 18, 3});
 
-    input = {123, 105, 7,   98,  108, 111, 99,  107, 73,  100, 105, 12,  105,
-             9,   98,  108, 111, 99,  107, 83,  105, 122, 101, 73,  4,   0,
-             105, 7,   101, 110, 116, 114, 105, 101, 115, 91,  123, 105, 6,
-             111, 102, 102, 115, 101, 116, 73,  3,   246, 105, 4,   115, 105,
-             122, 101, 105, 10,  125, 123, 105, 6,   111, 102, 102, 115, 101,
-             116, 73,  3,   241, 105, 4,   115, 105, 122, 101, 105, 5,   125,
-             123, 105, 6,   111, 102, 102, 115, 101, 116, 73,  3,   238, 105,
-             4,   115, 105, 122, 101, 105, 3,   125, 93,  125};
+    input = {123, 105, 7,   98,  108, 111, 99,  107, 73,  100, 105, 12,
+             105, 9,   98,  108, 111, 99,  107, 83,  105, 122, 101, 73,
+             4,   0,   105, 7,   101, 110, 116, 114, 105, 101, 115, 91,
+             123, 105, 6,   111, 102, 102, 115, 101, 116, 73,  3,   246,
+             105, 4,   115, 105, 122, 101, 105, 10,  125, 123, 105, 6,
+             111, 102, 102, 115, 101, 116, 73,  3,   241, 105, 4,   115,
+             105, 122, 101, 105, 5,   125, 123, 105, 6,   111, 102, 102,
+             115, 101, 116, 73,  3,   238, 105, 4,   115, 105, 122, 101,
+             105, 3,   125, 93,  105, 11,  110, 101, 120, 116, 66,  108,
+             111, 99,  107, 73,  100, 105, 15,  105, 11,  112, 114, 101,
+             118, 66,  108, 111, 99,  107, 73,  100, 105, 1,   125};
     extra = {42, 0, 0, 0, 21, 48, 4};
   }
 };

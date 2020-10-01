@@ -1,5 +1,5 @@
 /**
- * file.cpp - Persist
+ * storage/file.cpp - Persist
  *
  * Copyright 2020 Ketan Goyal
  *
@@ -28,9 +28,10 @@
 
 #include <fstream>
 
+#include "utility.hpp"
+
 #include <persist/exceptions.hpp>
 #include <persist/storage/file.hpp>
-#include <persist/utility.hpp>
 
 namespace persist {
 

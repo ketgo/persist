@@ -1,5 +1,5 @@
 /**
- * storage/metadata.cpp - Persist
+ * record_block.cpp - Persist
  *
  * Copyright 2020 Ketan Goyal
  *
@@ -23,46 +23,77 @@
  */
 
 /**
- * This file contains implementation of the storage MetaData class.
+ * Record Block Implementation
  */
 
 #include <nlohmann/json.hpp>
 
 #include <persist/exceptions.hpp>
-#include <persist/storage/base.hpp>
+#include <persist/record_block.hpp>
 
 using json = nlohmann::json;
 
-// ---------------------------------------------------------------------------
-// TODO:
-// - Increase performance by moving away from JSON based serialization.
-// ---------------------------------------------------------------------------
-
 namespace persist {
 
-void Storage::MetaData::load(ByteBuffer &input) {
+/************************
+ * Record Block Header
+ ***********************/
+
+RecordBlock::Header::Header(RecordBlockId blockId) : blockId(blockId) {}
+
+void RecordBlock::Header::load(ByteBuffer &input) {
   // Load JSON from UBJSON
   try {
     json data = json::from_ubjson(input, false);
-    data.at("blockSize").get_to(blockSize);
-    data.at("freeBlocks").get_to(freeBlocks);
+    data.at("blockId").get_to(blockId);
   } catch (json::parse_error &err) {
-    throw MetaDataParseError(err.what());
+    throw RecordBlockParseError(err.what());
   }
 }
 
-ByteBuffer &Storage::MetaData::dump() {
+ByteBuffer &RecordBlock::Header::dump() {
   // Create JSON object from header
   try {
     json data;
-    data["blockSize"] = blockSize;
-    data["freeBlocks"] = freeBlocks;
+    data["blockId"] = blockId;
     // Convert JSON to UBJSON
     buffer = json::to_ubjson(data);
   } catch (json::parse_error &err) {
-    throw MetaDataParseError(err.what());
+    throw DataBlockParseError(err.what());
   }
+
   return buffer;
 }
+
+uint64_t RecordBlock::Header::size() { return dump().size(); }
+
+/************************
+ * Record Block
+ ***********************/
+
+RecordBlock::RecordBlock(RecordBlockId blockId) : header(blockId) {}
+
+RecordBlock::RecordBlock(RecordBlock::Header &header) : header(header) {}
+
+void RecordBlock::load(ByteBuffer &input) {
+  header.load(input);
+  data.insert(data.begin(), input.begin() + header.size(), input.end());
+}
+
+ByteBuffer &RecordBlock::dump() {
+  // Check if internal buffer is empty
+  if (!buffer.empty()) {
+    buffer.clear();
+  }
+  ByteBuffer &head = header.dump();
+  buffer.insert(buffer.end(), head.begin(), head.end());
+  buffer.insert(buffer.end(), data.begin(), data.end());
+
+  return buffer;
+}
+
+RecordBlockId &RecordBlock::getId() { return header.blockId; }
+
+uint64_t RecordBlock::size() { return header.size() + data.size(); }
 
 } // namespace persist

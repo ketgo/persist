@@ -27,11 +27,12 @@
  */
 
 #include <gtest/gtest.h>
+
 #include <memory>
 #include <vector>
 
-#include <persist/block.hpp>
 #include <persist/exceptions.hpp>
+#include <persist/record_block.hpp>
 
 using namespace persist;
 
@@ -40,19 +41,12 @@ protected:
   std::vector<uint8_t> input;
   std::vector<uint8_t> extra;
   const RecordBlockId recordBlockId = 10;
-  const DataBlockId nextDataBlockId = 12;
-  const DataBlockId prevDataBlockId = 1;
   std::unique_ptr<RecordBlock::Header> header;
 
   void SetUp() override {
     header = std::make_unique<RecordBlock::Header>(recordBlockId);
-    header->nextDataBlockId = nextDataBlockId;
-    header->prevDataBlockId = prevDataBlockId;
 
-    input = {123, 105, 7,   98,  108, 111, 99,  107, 73,  100, 105,
-             10,  105, 11,  110, 101, 120, 116, 66,  108, 111, 99,
-             107, 73,  100, 105, 12,  105, 11,  112, 114, 101, 118,
-             66,  108, 111, 99,  107, 73,  100, 105, 1,   125};
+    input = {123, 105, 7, 98, 108, 111, 99, 107, 73, 100, 105, 10, 125};
     extra = {41, 0, 6, 0, 21, 48, 4};
   }
 };
@@ -65,8 +59,6 @@ TEST_F(RecordBlockHeaderTestFixture, TestLoad) {
   _header.load(_input);
 
   ASSERT_EQ(_header.blockId, header->blockId);
-  ASSERT_EQ(_header.nextDataBlockId, header->nextDataBlockId);
-  ASSERT_EQ(_header.prevDataBlockId, header->prevDataBlockId);
 }
 
 TEST_F(RecordBlockHeaderTestFixture, TestLoadError) {

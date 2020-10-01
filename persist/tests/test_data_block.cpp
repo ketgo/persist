@@ -27,10 +27,11 @@
  */
 
 #include <gtest/gtest.h>
+
 #include <memory>
 #include <vector>
 
-#include <persist/block.hpp>
+#include <persist/data_block.hpp>
 #include <persist/exceptions.hpp>
 
 using namespace persist;
@@ -50,6 +51,8 @@ class DataBlockTestFixture : public ::testing::Test {
 protected:
   std::vector<uint8_t> input;
   const DataBlockId blockId = 12;
+  const DataBlockId nextBlockId = 15;
+  const DataBlockId prevBlockId = 1;
   const uint64_t blockSize = DEFAULT_DATA_BLOCK_SIZE;
   std::unique_ptr<DataBlock> block;
   std::unique_ptr<DataBlock::Header> blockHeader;
@@ -59,9 +62,16 @@ protected:
                     recordBlockData_2 = "testing_2";
 
   void SetUp() override {
-    block = std::make_unique<DataBlock>(blockId, blockSize);
+    // Setup valid test header
     blockHeader = std::make_unique<DataBlock::Header>(blockId, blockSize);
+    blockHeader->nextBlockId = nextBlockId;
+    blockHeader->prevBlockId = prevBlockId;
 
+    // Setup valid bock
+    block = std::make_unique<DataBlock>(blockId, blockSize);
+    block->setNextBlockId(nextBlockId);
+    block->setPrevBlockId(prevBlockId);
+    // Add record blocks
     recordBlock_1 = std::make_unique<RecordBlock>(recordBlockId_1);
     recordBlock_1->data = recordBlockData_1;
     block->addRecordBlock(*recordBlock_1);
@@ -75,9 +85,11 @@ protected:
         123, 105, 7,   98,  108, 111, 99,  107, 73,  100, 105, 12,  105, 9,
         98,  108, 111, 99,  107, 83,  105, 122, 101, 73,  4,   0,   105, 7,
         101, 110, 116, 114, 105, 101, 115, 91,  123, 105, 6,   111, 102, 102,
-        115, 101, 116, 73,  3,   204, 105, 4,   115, 105, 122, 101, 105, 52,
-        125, 123, 105, 6,   111, 102, 102, 115, 101, 116, 73,  3,   152, 105,
-        4,   115, 105, 122, 101, 105, 52,  125, 93,  125, 0,   0,   0,   0,
+        115, 101, 116, 73,  3,   234, 105, 4,   115, 105, 122, 101, 105, 22,
+        125, 123, 105, 6,   111, 102, 102, 115, 101, 116, 73,  3,   212, 105,
+        4,   115, 105, 122, 101, 105, 22,  125, 93,  105, 11,  110, 101, 120,
+        116, 66,  108, 111, 99,  107, 73,  100, 105, 15,  105, 11,  112, 114,
+        101, 118, 66,  108, 111, 99,  107, 73,  100, 105, 1,   125, 0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -137,23 +149,45 @@ protected:
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   123, 105, 7,   98,
-        108, 111, 99,  107, 73,  100, 105, 2,   105, 11,  110, 101, 120, 116,
-        66,  108, 111, 99,  107, 73,  100, 105, 0,   105, 11,  112, 114, 101,
-        118, 66,  108, 111, 99,  107, 73,  100, 105, 0,   125, 116, 101, 115,
-        116, 105, 110, 103, 95,  50,  123, 105, 7,   98,  108, 111, 99,  107,
-        73,  100, 105, 1,   105, 11,  110, 101, 120, 116, 66,  108, 111, 99,
-        107, 73,  100, 105, 0,   105, 11,  112, 114, 101, 118, 66,  108, 111,
-        99,  107, 73,  100, 105, 0,   125, 116, 101, 115, 116, 105, 110, 103,
+        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+        123, 105, 7,   98,  108, 111, 99,  107, 73,  100, 105, 2,   125, 116,
+        101, 115, 116, 105, 110, 103, 95,  50,  123, 105, 7,   98,  108, 111,
+        99,  107, 73,  100, 105, 1,   125, 116, 101, 115, 116, 105, 110, 103,
         95,  49};
   }
 };
 
 TEST_F(DataBlockTestFixture, TestGetId) { ASSERT_EQ(block->getId(), blockId); }
 
+TEST_F(DataBlockTestFixture, TestGetNextBlockId) {
+  ASSERT_EQ(block->getNextBlockId(), nextBlockId);
+}
+
+TEST_F(DataBlockTestFixture, TestSetNextBlockId) {
+  DataBlockId blockId = 99;
+  block->setNextBlockId(blockId);
+  ASSERT_EQ(block->getNextBlockId(), blockId);
+}
+
+TEST_F(DataBlockTestFixture, TestGetPrevBlockId) {
+  ASSERT_EQ(block->getPrevBlockId(), prevBlockId);
+}
+
+TEST_F(DataBlockTestFixture, TestSetPrevBlockId) {
+  DataBlockId blockId = 99;
+  block->setPrevBlockId(blockId);
+  ASSERT_EQ(block->getPrevBlockId(), blockId);
+}
+
 TEST_F(DataBlockTestFixture, TestFreeSpace) {
   DataBlock::Header header(blockId, blockSize);
+  header.nextBlockId = nextBlockId;
+  header.prevBlockId = prevBlockId;
   DataBlock _block(blockId, blockSize);
+  _block.setNextBlockId(nextBlockId);
+  _block.setPrevBlockId(prevBlockId);
 
   ASSERT_EQ(_block.freeSpace(), blockSize - header.size());
 }

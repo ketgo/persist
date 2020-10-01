@@ -1,5 +1,5 @@
 /**
- * block.hpp - Persist
+ * data_block.hpp - Persist
  *
  * Copyright 2020 Ketan Goyal
  *
@@ -22,15 +22,15 @@
  * SOFTWARE.
  */
 
-#ifndef BLOCK_HPP
-#define BLOCK_HPP
+#ifndef DATA_BLOCK_HPP
+#define DATA_BLOCK_HPP
 
 #include <cstdint>
 #include <list>
-#include <string>
 #include <unordered_map>
 
 #include <persist/common.hpp>
+#include <persist/record_block.hpp>
 
 #define MINIMUM_DATA_BLOCK_SIZE 256
 #define DEFAULT_DATA_BLOCK_SIZE 1024
@@ -38,103 +38,11 @@
 namespace persist {
 
 /**
- * Record Block identifer type
- *
- * NOTE: An ID with value 0 is considered NULL
- */
-typedef uint64_t RecordBlockId;
-
-/**
- * Data block identifier type
+ * Data Block identifier type
  *
  * NOTE: An ID with value 0 is considered NULL
  */
 typedef uint64_t DataBlockId;
-
-/**
- * Record Block Class
- *
- * The class represents a single chunk of a data record stored in backend
- * storage. A data record consits of collection of recordblock objects. The
- * package stores a data record as linked list of record blocks.
- */
-class RecordBlock : public Serializable {
-public:
-  /**
-   * Record Block Header Class
-   *
-   * Header data type for Record Block. It contains the metadata information for
-   * facilitating read write operations of records. Since a record is stored as
-   * linked list of record blocks, the header contains this linking information.
-   */
-  class Header : public Serializable {
-  public:
-    RecordBlockId blockId;       //<- record identifier
-    DataBlockId nextDataBlockId; //<- data block ID containing next record block
-    DataBlockId
-        prevDataBlockId; //<- data block ID containing previous record block
-
-    /**
-     * Constructors
-     */
-    Header() {}
-    Header(RecordBlockId blockId);
-
-    /**
-     * Get storage size of header.
-     */
-    uint64_t size();
-
-    void load(ByteBuffer &input) override;
-    ByteBuffer &dump() override;
-  };
-
-private:
-  Header header; //<- record block header
-
-public:
-  std::string data; //<- data contained in the record block
-
-  /**
-   * Constructors
-   */
-  RecordBlock() {}
-  RecordBlock(RecordBlockId blockId);
-  RecordBlock(RecordBlock::Header &header);
-
-  /**
-   * Get record block ID
-   */
-  RecordBlockId &getId();
-
-  /**
-   * Get next data block ID
-   */
-  DataBlockId &getNextDataBlockId();
-
-  /**
-   * Set next data block ID
-   */
-  void setNextDataBlockId(DataBlockId blockId);
-
-  /**
-   * Get previous data block ID
-   */
-  DataBlockId &getPrevDataBlockId();
-
-  /**
-   * Set previous data block ID
-   */
-  void setPrevDataBlockId(DataBlockId blockId);
-
-  /**
-   * Get storage size of record block.
-   */
-  uint64_t size();
-
-  void load(ByteBuffer &input) override;
-  ByteBuffer &dump() override;
-};
 
 /**
  * Data Block Class
@@ -149,19 +57,22 @@ public:
   /**
    * Data Block Header Class
    *
-   * Header data type for Data Block. It contains the metadata information for
+   * Header data type for block. It contains the metadata information for
    * facilitating read write operations of data in the block.
    */
   class Header : public Serializable {
   public:
-    DataBlockId blockId; //<- block identifier
-    uint64_t blockSize;  //<- data block storage size
+    DataBlockId blockId;     //<- block identifier
+    DataBlockId nextBlockId; //<- next block ID in case of data overflow
+    DataBlockId prevBlockId; //<- previous block ID in case of data overflow
+
+    uint64_t blockSize; //<- data block storage size
 
     /**
      * Data Entry
      *
-     * Contains location and size information of data stored in the
-     * data block.
+     * Contains location and size information of data stored in the data
+     * block.
      */
     struct Entry {
       uint64_t offset; //<- location offset from end of block
@@ -173,7 +84,7 @@ public:
     /**
      * Constructors
      */
-    Header() {}
+    Header();
     Header(DataBlockId blockId);
     Header(DataBlockId blockId, uint64_t blockSize);
 
@@ -183,15 +94,15 @@ public:
     uint64_t size();
 
     /**
-     * @brief Ending offset of the free space in the block
+     * Ending offset of the free space in the block.
      *
      * @returns free space ending offset
      */
     uint64_t tail();
 
     /**
-     * @brief Use up chunk of space of given size from the available free space
-     * of the data block.
+     * Use up chunk of space of given size from the available free space of
+     * the block.
      *
      * @param size amount of space in bytes to occupy
      * @returns pointer to the new entry
@@ -199,18 +110,29 @@ public:
     Entry *useSpace(uint64_t size);
 
     /**
-     * @brief Free up used chunk of space occupied by given data entry.
+     * Free up used chunk of space occupied by given data entry.
      *
      * @param entry poiter to entry to free
      */
     void freeSpace(Entry *entry);
 
+    /**
+     * Load object from byte string
+     *
+     * @param input input buffer to load
+     */
     void load(ByteBuffer &input) override;
+
+    /**
+     * Dump object as byte string
+     *
+     * @returns reference to the buffer with results
+     */
     ByteBuffer &dump() override;
   };
 
 private:
-  Header header; //<- data block header
+  Header header; //<- block header
 
   typedef std::unordered_map<RecordBlockId,
                              std::pair<RecordBlock, Header::Entry *>>
@@ -226,19 +148,53 @@ public:
   DataBlock(DataBlockId blockId, uint64_t blockSize);
 
   /**
-   * Get data block ID
+   * Get block ID.
+   *
+   * @returns block identifier
    */
   DataBlockId &getId();
 
   /**
-   * Get free space in bytes available in the data block
+   * Get next block ID. This is the ID for the next block when there is data
+   * overflow. A value of `0` means there is no next block.
+   *
+   * @returns next data block identifier
+   */
+  DataBlockId &getNextBlockId();
+
+  /**
+   * Set next block ID. This is the ID for the next block when there is data
+   * overflow. A value of `0` means there is no next block.
+   *
+   * @param blockId next block ID
+   */
+  void setNextBlockId(DataBlockId blockId);
+
+  /**
+   * Get previous block ID. This is the ID for the previous block when there is
+   * data overflow. A value of 0 means there is no previous block.
+   *
+   * @returns previous data block identifier
+   */
+  DataBlockId &getPrevBlockId();
+
+  /**
+   * Set previous block ID. This is the ID for the previous block when there is
+   * data overflow. A value of 0 means there is no previous block.
+   *
+   * @param blockId previous block ID
+   */
+  void setPrevBlockId(DataBlockId blockId);
+
+  /**
+   * Get free space in bytes available in the block.
    *
    * @returns free space available in data block
    */
   uint64_t freeSpace();
 
   /**
-   * Get RecordBlock object with given identifier
+   * Get RecordBlock object with given identifier.
    *
    * @param recordId data record identifier
    * @returns reference to RecordBlock object
@@ -246,23 +202,34 @@ public:
   RecordBlock &getRecordBlock(RecordBlockId recordBlockId);
 
   /**
-   * Add RecordBlock object to the data block
+   * Add RecordBlock object to the block.
    *
    * @param recordBlock recRecordBlock object to be added
    */
   void addRecordBlock(RecordBlock &recordBlock);
 
   /**
-   * Remove RecordBlock object with given identifier
+   * Remove RecordBlock object with given identifier from block.
    *
    * @param recordBlockId record block identifier
    */
   void removeRecordBlock(RecordBlockId recordBlockId);
 
+  /**
+   * Load Block object from byte string.
+   *
+   * @param input input buffer to load
+   */
   void load(ByteBuffer &input) override;
+
+  /**
+   * Dump Block object as byte string.
+   *
+   * @returns reference to the buffer with results
+   */
   ByteBuffer &dump() override;
 };
 
 } // namespace persist
 
-#endif /* BLOCK_HPP */
+#endif /* DATA_BLOCK_HPP */

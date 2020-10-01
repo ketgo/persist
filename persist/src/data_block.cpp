@@ -28,10 +28,11 @@
 
 #include <nlohmann/json.hpp>
 
-#include <persist/block.hpp>
+#include "utility.hpp"
+
 #include <persist/common.hpp>
+#include <persist/data_block.hpp>
 #include <persist/exceptions.hpp>
-#include <persist/utility.hpp>
 
 using json = nlohmann::json;
 
@@ -44,102 +45,27 @@ using json = nlohmann::json;
 namespace persist {
 
 /************************
- * Record Block Header
- ***********************/
-
-RecordBlock::Header::Header(RecordBlockId blockId)
-    : blockId(blockId), nextDataBlockId(0), prevDataBlockId(0) {}
-
-void RecordBlock::Header::load(ByteBuffer &input) {
-  // Load JSON from UBJSON
-  try {
-    json data = json::from_ubjson(input, false);
-    data.at("blockId").get_to(blockId);
-    data.at("nextBlockId").get_to(nextDataBlockId);
-    data.at("prevBlockId").get_to(prevDataBlockId);
-  } catch (json::parse_error &err) {
-    throw RecordBlockParseError(err.what());
-  }
-}
-
-ByteBuffer &RecordBlock::Header::dump() {
-  // Create JSON object from header
-  try {
-    json data;
-    data["blockId"] = blockId;
-    data["nextBlockId"] = nextDataBlockId;
-    data["prevBlockId"] = prevDataBlockId;
-    // Convert JSON to UBJSON
-    buffer = json::to_ubjson(data);
-  } catch (json::parse_error &err) {
-    throw DataBlockParseError(err.what());
-  }
-
-  return buffer;
-}
-
-uint64_t RecordBlock::Header::size() { return dump().size(); }
-
-/************************
- * Record Block
- ***********************/
-
-RecordBlock::RecordBlock(RecordBlockId blockId) : header(blockId) {}
-
-RecordBlock::RecordBlock(RecordBlock::Header &header) : header(header) {}
-
-void RecordBlock::load(ByteBuffer &input) {
-  header.load(input);
-  data.insert(data.begin(), input.begin() + header.size(), input.end());
-}
-
-ByteBuffer &RecordBlock::dump() {
-  // Check if internal buffer is empty
-  if (!buffer.empty()) {
-    buffer.clear();
-  }
-  ByteBuffer &head = header.dump();
-  buffer.insert(buffer.end(), head.begin(), head.end());
-  buffer.insert(buffer.end(), data.begin(), data.end());
-
-  return buffer;
-}
-
-RecordBlockId &RecordBlock::getId() { return header.blockId; }
-
-RecordBlockId &RecordBlock::getNextDataBlockId() {
-  return header.nextDataBlockId;
-}
-
-void RecordBlock::setNextDataBlockId(DataBlockId blockId) {
-  header.nextDataBlockId = blockId;
-}
-
-RecordBlockId &RecordBlock::getPrevDataBlockId() {
-  return header.prevDataBlockId;
-}
-
-void RecordBlock::setPrevDataBlockId(DataBlockId blockId) {
-  header.prevDataBlockId = blockId;
-}
-
-uint64_t RecordBlock::size() { return header.size() + data.size(); }
-
-/************************
  * Data Block Header
  ***********************/
 
+DataBlock::Header::Header()
+    : blockId(0), nextBlockId(0), prevBlockId(0),
+      blockSize(DEFAULT_DATA_BLOCK_SIZE) {}
+
 DataBlock::Header::Header(DataBlockId blockId)
-    : blockId(blockId), blockSize(DEFAULT_DATA_BLOCK_SIZE) {}
+    : blockId(blockId), nextBlockId(0), prevBlockId(0),
+      blockSize(DEFAULT_DATA_BLOCK_SIZE) {}
 
 DataBlock::Header::Header(DataBlockId blockId, uint64_t tail)
-    : blockId(blockId), blockSize(tail) {}
+    : blockId(blockId), nextBlockId(0), prevBlockId(0), blockSize(tail) {}
 
 void DataBlock::Header::load(ByteBuffer &input) {
   // Load JSON from UBJSON
   try {
     json data = json::from_ubjson(input, false);
     data.at("blockId").get_to(blockId);
+    data.at("nextBlockId").get_to(nextBlockId);
+    data.at("prevBlockId").get_to(prevBlockId);
     data.at("blockSize").get_to(blockSize);
     json entriesData = data.at("entries");
     entries.clear();
@@ -159,6 +85,8 @@ ByteBuffer &DataBlock::Header::dump() {
   try {
     json data;
     data["blockId"] = blockId;
+    data["nextBlockId"] = nextBlockId;
+    data["prevBlockId"] = prevBlockId;
     data["blockSize"] = blockSize;
     data["entries"] = json::array();
     for (auto &entry : entries) {
@@ -228,6 +156,18 @@ DataBlock::DataBlock(DataBlockId blockId, uint64_t blockSize)
 }
 
 DataBlockId &DataBlock::getId() { return header.blockId; }
+
+DataBlockId &DataBlock::getNextBlockId() { return header.nextBlockId; }
+
+void DataBlock::setNextBlockId(DataBlockId blockId) {
+  header.nextBlockId = blockId;
+}
+
+DataBlockId &DataBlock::getPrevBlockId() { return header.prevBlockId; }
+
+void DataBlock::setPrevBlockId(DataBlockId blockId) {
+  header.prevBlockId = blockId;
+}
 
 uint64_t DataBlock::freeSpace() { return header.tail() - header.size(); }
 

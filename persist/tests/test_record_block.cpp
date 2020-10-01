@@ -27,11 +27,12 @@
  */
 
 #include <gtest/gtest.h>
+
 #include <memory>
 #include <vector>
 
-#include <persist/block.hpp>
 #include <persist/exceptions.hpp>
+#include <persist/record_block.hpp>
 
 using namespace persist;
 
@@ -39,47 +40,21 @@ class RecordBlockTestFixture : public ::testing::Test {
 protected:
   std::vector<uint8_t> input;
   const RecordBlockId recordBlockId = 10;
-  const DataBlockId nextDataBlockId = 12;
-  const DataBlockId prevDataBlockId = 1;
   const std::string data = "testing";
   std::unique_ptr<RecordBlock> block;
 
   void SetUp() override {
     RecordBlock::Header header(recordBlockId);
-    header.nextDataBlockId = nextDataBlockId;
-    header.prevDataBlockId = prevDataBlockId;
     block = std::make_unique<RecordBlock>(header);
     block->data = data;
 
-    input = {123, 105, 7,   98,  108, 111, 99,  107, 73,  100, 105, 10,  105,
-             11,  110, 101, 120, 116, 66,  108, 111, 99,  107, 73,  100, 105,
-             12,  105, 11,  112, 114, 101, 118, 66,  108, 111, 99,  107, 73,
-             100, 105, 1,   125, 116, 101, 115, 116, 105, 110, 103};
+    input = {123, 105, 7,   98,  108, 111, 99,  107, 73,  100,
+             105, 10,  125, 116, 101, 115, 116, 105, 110, 103};
   }
 };
 
 TEST_F(RecordBlockTestFixture, TestGetId) {
   ASSERT_EQ(block->getId(), recordBlockId);
-}
-
-TEST_F(RecordBlockTestFixture, TestGetNextBlockId) {
-  ASSERT_EQ(block->getNextDataBlockId(), nextDataBlockId);
-}
-
-TEST_F(RecordBlockTestFixture, TestSetNextBlockId) {
-  DataBlockId blockId = 99;
-  block->setNextDataBlockId(blockId);
-  ASSERT_EQ(block->getNextDataBlockId(), blockId);
-}
-
-TEST_F(RecordBlockTestFixture, TestGetPrevBlockId) {
-  ASSERT_EQ(block->getPrevDataBlockId(), prevDataBlockId);
-}
-
-TEST_F(RecordBlockTestFixture, TestSetPrevBlockId) {
-  DataBlockId blockId = 99;
-  block->setPrevDataBlockId(blockId);
-  ASSERT_EQ(block->getPrevDataBlockId(), blockId);
 }
 
 TEST_F(RecordBlockTestFixture, TestLoad) {
@@ -88,8 +63,6 @@ TEST_F(RecordBlockTestFixture, TestLoad) {
 
   ASSERT_EQ(_block.data, block->data);
   ASSERT_EQ(_block.getId(), block->getId());
-  ASSERT_EQ(_block.getNextDataBlockId(), block->getNextDataBlockId());
-  ASSERT_EQ(_block.getPrevDataBlockId(), block->getPrevDataBlockId());
 }
 
 TEST_F(RecordBlockTestFixture, TestLoadError) {
