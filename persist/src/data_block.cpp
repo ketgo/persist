@@ -155,20 +155,6 @@ DataBlock::DataBlock(DataBlockId blockId, uint64_t blockSize)
   buffer.resize(blockSize);
 }
 
-DataBlockId &DataBlock::getId() { return header.blockId; }
-
-DataBlockId &DataBlock::getNextBlockId() { return header.nextBlockId; }
-
-void DataBlock::setNextBlockId(DataBlockId blockId) {
-  header.nextBlockId = blockId;
-}
-
-DataBlockId &DataBlock::getPrevBlockId() { return header.prevBlockId; }
-
-void DataBlock::setPrevBlockId(DataBlockId blockId) {
-  header.prevBlockId = blockId;
-}
-
 uint64_t DataBlock::freeSpace() { return header.tail() - header.size(); }
 
 RecordBlock &DataBlock::getRecordBlock(RecordBlockId recordBlockId) {
