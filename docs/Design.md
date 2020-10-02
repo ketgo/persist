@@ -24,14 +24,39 @@
 
 # Design
 
-This document describes the different components of the Persist package.
+This document describes the design and implementation of different components in the Persist package. From a high-level, the package exposes API for persisting the following data structures
+
+- List
+- Hash Table
+- B+ Tree
+
+where each data structure is a collection of objects. These collections can be persisted on backend storages like RAM, Disk, S3, etc. The exposed API has been designed to comply with ACID requirements.
+
+## Usage Cases
+
+The following uses cases are supported:
+
+- Insert an object into the stored collection.
+
+- Remove an object from the stored collection.
+
+- Update an existing object in the stored collection.
+
+- Search objects in the stored collection.
+
+The proposed API for each use case is shown below corresponding to the different types of collections.
+
+### List
+
+### Hash Table
+
+### B+ Tree
 
 ## Storage
 
 ### Data Block
 
-A data block is unit chunk of data stored on the storage. Each block comprises
-of header, free space and stored [record blocks](#record-block).
+A data block is unit chunk of data stored on the storage. Each block comprises of header, free space and stored [record blocks](#record-block).
 
 ### MetaData
 
