@@ -37,7 +37,7 @@
 
 #include <persist/data_block.hpp>
 #include <persist/exceptions.hpp>
-#include <persist/storage/file.hpp>
+#include <persist/storage/file_storage.hpp>
 
 using namespace persist;
 

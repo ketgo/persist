@@ -48,9 +48,9 @@ public:
   /**
    * Storage MetaData
    *
-   * The metadata class contains the block size and free block Ids
-   * in the backend storage. This information is utilized by the data
-   * block manager for efficient handling of data block lifecycle.
+   * The metadata class contains the block size and free block Ids in the
+   * backend storage. This information is utilized by the data block buffer
+   * manager for efficient handling of data block lifecycle.
    *
    */
   class MetaData : public Serializable {

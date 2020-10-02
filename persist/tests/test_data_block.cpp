@@ -228,6 +228,8 @@ TEST_F(DataBlockTestFixture, TestAddRecordBlock) {
   blockHeader->useSpace(recordBlock_2.size());
   newDataSize = blockSize - block->freeSpace() - blockHeader->size();
   ASSERT_TRUE(newDataSize - oldDataSize == recordBlock_2.size());
+
+  ASSERT_EQ(block->isModified(), true);
 }
 
 TEST_F(DataBlockTestFixture, TestAddRecordBlockError) {
@@ -262,6 +264,8 @@ TEST_F(DataBlockTestFixture, TestRemoveRecordBlock) {
   ASSERT_THROW(block->getRecordBlock(recordBlockId_1),
                RecordBlockNotFoundError);
   ASSERT_TRUE(oldDataSize - newDataSize == recordBlock_1->size());
+
+  ASSERT_EQ(block->isModified(), true);
 }
 
 TEST_F(DataBlockTestFixture, TestRemoveRecordBlockError) {
@@ -288,6 +292,8 @@ TEST_F(DataBlockTestFixture, TestLoad) {
   RecordBlock &_recordBlock_2 = _block.getRecordBlock(recordBlockId_2);
   ASSERT_EQ(_recordBlock_2.getId(), recordBlockId_2);
   ASSERT_EQ(_recordBlock_2.data, recordBlockData_2);
+
+  ASSERT_EQ(_block.isModified(), false);
 }
 
 TEST_F(DataBlockTestFixture, TestLoadError) {

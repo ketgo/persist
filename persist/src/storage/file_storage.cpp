@@ -1,5 +1,5 @@
 /**
- * storage/file.cpp - Persist
+ * file_storage.cpp - Persist
  *
  * Copyright 2020 Ketan Goyal
  *
@@ -31,7 +31,7 @@
 #include "utility.hpp"
 
 #include <persist/exceptions.hpp>
-#include <persist/storage/file.hpp>
+#include <persist/storage/file_storage.hpp>
 
 namespace persist {
 

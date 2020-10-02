@@ -135,18 +135,18 @@ void DataBlock::Header::freeSpace(Entry *entry) {
  * Data Block
  ***********************/
 
-DataBlock::DataBlock() {
+DataBlock::DataBlock() : modified(false) {
   // Resize internal buffer to specified block size
   buffer.resize(DEFAULT_DATA_BLOCK_SIZE);
 }
 
-DataBlock::DataBlock(DataBlockId blockId) : header(blockId) {
+DataBlock::DataBlock(DataBlockId blockId) : header(blockId), modified(false) {
   // Resize internal buffer to specified block size
   buffer.resize(DEFAULT_DATA_BLOCK_SIZE);
 }
 
 DataBlock::DataBlock(DataBlockId blockId, uint64_t blockSize)
-    : header(blockId, blockSize) {
+    : header(blockId, blockSize), modified(false) {
   // Check block size greater than minimum size
   if (blockSize < MINIMUM_DATA_BLOCK_SIZE) {
     throw DataBlockSizeError(blockSize);
@@ -180,6 +180,8 @@ void DataBlock::addRecordBlock(RecordBlock &recordBlock) {
   // Insert record block to cache
   // TODO: Use move simantic instead of copy
   cache.insert({recordBlockId, {recordBlock, entry}});
+  // Set the block to modified
+  modified = true;
 }
 
 void DataBlock::removeRecordBlock(RecordBlockId recordBlockId) {
@@ -193,6 +195,8 @@ void DataBlock::removeRecordBlock(RecordBlockId recordBlockId) {
   header.freeSpace(it->second.second);
   // Removing record block from cache
   cache.erase(it);
+  // Set the block to modified
+  modified = true;
 }
 
 void DataBlock::load(ByteBuffer &input) {

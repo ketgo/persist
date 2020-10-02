@@ -31,24 +31,24 @@
 #include <memory>
 #include <vector>
 
+#include <persist/buffer_manager.hpp>
 #include <persist/exceptions.hpp>
-#include <persist/manager.hpp>
 
 using namespace persist;
 
-class BlockManagerCacheTestFixture : public ::testing::Test {
+class BufferManagerTestFixture : public ::testing::Test {
 protected:
-  std::unique_ptr<BlockManager::LRUCache> cache;
+  std::unique_ptr<BufferManager> manager;
 
   void SetUp() override {}
 };
 
-TEST_F(BlockManagerCacheTestFixture, TestPutWithoutRemovingLRU) {}
+TEST_F(BufferManagerTestFixture, TestGetFreeSpaceDataBlock) {}
 
-TEST_F(BlockManagerCacheTestFixture, TestPutRemovingLRUWithoutWrite) {}
+TEST_F(BufferManagerTestFixture, TestGetNewDataBlock) {}
 
-TEST_F(BlockManagerCacheTestFixture, TestPutRemovingLRUWithWrite) {}
+TEST_F(BufferManagerTestFixture, TestGetDataBlockWithId) {}
 
-TEST_F(BlockManagerCacheTestFixture, TestGet) {}
+TEST_F(BufferManagerTestFixture, TestGetDataBlockWithIdError) {}
 
-TEST_F(BlockManagerCacheTestFixture, TestGetError) {}
+TEST_F(BufferManagerTestFixture, Testflush) {}
