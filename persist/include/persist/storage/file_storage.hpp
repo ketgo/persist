@@ -1,5 +1,5 @@
 /**
- * storage/file.hpp - Persist
+ * file_storage.hpp - Persist
  *
  * Copyright 2020 Ketan Goyal
  *
@@ -26,8 +26,8 @@
  * File Storage
  */
 
-#ifndef STORAGE_FILE_HPP
-#define STORAGE_FILE_HPP
+#ifndef FILE_STORAGE_HPP
+#define FILE_STORAGE_HPP
 
 #include <fstream>
 #include <memory>
@@ -113,4 +113,4 @@ public:
 
 } // namespace persist
 
-#endif /* STORAGE_FILE_HPP */
+#endif /* FILE_STORAGE_HPP */

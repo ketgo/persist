@@ -133,6 +133,7 @@ public:
 
 private:
   Header header; //<- block header
+  bool modified; //<- flag indicating the block has been modified
 
   typedef std::unordered_map<RecordBlockId,
                              std::pair<RecordBlock, Header::Entry *>>
@@ -152,7 +153,7 @@ public:
    *
    * @returns block identifier
    */
-  DataBlockId &getId();
+  DataBlockId &getId() { return header.blockId; }
 
   /**
    * Get next block ID. This is the ID for the next block when there is data
@@ -160,7 +161,7 @@ public:
    *
    * @returns next data block identifier
    */
-  DataBlockId &getNextBlockId();
+  DataBlockId &getNextBlockId() { return header.nextBlockId; }
 
   /**
    * Set next block ID. This is the ID for the next block when there is data
@@ -168,7 +169,7 @@ public:
    *
    * @param blockId next block ID
    */
-  void setNextBlockId(DataBlockId blockId);
+  void setNextBlockId(DataBlockId blockId) { header.nextBlockId = blockId; }
 
   /**
    * Get previous block ID. This is the ID for the previous block when there is
@@ -176,7 +177,7 @@ public:
    *
    * @returns previous data block identifier
    */
-  DataBlockId &getPrevBlockId();
+  DataBlockId &getPrevBlockId() { return header.prevBlockId; }
 
   /**
    * Set previous block ID. This is the ID for the previous block when there is
@@ -184,7 +185,14 @@ public:
    *
    * @param blockId previous block ID
    */
-  void setPrevBlockId(DataBlockId blockId);
+  void setPrevBlockId(DataBlockId blockId) { header.prevBlockId = blockId; }
+
+  /**
+   * Check if the block has been modified since being read from storage.
+   *
+   * @returns true if modifed else false
+   */
+  bool isModified() { return modified; }
 
   /**
    * Get free space in bytes available in the block.
