@@ -24,8 +24,7 @@
 
 # Protocol
 
-This document explains the protocol followed by the persist package to maintain
-ACID data transactions.
+This document explains the protocol followed by the Persist package to maintain ACID data transactions.
 
 ## Operation Log
 
