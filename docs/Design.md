@@ -22,7 +22,9 @@
  SOFTWARE.
 -->
 
-# Design
+# Design Documentation
+
+## Introduction
 
 This document describes the design and implementation of different components in the Persist package. From a high-level, the package exposes API for persisting the following data structures
 
@@ -36,34 +38,46 @@ where each data structure is a collection of objects. These collections can be p
 
 The following uses cases are supported:
 
-- Insert an object into the stored collection.
+- Construct an empty persistent collection.
 
-- Remove an object from the stored collection.
+- Insert an object into the persistent collection.
 
-- Update an existing object in the stored collection.
+- Remove an object from the persistent collection.
 
-- Search objects in the stored collection.
+- Update an existing object in the persistent collection.
 
-The proposed API for each use case is shown below corresponding to the different types of collections.
+- Search objects in persistent collection.
 
-### List
+The proposed API for each use case is described below.
 
-### Hash Table
+## Implementation Design
 
-### B+ Tree
+This section details the implementation approach of the different package components.
 
-## Storage
+### Collection
 
-### Data Block
+#### Record Objects
+
+#### Cursors
+
+### Backend Storage
+
+A persistent collection can be stored upon a volatile or in-volatile storage media like RAM, disk, S3, etc. To support read and write operations on these different media, the `Storage` interface is exposed. Any backend storage implementation should inherit from this class.
+
+For efficient input-output performance, any backend storage is divided into contiguous blocks of memory called pages. Each page consists of metadata which facilitates reading and writing [record blocks](#record-block).
+
+#### Page
 
 A data block is unit chunk of data stored on the storage. Each block comprises of header, free space and stored [record blocks](#record-block).
 
-### MetaData
+#### Page MetaData
 
-### Storage Manager
+#### Storage MetaData
 
-## Records
+#### Record Block
 
-### Record Block
+#### Record Manager
 
-### Record Manager
+### Operations Manager
+
+The operations manager is responsible for concurrency control and facilitates ACID transactions. The underlying protocol implemented is described in detail in the [Protocol](Protocol.md) document.
