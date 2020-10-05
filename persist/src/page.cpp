@@ -23,16 +23,16 @@
  */
 
 /**
- * Data Block Implementation
+ * Page Implementation
  */
 
 #include <nlohmann/json.hpp>
 
 #include "utility.hpp"
 
-#include <persist/common.hpp>
-#include <persist/data_block.hpp>
-#include <persist/exceptions.hpp>
+#include <persist/core/common.hpp>
+#include <persist/core/exceptions.hpp>
+#include <persist/core/page.hpp>
 
 using json = nlohmann::json;
 
@@ -45,49 +45,48 @@ using json = nlohmann::json;
 namespace persist {
 
 /************************
- * Data Block Header
+ * Page Header
  ***********************/
 
-DataBlock::Header::Header()
-    : blockId(0), nextBlockId(0), prevBlockId(0),
-      blockSize(DEFAULT_DATA_BLOCK_SIZE) {}
+Page::Header::Header()
+    : pageId(0), nextPageId(0), prevPageId(0), pageSize(DEFAULT_PAGE_SIZE) {}
 
-DataBlock::Header::Header(DataBlockId blockId)
-    : blockId(blockId), nextBlockId(0), prevBlockId(0),
-      blockSize(DEFAULT_DATA_BLOCK_SIZE) {}
+Page::Header::Header(PageId blockId)
+    : pageId(blockId), nextPageId(0), prevPageId(0),
+      pageSize(DEFAULT_PAGE_SIZE) {}
 
-DataBlock::Header::Header(DataBlockId blockId, uint64_t tail)
-    : blockId(blockId), nextBlockId(0), prevBlockId(0), blockSize(tail) {}
+Page::Header::Header(PageId blockId, uint64_t tail)
+    : pageId(blockId), nextPageId(0), prevPageId(0), pageSize(tail) {}
 
-void DataBlock::Header::load(ByteBuffer &input) {
+void Page::Header::load(ByteBuffer &input) {
   // Load JSON from UBJSON
   try {
     json data = json::from_ubjson(input, false);
-    data.at("blockId").get_to(blockId);
-    data.at("nextBlockId").get_to(nextBlockId);
-    data.at("prevBlockId").get_to(prevBlockId);
-    data.at("blockSize").get_to(blockSize);
+    data.at("blockId").get_to(pageId);
+    data.at("nextBlockId").get_to(nextPageId);
+    data.at("prevBlockId").get_to(prevPageId);
+    data.at("blockSize").get_to(pageSize);
     json entriesData = data.at("entries");
     entries.clear();
     for (auto &entry_data : entriesData) {
-      DataBlock::Header::Entry entry;
+      Page::Header::Entry entry;
       entry_data.at("offset").get_to(entry.offset);
       entry_data.at("size").get_to(entry.size);
       this->entries.push_back(entry);
     }
   } catch (json::parse_error &err) {
-    throw DataBlockParseError(err.what());
+    throw PageParseError(err.what());
   }
 }
 
-ByteBuffer &DataBlock::Header::dump() {
+ByteBuffer &Page::Header::dump() {
   // Create JSON object from header
   try {
     json data;
-    data["blockId"] = blockId;
-    data["nextBlockId"] = nextBlockId;
-    data["prevBlockId"] = prevBlockId;
-    data["blockSize"] = blockSize;
+    data["blockId"] = pageId;
+    data["nextBlockId"] = nextPageId;
+    data["prevBlockId"] = prevPageId;
+    data["blockSize"] = pageSize;
     data["entries"] = json::array();
     for (auto &entry : entries) {
       json entryData;
@@ -98,28 +97,28 @@ ByteBuffer &DataBlock::Header::dump() {
     // Convert JSON to UBJSON
     buffer = json::to_ubjson(data);
   } catch (json::parse_error &err) {
-    throw DataBlockParseError(err.what());
+    throw PageParseError(err.what());
   }
 
   return buffer;
 }
 
-uint64_t DataBlock::Header::size() { return dump().size(); }
+uint64_t Page::Header::size() { return dump().size(); }
 
-uint64_t DataBlock::Header::tail() {
+uint64_t Page::Header::tail() {
   if (entries.empty()) {
-    return blockSize;
+    return pageSize;
   }
   return entries.back().offset;
 }
 
-DataBlock::Header::Entry *DataBlock::Header::useSpace(uint64_t size) {
+Page::Header::Entry *Page::Header::useSpace(uint64_t size) {
   // Add record block entry
   entries.push_back({tail() - size, size});
   return &entries.back();
 }
 
-void DataBlock::Header::freeSpace(Entry *entry) {
+void Page::Header::freeSpace(Entry *entry) {
   // Adjust entry offsets
   Entries::iterator it = std::prev(entries.end());
   while (it->offset < entry->offset) {
@@ -132,32 +131,32 @@ void DataBlock::Header::freeSpace(Entry *entry) {
 }
 
 /************************
- * Data Block
+ * Page
  ***********************/
 
-DataBlock::DataBlock() : modified(false) {
+Page::Page() : modified(false) {
   // Resize internal buffer to specified block size
-  buffer.resize(DEFAULT_DATA_BLOCK_SIZE);
+  buffer.resize(DEFAULT_PAGE_SIZE);
 }
 
-DataBlock::DataBlock(DataBlockId blockId) : header(blockId), modified(false) {
+Page::Page(PageId blockId) : header(blockId), modified(false) {
   // Resize internal buffer to specified block size
-  buffer.resize(DEFAULT_DATA_BLOCK_SIZE);
+  buffer.resize(DEFAULT_PAGE_SIZE);
 }
 
-DataBlock::DataBlock(DataBlockId blockId, uint64_t blockSize)
+Page::Page(PageId blockId, uint64_t blockSize)
     : header(blockId, blockSize), modified(false) {
   // Check block size greater than minimum size
-  if (blockSize < MINIMUM_DATA_BLOCK_SIZE) {
-    throw DataBlockSizeError(blockSize);
+  if (blockSize < MINIMUM_PAGE_SIZE) {
+    throw PageSizeError(blockSize);
   }
   // Resize internal buffer to specified block size
   buffer.resize(blockSize);
 }
 
-uint64_t DataBlock::freeSpace() { return header.tail() - header.size(); }
+uint64_t Page::freeSpace() { return header.tail() - header.size(); }
 
-RecordBlock &DataBlock::getRecordBlock(RecordBlockId recordBlockId) {
+RecordBlock &Page::getRecordBlock(RecordBlockId recordBlockId) {
   // Check if record block exists
   RecordBlockCache::iterator it = cache.find(recordBlockId);
   if (it == cache.end()) {
@@ -166,10 +165,10 @@ RecordBlock &DataBlock::getRecordBlock(RecordBlockId recordBlockId) {
   return it->second.first;
 }
 
-void DataBlock::addRecordBlock(RecordBlock &recordBlock) {
+void Page::addRecordBlock(RecordBlock &recordBlock) {
   RecordBlockId recordBlockId = recordBlock.getId();
-  // Check if record block does not exist in the data block
-  // NOTE: Storing multiple record block with same ID in a single data block
+  // Check if record block does not exist in the Page
+  // NOTE: Storing multiple record block with same ID in a single Page
   // is not allowed.
   RecordBlockCache::iterator it = cache.find(recordBlockId);
   if (it != cache.end()) {
@@ -184,8 +183,8 @@ void DataBlock::addRecordBlock(RecordBlock &recordBlock) {
   modified = true;
 }
 
-void DataBlock::removeRecordBlock(RecordBlockId recordBlockId) {
-  // Check if record block exists in the data block
+void Page::removeRecordBlock(RecordBlockId recordBlockId) {
+  // Check if record block exists in the Page
   RecordBlockCache::iterator it = cache.find(recordBlockId);
   if (it == cache.end()) {
     throw RecordBlockNotFoundError(recordBlockId);
@@ -199,8 +198,8 @@ void DataBlock::removeRecordBlock(RecordBlockId recordBlockId) {
   modified = true;
 }
 
-void DataBlock::load(ByteBuffer &input) {
-  // Load data block header
+void Page::load(ByteBuffer &input) {
+  // Load Page header
   header.load(input);
   // Load record blocks
   // TODO: Use spans to avoid vector constructions
@@ -216,7 +215,7 @@ void DataBlock::load(ByteBuffer &input) {
   }
 }
 
-ByteBuffer &DataBlock::dump() {
+ByteBuffer &Page::dump() {
   // Dump record blocks
   std::vector<uint8_t> _output;
   for (auto &element : cache) {

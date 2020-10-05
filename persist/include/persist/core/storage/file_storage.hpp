@@ -33,7 +33,7 @@
 #include <memory>
 #include <string>
 
-#include <persist/storage/base.hpp>
+#include <persist/core/storage/base.hpp>
 
 namespace persist {
 /**
@@ -94,7 +94,7 @@ public:
    * @param blockId block identifier
    * @returns pointer to requested Block object
    */
-  std::unique_ptr<DataBlock> read(DataBlockId blockId) override;
+  std::unique_ptr<Page> read(PageId blockId) override;
 
   /**
    * Write MetaData object to storage file.
@@ -108,7 +108,7 @@ public:
    *
    * @param block reference to DataBlock object to be written
    */
-  void write(DataBlock &block) override;
+  void write(Page &block) override;
 };
 
 } // namespace persist

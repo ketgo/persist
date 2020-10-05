@@ -28,8 +28,8 @@
 
 #include <nlohmann/json.hpp>
 
-#include <persist/exceptions.hpp>
-#include <persist/record_block.hpp>
+#include <persist/core/exceptions.hpp>
+#include <persist/core/record_block.hpp>
 
 using json = nlohmann::json;
 
@@ -59,7 +59,7 @@ ByteBuffer &RecordBlock::Header::dump() {
     // Convert JSON to UBJSON
     buffer = json::to_ubjson(data);
   } catch (json::parse_error &err) {
-    throw DataBlockParseError(err.what());
+    throw PageParseError(err.what());
   }
 
   return buffer;

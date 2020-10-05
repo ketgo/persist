@@ -31,8 +31,8 @@
 #include <memory>
 #include <vector>
 
-#include <persist/exceptions.hpp>
-#include <persist/record_block.hpp>
+#include <persist/core/exceptions.hpp>
+#include <persist/core/record_block.hpp>
 
 using namespace persist;
 

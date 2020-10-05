@@ -39,6 +39,20 @@ namespace persist {
 typedef std::vector<uint8_t> ByteBuffer;
 
 /**
+ * Page identifier type
+ *
+ * NOTE: An ID with value 0 is considered NULL
+ */
+typedef uint64_t PageId;
+
+/**
+ * Record Block identifer type
+ *
+ * NOTE: An ID with value 0 is considered NULL
+ */
+typedef uint64_t RecordBlockId;
+
+/**
  * Abstract Base Serializable class
  */
 class Serializable {

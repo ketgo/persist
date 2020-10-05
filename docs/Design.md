@@ -90,7 +90,7 @@ For efficient input-output performance, the storage is logically divided into co
 
 #### Page
 
-A data block is unit chunk of data stored on the storage. Each block comprises of header, free space and stored [record blocks](#record-block).
+A Page is a logical chunk of space on backend storage. Each page comprises of a header, free space, and stored [record blocks](#record-block). The page header contains the page unique identifier along with the next and previous page identifiers in case the page is linked. It also contains entries of offset values indicating where each record-block in the page is located.
 
 #### Page MetaData
 

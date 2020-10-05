@@ -32,7 +32,7 @@
 #include <exception>
 #include <string>
 
-#include <persist/data_block.hpp>
+#include <persist/core/page.hpp>
 
 namespace persist {
 
@@ -87,33 +87,33 @@ public:
 };
 
 /**
- * Data Block Parsing Error
+ * Page Parsing Error
  *
- * This error is thrown if unable to parse data block.
+ * This error is thrown if unable to parse page.
  */
-class DataBlockParseError : public std::exception {
+class PageParseError : public std::exception {
 private:
   std::string msg;
 
 public:
-  DataBlockParseError() : msg("Data block parsing error.") {}
-  DataBlockParseError(const char *msg) : msg(msg) {}
-  DataBlockParseError(std::string &msg) : msg(msg) {}
+  PageParseError() : msg("Data block parsing error.") {}
+  PageParseError(const char *msg) : msg(msg) {}
+  PageParseError(std::string &msg) : msg(msg) {}
 
   const char *what() const throw() { return msg.c_str(); }
 };
 
 /**
- * Data Block Not Found Error
+ * Page Not Found Error
  *
- * This error is thrown if data block is not found.
+ * This error is thrown if page is not found.
  */
-class DataBlockNotFoundError : public std::exception {
+class PageNotFoundError : public std::exception {
 private:
   std::string msg;
 
 public:
-  DataBlockNotFoundError(persist::DataBlockId &blockId)
+  PageNotFoundError(persist::PageId &blockId)
       : msg(std::string("Data Block '") + std::to_string(blockId) +
             std::string("' not found.")) {}
 
@@ -121,19 +121,19 @@ public:
 };
 
 /**
- * Data Block Size Error
+ * Page Size Error
  *
- * This error is thrown if data block size is less than minimum required size.
+ * This error is thrown if page size is less than minimum required size.
  */
-class DataBlockSizeError : public std::exception {
+class PageSizeError : public std::exception {
 private:
   std::string msg;
 
 public:
-  DataBlockSizeError(uint64_t &blockSize)
+  PageSizeError(uint64_t &blockSize)
       : msg(std::string("Data Block size '") + std::to_string(blockSize) +
             std::string("' less then minimum required size of '") +
-            std::to_string(MINIMUM_DATA_BLOCK_SIZE) + std::string("'.")) {}
+            std::to_string(MINIMUM_PAGE_SIZE) + std::string("'.")) {}
 
   const char *what() const throw() { return msg.c_str(); }
 };

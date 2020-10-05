@@ -31,16 +31,16 @@
 #include <memory>
 #include <vector>
 
-#include <persist/data_block.hpp>
-#include <persist/exceptions.hpp>
+#include <persist/core/page.hpp>
+#include <persist/core/exceptions.hpp>
 
 using namespace persist;
 
-TEST(DataBlockTest, DataBlockSizeError) {
+TEST(DataBlockTest, PageSizeError) {
   try {
-    DataBlock block(1, 64);
+    Page block(1, 64);
     FAIL() << "Expected DataBlockSizeError Exception.";
-  } catch (DataBlockSizeError &err) {
+  } catch (PageSizeError &err) {
     SUCCEED();
   } catch (...) {
     FAIL() << "Expected DataBlockSizeError Exception.";
@@ -50,12 +50,12 @@ TEST(DataBlockTest, DataBlockSizeError) {
 class DataBlockTestFixture : public ::testing::Test {
 protected:
   std::vector<uint8_t> input;
-  const DataBlockId blockId = 12;
-  const DataBlockId nextBlockId = 15;
-  const DataBlockId prevBlockId = 1;
-  const uint64_t blockSize = DEFAULT_DATA_BLOCK_SIZE;
-  std::unique_ptr<DataBlock> block;
-  std::unique_ptr<DataBlock::Header> blockHeader;
+  const PageId blockId = 12;
+  const PageId nextBlockId = 15;
+  const PageId prevBlockId = 1;
+  const uint64_t blockSize = DEFAULT_PAGE_SIZE;
+  std::unique_ptr<Page> block;
+  std::unique_ptr<Page::Header> blockHeader;
   const RecordBlockId recordBlockId_1 = 1, recordBlockId_2 = 2;
   std::unique_ptr<RecordBlock> recordBlock_1, recordBlock_2;
   const std::string recordBlockData_1 = "testing_1",
@@ -63,14 +63,14 @@ protected:
 
   void SetUp() override {
     // Setup valid test header
-    blockHeader = std::make_unique<DataBlock::Header>(blockId, blockSize);
-    blockHeader->nextBlockId = nextBlockId;
-    blockHeader->prevBlockId = prevBlockId;
+    blockHeader = std::make_unique<Page::Header>(blockId, blockSize);
+    blockHeader->nextPageId = nextBlockId;
+    blockHeader->prevPageId = prevBlockId;
 
     // Setup valid bock
-    block = std::make_unique<DataBlock>(blockId, blockSize);
-    block->setNextBlockId(nextBlockId);
-    block->setPrevBlockId(prevBlockId);
+    block = std::make_unique<Page>(blockId, blockSize);
+    block->setNextPageId(nextBlockId);
+    block->setPrevPageId(prevBlockId);
     // Add record blocks
     recordBlock_1 = std::make_unique<RecordBlock>(recordBlockId_1);
     recordBlock_1->data = recordBlockData_1;
@@ -162,32 +162,32 @@ protected:
 TEST_F(DataBlockTestFixture, TestGetId) { ASSERT_EQ(block->getId(), blockId); }
 
 TEST_F(DataBlockTestFixture, TestGetNextBlockId) {
-  ASSERT_EQ(block->getNextBlockId(), nextBlockId);
+  ASSERT_EQ(block->getNextPageId(), nextBlockId);
 }
 
 TEST_F(DataBlockTestFixture, TestSetNextBlockId) {
-  DataBlockId blockId = 99;
-  block->setNextBlockId(blockId);
-  ASSERT_EQ(block->getNextBlockId(), blockId);
+  PageId blockId = 99;
+  block->setNextPageId(blockId);
+  ASSERT_EQ(block->getNextPageId(), blockId);
 }
 
 TEST_F(DataBlockTestFixture, TestGetPrevBlockId) {
-  ASSERT_EQ(block->getPrevBlockId(), prevBlockId);
+  ASSERT_EQ(block->getPrevPageId(), prevBlockId);
 }
 
 TEST_F(DataBlockTestFixture, TestSetPrevBlockId) {
-  DataBlockId blockId = 99;
-  block->setPrevBlockId(blockId);
-  ASSERT_EQ(block->getPrevBlockId(), blockId);
+  PageId blockId = 99;
+  block->setPrevPageId(blockId);
+  ASSERT_EQ(block->getPrevPageId(), blockId);
 }
 
 TEST_F(DataBlockTestFixture, TestFreeSpace) {
-  DataBlock::Header header(blockId, blockSize);
-  header.nextBlockId = nextBlockId;
-  header.prevBlockId = prevBlockId;
-  DataBlock _block(blockId, blockSize);
-  _block.setNextBlockId(nextBlockId);
-  _block.setPrevBlockId(prevBlockId);
+  Page::Header header(blockId, blockSize);
+  header.nextPageId = nextBlockId;
+  header.prevPageId = prevBlockId;
+  Page _block(blockId, blockSize);
+  _block.setNextPageId(nextBlockId);
+  _block.setPrevPageId(prevBlockId);
 
   ASSERT_EQ(_block.freeSpace(), blockSize - header.size());
 }
@@ -280,7 +280,7 @@ TEST_F(DataBlockTestFixture, TestRemoveRecordBlockError) {
 }
 
 TEST_F(DataBlockTestFixture, TestLoad) {
-  DataBlock _block;
+  Page _block;
   _block.load(input);
 
   ASSERT_EQ(_block.getId(), block->getId());

@@ -32,8 +32,8 @@
 #include <memory>
 #include <vector>
 
-#include <persist/exceptions.hpp>
-#include <persist/storage/base.hpp>
+#include <persist/core/exceptions.hpp>
+#include <persist/core/storage/base.hpp>
 
 using namespace persist;
 
@@ -42,7 +42,7 @@ protected:
   std::vector<uint8_t> input;
   std::unique_ptr<Storage::MetaData> metadata;
   const uint64_t blockSize = 1024;
-  const std::list<DataBlockId> freeBlocks = {0, 1, 2, 3};
+  const std::list<PageId> freeBlocks = {0, 1, 2, 3};
 
   void SetUp() override {
     metadata = std::make_unique<Storage::MetaData>();

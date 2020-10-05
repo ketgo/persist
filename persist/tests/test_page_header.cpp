@@ -31,8 +31,8 @@
 #include <memory>
 #include <vector>
 
-#include <persist/data_block.hpp>
-#include <persist/exceptions.hpp>
+#include <persist/core/page.hpp>
+#include <persist/core/exceptions.hpp>
 
 using namespace persist;
 
@@ -40,19 +40,19 @@ class DataBlockHeaderTestFixture : public ::testing::Test {
 protected:
   std::vector<uint8_t> input;
   std::vector<uint8_t> extra;
-  const DataBlockId blockId = 12;
-  const DataBlockId nextBlockId = 15;
-  const DataBlockId prevBlockId = 1;
-  std::unique_ptr<DataBlock::Header> header;
+  const PageId blockId = 12;
+  const PageId nextBlockId = 15;
+  const PageId prevBlockId = 1;
+  std::unique_ptr<Page::Header> header;
 
   void SetUp() override {
-    header = std::make_unique<DataBlock::Header>(blockId);
+    header = std::make_unique<Page::Header>(blockId);
     // setup valid header
-    header->nextBlockId = nextBlockId;
-    header->prevBlockId = prevBlockId;
-    header->entries.push_back({DEFAULT_DATA_BLOCK_SIZE - 10, 10});
-    header->entries.push_back({DEFAULT_DATA_BLOCK_SIZE - 15, 5});
-    header->entries.push_back({DEFAULT_DATA_BLOCK_SIZE - 18, 3});
+    header->nextPageId = nextBlockId;
+    header->prevPageId = prevBlockId;
+    header->entries.push_back({DEFAULT_PAGE_SIZE - 10, 10});
+    header->entries.push_back({DEFAULT_PAGE_SIZE - 15, 5});
+    header->entries.push_back({DEFAULT_PAGE_SIZE - 18, 3});
 
     input = {123, 105, 7,   98,  108, 111, 99,  107, 73,  100, 105, 12,
              105, 9,   98,  108, 111, 99,  107, 83,  105, 122, 101, 73,
@@ -70,16 +70,16 @@ protected:
 };
 
 TEST_F(DataBlockHeaderTestFixture, TestLoad) {
-  DataBlock::Header _header;
+  Page::Header _header;
   std::vector<uint8_t> _input;
   _input.insert(_input.end(), input.begin(), input.end());
   _input.insert(_input.end(), extra.begin(), extra.end());
   _header.load(_input);
 
-  ASSERT_EQ(_header.blockId, header->blockId);
+  ASSERT_EQ(_header.pageId, header->pageId);
   ASSERT_EQ(_header.entries.size(), header->entries.size());
-  DataBlock::Header::Entries::iterator _it = _header.entries.begin();
-  DataBlock::Header::Entries::iterator it = header->entries.begin();
+  Page::Header::Entries::iterator _it = _header.entries.begin();
+  Page::Header::Entries::iterator it = header->entries.begin();
   while (_it != _header.entries.end() && it != header->entries.end()) {
     ASSERT_EQ(_it->offset, it->offset);
     ASSERT_EQ(_it->size, it->size);
@@ -91,10 +91,10 @@ TEST_F(DataBlockHeaderTestFixture, TestLoad) {
 TEST_F(DataBlockHeaderTestFixture, TestLoadError) {
   try {
     std::vector<uint8_t> _input;
-    DataBlock::Header _header;
+    Page::Header _header;
     _header.load(_input);
     FAIL() << "Expected DataBlockParseError Exception.";
-  } catch (DataBlockParseError &err) {
+  } catch (PageParseError &err) {
     SUCCEED();
   } catch (...) {
     FAIL() << "Expected DataBlockParseError Exception.";
@@ -120,7 +120,7 @@ TEST_F(DataBlockHeaderTestFixture, TestUseSpace) {
 
 TEST_F(DataBlockHeaderTestFixture, TestFreeSpace) {
   uint64_t tail = header->tail();
-  DataBlock::Header::Entries::iterator it = header->entries.begin();
+  Page::Header::Entries::iterator it = header->entries.begin();
   ++it;
   uint64_t entrySize = it->size;
 

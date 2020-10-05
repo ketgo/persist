@@ -35,9 +35,9 @@
 
 #include <utility.hpp>
 
-#include <persist/data_block.hpp>
-#include <persist/exceptions.hpp>
-#include <persist/storage/file_storage.hpp>
+#include <persist/core/page.hpp>
+#include <persist/core/exceptions.hpp>
+#include <persist/core/storage/file_storage.hpp>
 
 using namespace persist;
 
@@ -62,9 +62,9 @@ protected:
 
 TEST_F(NewFileStorageTestFixture, TestReadBlock) {
   try {
-    std::unique_ptr<DataBlock> dataBlock = readStorage->read(1);
+    std::unique_ptr<Page> dataBlock = readStorage->read(1);
     FAIL() << "Expected DataBlockNotFoundError Exception.";
-  } catch (DataBlockNotFoundError &err) {
+  } catch (PageNotFoundError &err) {
     SUCCEED();
   } catch (...) {
     FAIL() << "Expected DataBlockNotFoundError Exception.";
@@ -75,14 +75,14 @@ TEST_F(NewFileStorageTestFixture, TestWriteBlock) {
   RecordBlock recordBlock(1);
   recordBlock.data = "testing";
 
-  DataBlock dataBlock(1, blockSize);
+  Page dataBlock(1, blockSize);
   dataBlock.addRecordBlock(recordBlock);
   writeStorage->write(dataBlock);
 
   std::fstream file = file::open(writePath, std::ios::in | std::ios::binary);
   ByteBuffer buffer(blockSize);
   file::read(file, buffer, 0);
-  DataBlock _dataBlock;
+  Page _dataBlock;
   _dataBlock.load(buffer);
   RecordBlock &_recordBlock = dataBlock.getRecordBlock(1);
 
@@ -138,7 +138,7 @@ protected:
 };
 
 TEST_F(ExistingFileStorageTestFixture, TestReadBlock) {
-  std::unique_ptr<DataBlock> dataBlock = readStorage->read(1);
+  std::unique_ptr<Page> dataBlock = readStorage->read(1);
   RecordBlock &recordBlock = dataBlock->getRecordBlock(1);
 
   ASSERT_EQ(dataBlock->getId(), 1);
@@ -150,14 +150,14 @@ TEST_F(ExistingFileStorageTestFixture, TestWriteBlock) {
   RecordBlock recordBlock(1);
   recordBlock.data = "testing";
 
-  DataBlock dataBlock(1, blockSize);
+  Page dataBlock(1, blockSize);
   dataBlock.addRecordBlock(recordBlock);
   writeStorage->write(dataBlock);
 
   std::fstream file = file::open(writePath, std::ios::in | std::ios::binary);
   ByteBuffer buffer(blockSize);
   file::read(file, buffer, 0);
-  DataBlock _dataBlock;
+  Page _dataBlock;
   _dataBlock.load(buffer);
   RecordBlock &_recordBlock = dataBlock.getRecordBlock(1);
 

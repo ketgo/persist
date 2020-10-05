@@ -28,15 +28,9 @@
 #include <cstdint>
 #include <string>
 
-#include <persist/common.hpp>
+#include <persist/core/common.hpp>
 
 namespace persist {
-/**
- * Record Block identifer type
- *
- * NOTE: An ID with value 0 is considered NULL
- */
-typedef uint64_t RecordBlockId;
 
 /**
  * Record Block Class

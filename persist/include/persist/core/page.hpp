@@ -22,51 +22,61 @@
  * SOFTWARE.
  */
 
-#ifndef DATA_BLOCK_HPP
-#define DATA_BLOCK_HPP
+#ifndef PAGE_HPP
+#define PAGE_HPP
 
 #include <cstdint>
 #include <list>
 #include <unordered_map>
 
-#include <persist/common.hpp>
-#include <persist/record_block.hpp>
+#include <persist/core/common.hpp>
+#include <persist/core/record_block.hpp>
 
-#define MINIMUM_DATA_BLOCK_SIZE 256
-#define DEFAULT_DATA_BLOCK_SIZE 1024
+#define MINIMUM_PAGE_SIZE 256
+#define DEFAULT_PAGE_SIZE 1024
 
 namespace persist {
 
 /**
- * Data Block identifier type
+ * Page Class
  *
- * NOTE: An ID with value 0 is considered NULL
+ * A Page is a logical chunk of space on a backend storage. Each page comprises
+ * of a header, free space, and stored RecordBlocks. The page header contains
+ * the page unique identifier along with the next and previous page identifiers
+ * in case the page is linked. It also contains entries of offset values
+ * indicating where each record-block in the page is located.
  */
-typedef uint64_t DataBlockId;
-
-/**
- * Data Block Class
- *
- * A block is a unit chunk of data upon which atomic operations are performed
- * in a transaction. The backend storage is divided into a contiguous set of
- * data blocks. This increases IO performance. Each block contains a collection
- * of record blocks.
- */
-class DataBlock : public Serializable {
+class Page : public Serializable {
 public:
   /**
-   * Data Block Header Class
+   * Page Header Class
    *
-   * Header data type for block. It contains the metadata information for
-   * facilitating read write operations of data in the block.
+   * The page header contains the page unique identifier along with the next
+   * and previous page identifiers in case the page is linked. It also contains
+   * entries of offset values indicating where each record-block in the page is
+   * located.
    */
   class Header : public Serializable {
   public:
-    DataBlockId blockId;     //<- block identifier
-    DataBlockId nextBlockId; //<- next block ID in case of data overflow
-    DataBlockId prevBlockId; //<- previous block ID in case of data overflow
+    /**
+     * @brief Page unique identifer
+     */
+    PageId pageId;
+    /**
+     * @brief Linked next page unique identifer. This is set to 0 by default and
+     * is only used for handling page overflow in Map collections.
+     */
+    PageId nextPageId;
+    /**
+     * @brief Linked previous page unique identifer. This is set to 0 by default
+     * and is only used for handling page overflow in Map collections.
+     */
+    PageId prevPageId;
 
-    uint64_t blockSize; //<- data block storage size
+    /**
+     * @brief Storage size of the page.
+     */
+    uint64_t pageSize;
 
     /**
      * Data Entry
@@ -79,14 +89,17 @@ public:
       uint64_t size;   //<- size of stored data
     };
     typedef std::list<Entry> Entries;
-    Entries entries; //<- data entries
+    /**
+     * @brief Page record block entries
+     */
+    Entries entries;
 
     /**
      * Constructors
      */
     Header();
-    Header(DataBlockId blockId);
-    Header(DataBlockId blockId, uint64_t blockSize);
+    Header(PageId blockId);
+    Header(PageId blockId, uint64_t blockSize);
 
     /**
      * Get storage size of header.
@@ -144,51 +157,51 @@ public:
   /**
    * Constructors
    */
-  DataBlock();
-  DataBlock(DataBlockId blockId);
-  DataBlock(DataBlockId blockId, uint64_t blockSize);
+  Page();
+  Page(PageId blockId);
+  Page(PageId blockId, uint64_t blockSize);
 
   /**
    * Get block ID.
    *
    * @returns block identifier
    */
-  DataBlockId &getId() { return header.blockId; }
+  PageId &getId() { return header.pageId; }
 
   /**
-   * Get next block ID. This is the ID for the next block when there is data
-   * overflow. A value of `0` means there is no next block.
+   * Get next page ID. This is the ID for the page block when there is data
+   * overflow. A value of `0` means there is no next page.
    *
-   * @returns next data block identifier
+   * @returns next page identifier
    */
-  DataBlockId &getNextBlockId() { return header.nextBlockId; }
+  PageId &getNextPageId() { return header.nextPageId; }
 
   /**
-   * Set next block ID. This is the ID for the next block when there is data
-   * overflow. A value of `0` means there is no next block.
+   * Set next page ID. This is the ID for the next page when there is data
+   * overflow. A value of `0` means there is no next page.
    *
-   * @param blockId next block ID
+   * @param pageId next page ID value to set
    */
-  void setNextBlockId(DataBlockId blockId) { header.nextBlockId = blockId; }
+  void setNextPageId(PageId pageId) { header.nextPageId = pageId; }
 
   /**
-   * Get previous block ID. This is the ID for the previous block when there is
-   * data overflow. A value of 0 means there is no previous block.
+   * Get previous page ID. This is the ID for the previous page when there is
+   * data overflow. A value of 0 means there is no previous page.
    *
-   * @returns previous data block identifier
+   * @returns previous page identifier
    */
-  DataBlockId &getPrevBlockId() { return header.prevBlockId; }
+  PageId &getPrevPageId() { return header.prevPageId; }
 
   /**
-   * Set previous block ID. This is the ID for the previous block when there is
-   * data overflow. A value of 0 means there is no previous block.
+   * Set previous page ID. This is the ID for the previous page when there is
+   * data overflow. A value of 0 means there is no previous page.
    *
-   * @param blockId previous block ID
+   * @param pageId previous page ID value to set
    */
-  void setPrevBlockId(DataBlockId blockId) { header.prevBlockId = blockId; }
+  void setPrevPageId(PageId pageId) { header.prevPageId = pageId; }
 
   /**
-   * Check if the block has been modified since being read from storage.
+   * Check if the page has been modified since being read from storage.
    *
    * @returns true if modifed else false
    */
@@ -240,4 +253,4 @@ public:
 
 } // namespace persist
 
-#endif /* DATA_BLOCK_HPP */
+#endif /* PAGE_HPP */

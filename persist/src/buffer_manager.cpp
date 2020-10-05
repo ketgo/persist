@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-#include <persist/buffer_manager.hpp>
+#include <persist/core/buffer_manager.hpp>
 
 namespace persist {
 
@@ -38,12 +38,12 @@ BufferManager::BufferManager(Storage &storage, uint64_t maxSize)
   metadata = storage.read();
 }
 
-void BufferManager::put(std::unique_ptr<DataBlock> &dataBlock) {
+void BufferManager::put(std::unique_ptr<Page> &dataBlock) {
   // If buffer is full then remove the LRU data block
   if (buffer.size() == maxSize) {
     // Get last data block in buffer
-    std::unique_ptr<DataBlock> &lruBlock = buffer.back();
-    DataBlockId lruBlockId = lruBlock->getId();
+    std::unique_ptr<Page> &lruBlock = buffer.back();
+    PageId lruBlockId = lruBlock->getId();
     // Write to storage if block is updated
     if (lruBlock->isModified()) {
       storage.write(*lruBlock);
@@ -52,7 +52,7 @@ void BufferManager::put(std::unique_ptr<DataBlock> &dataBlock) {
     buffer.erase(map[lruBlockId]);
     map.erase(lruBlockId);
   }
-  DataBlockId blockId = dataBlock->getId();
+  PageId blockId = dataBlock->getId();
   // Check if blockId present in cache
   if (map.find(blockId) == map.end()) {
     // Block ID not present in cache
@@ -64,15 +64,15 @@ void BufferManager::put(std::unique_ptr<DataBlock> &dataBlock) {
   }
 }
 
-DataBlock &BufferManager::get() {
+Page &BufferManager::get() {
   // TODO
 }
 
-DataBlock &BufferManager::get(DataBlockId blockId) {
+Page &BufferManager::get(PageId blockId) {
   // Check if data block not present in buffer
   if (map.find(blockId) == map.end()) {
     // Load data block from storage
-    std::unique_ptr<DataBlock> dataBlock = storage.read(blockId);
+    std::unique_ptr<Page> dataBlock = storage.read(blockId);
     // Insert data block in buffer in accordance with LRU strategy
     put(dataBlock);
   }

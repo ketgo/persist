@@ -33,8 +33,8 @@
 #include <memory>
 #include <unordered_map>
 
-#include <persist/data_block.hpp>
-#include <persist/storage/base.hpp>
+#include <persist/core/page.hpp>
+#include <persist/core/storage/base.hpp>
 
 #define DEFAULT_MAX_BUFFER_SIZE 10000
 
@@ -43,7 +43,7 @@ namespace persist {
 /**
  * DataBlock Buffer Type
  */
-typedef std::list<std::unique_ptr<DataBlock>> DataBlockBuffer;
+typedef std::list<std::unique_ptr<Page>> DataBlockBuffer;
 
 /**
  * Buffer Manager Class
@@ -61,7 +61,7 @@ private:
   Storage &storage;                            //<- backend storage
   std::unique_ptr<Storage::MetaData> metadata; //<- data block storage metadata
   DataBlockBuffer buffer;                      //<- buffer of data blocks
-  std::unordered_map<DataBlockId, DataBlockBuffer::iterator>
+  std::unordered_map<PageId, DataBlockBuffer::iterator>
       map;          //<- Stores mapped references to data blocks in the buffer
   uint64_t maxSize; //<- maximum size of buffer
 
@@ -70,7 +70,7 @@ private:
    *
    * @param dataBlock pointer reference to data block
    */
-  void put(std::unique_ptr<DataBlock> &dataBlock);
+  void put(std::unique_ptr<Page> &dataBlock);
 
 public:
   /**
@@ -88,7 +88,7 @@ public:
    *
    * @returns referece to data block in buffer
    */
-  DataBlock &get();
+  Page &get();
 
   /**
    * Get data block with given ID. The data block is loaded from the backend
@@ -98,7 +98,7 @@ public:
    * @param blockId data block ID
    * @returns referece to data block in buffer
    */
-  DataBlock &get(DataBlockId blockId);
+  Page &get(PageId blockId);
 
   /**
    * Save all modifed data blocks in the buffer to backend storage.

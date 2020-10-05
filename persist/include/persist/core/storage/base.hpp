@@ -34,8 +34,8 @@
 #include <list>
 #include <memory>
 
-#include <persist/common.hpp>
-#include <persist/data_block.hpp>
+#include <persist/core/common.hpp>
+#include <persist/core/page.hpp>
 
 namespace persist {
 /**
@@ -56,7 +56,7 @@ public:
   class MetaData : public Serializable {
   public:
     uint64_t blockSize;
-    std::list<DataBlockId> freeBlocks;
+    std::list<PageId> freeBlocks;
 
     /**
      * Constructor
@@ -97,7 +97,7 @@ public:
    * @param blockId block identifier
    * @returns pointer to requested DataBlock object
    */
-  virtual std::unique_ptr<DataBlock> read(DataBlockId blockId) = 0;
+  virtual std::unique_ptr<Page> read(PageId blockId) = 0;
 
   /**
    * Write MetaData object to storage.
@@ -111,7 +111,7 @@ public:
    *
    * @param block reference to DataBlock object to be written
    */
-  virtual void write(DataBlock &block) = 0;
+  virtual void write(Page &block) = 0;
 };
 
 } // namespace persist
