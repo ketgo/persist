@@ -55,8 +55,8 @@ public:
    */
   class MetaData : public Serializable {
   public:
-    uint64_t blockSize;
-    std::list<PageId> freeBlocks;
+    uint64_t pageSize;
+    std::list<PageId> freePages;
 
     /**
      * Constructor

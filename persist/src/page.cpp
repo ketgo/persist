@@ -51,28 +51,64 @@ namespace persist {
 Page::Header::Header()
     : pageId(0), nextPageId(0), prevPageId(0), pageSize(DEFAULT_PAGE_SIZE) {}
 
-Page::Header::Header(PageId blockId)
-    : pageId(blockId), nextPageId(0), prevPageId(0),
+Page::Header::Header(PageId pageId)
+    : pageId(pageId), nextPageId(0), prevPageId(0),
       pageSize(DEFAULT_PAGE_SIZE) {}
 
-Page::Header::Header(PageId blockId, uint64_t tail)
-    : pageId(blockId), nextPageId(0), prevPageId(0), pageSize(tail) {}
+Page::Header::Header(PageId pageId, uint64_t tail)
+    : pageId(pageId), nextPageId(0), prevPageId(0), pageSize(tail) {}
+
+uint64_t Page::Header::size() { return dump().size(); }
+
+uint64_t Page::Header::tail() {
+  if (slots.empty()) {
+    return pageSize;
+  }
+  return slots.back().offset;
+}
+
+Page::Header::Slot *Page::Header::createSlot(uint64_t size) {
+  // Get ID of the last slot
+  PageSlotId lastId;
+  if (slots.empty()) {
+    lastId = 0;
+  } else {
+    lastId = slots.back().id;
+  }
+  // Create slot and add it to the list of slots
+  slots.push_back({lastId + 1, tail() - size, size});
+  return &slots.back();
+}
+
+void Page::Header::freeSlot(Slot *slot) {
+  // Adjust slot offsets
+  Slots::iterator it = std::prev(slots.end());
+  while (it->offset < slot->offset) {
+    it->offset += slot->size;
+    --it;
+  }
+  // Remove slot from the list of slots
+  if (it->offset == slot->offset) {
+    slots.erase(it);
+  }
+}
 
 void Page::Header::load(ByteBuffer &input) {
   // Load JSON from UBJSON
   try {
     json data = json::from_ubjson(input, false);
-    data.at("blockId").get_to(pageId);
-    data.at("nextBlockId").get_to(nextPageId);
-    data.at("prevBlockId").get_to(prevPageId);
-    data.at("blockSize").get_to(pageSize);
-    json entriesData = data.at("entries");
-    entries.clear();
-    for (auto &entry_data : entriesData) {
-      Page::Header::Entry entry;
-      entry_data.at("offset").get_to(entry.offset);
-      entry_data.at("size").get_to(entry.size);
-      this->entries.push_back(entry);
+    data.at("pageId").get_to(pageId);
+    data.at("nextPageId").get_to(nextPageId);
+    data.at("prevPageId").get_to(prevPageId);
+    data.at("pageSize").get_to(pageSize);
+    json slotsData = data.at("slots");
+    slots.clear();
+    for (auto &slotData : slotsData) {
+      Page::Header::Slot slot;
+      slotData.at("id").get_to(slot.id);
+      slotData.at("offset").get_to(slot.offset);
+      slotData.at("size").get_to(slot.size);
+      slots.push_back(slot);
     }
   } catch (json::parse_error &err) {
     throw PageParseError(err.what());
@@ -83,16 +119,17 @@ ByteBuffer &Page::Header::dump() {
   // Create JSON object from header
   try {
     json data;
-    data["blockId"] = pageId;
-    data["nextBlockId"] = nextPageId;
-    data["prevBlockId"] = prevPageId;
-    data["blockSize"] = pageSize;
-    data["entries"] = json::array();
-    for (auto &entry : entries) {
-      json entryData;
-      entryData["offset"] = entry.offset;
-      entryData["size"] = entry.size;
-      data["entries"].push_back(entryData);
+    data["pageId"] = pageId;
+    data["nextPageId"] = nextPageId;
+    data["prevPageId"] = prevPageId;
+    data["pageSize"] = pageSize;
+    data["slots"] = json::array();
+    for (auto &slot : slots) {
+      json slotData;
+      slotData["id"] = slot.id;
+      slotData["offset"] = slot.offset;
+      slotData["size"] = slot.size;
+      data["slots"].push_back(slotData);
     }
     // Convert JSON to UBJSON
     buffer = json::to_ubjson(data);
@@ -101,33 +138,6 @@ ByteBuffer &Page::Header::dump() {
   }
 
   return buffer;
-}
-
-uint64_t Page::Header::size() { return dump().size(); }
-
-uint64_t Page::Header::tail() {
-  if (entries.empty()) {
-    return pageSize;
-  }
-  return entries.back().offset;
-}
-
-Page::Header::Entry *Page::Header::useSpace(uint64_t size) {
-  // Add record block entry
-  entries.push_back({tail() - size, size});
-  return &entries.back();
-}
-
-void Page::Header::freeSpace(Entry *entry) {
-  // Adjust entry offsets
-  Entries::iterator it = std::prev(entries.end());
-  while (it->offset < entry->offset) {
-    it->offset += entry->size;
-    --it;
-  }
-  if (it->offset == entry->offset) {
-    entries.erase(it);
-  }
 }
 
 /************************
@@ -139,59 +149,52 @@ Page::Page() : modified(false) {
   buffer.resize(DEFAULT_PAGE_SIZE);
 }
 
-Page::Page(PageId blockId) : header(blockId), modified(false) {
+Page::Page(PageId pageId) : header(pageId), modified(false) {
   // Resize internal buffer to specified block size
   buffer.resize(DEFAULT_PAGE_SIZE);
 }
 
-Page::Page(PageId blockId, uint64_t blockSize)
-    : header(blockId, blockSize), modified(false) {
+Page::Page(PageId pageId, uint64_t pageSize)
+    : header(pageId, pageSize), modified(false) {
   // Check block size greater than minimum size
-  if (blockSize < MINIMUM_PAGE_SIZE) {
-    throw PageSizeError(blockSize);
+  if (pageSize < MINIMUM_PAGE_SIZE) {
+    throw PageSizeError(pageSize);
   }
   // Resize internal buffer to specified block size
-  buffer.resize(blockSize);
+  buffer.resize(pageSize);
 }
 
 uint64_t Page::freeSpace() { return header.tail() - header.size(); }
 
-RecordBlock &Page::getRecordBlock(RecordBlockId recordBlockId) {
-  // Check if record block exists
-  RecordBlockCache::iterator it = cache.find(recordBlockId);
+RecordBlock &Page::getRecordBlock(PageSlotId slotId) {
+  // Check if slot exists
+  RecordBlockCache::iterator it = cache.find(slotId);
   if (it == cache.end()) {
-    throw RecordBlockNotFoundError(recordBlockId);
+    throw RecordBlockNotFoundError(slotId);
   }
   return it->second.first;
 }
 
-void Page::addRecordBlock(RecordBlock &recordBlock) {
-  RecordBlockId recordBlockId = recordBlock.getId();
-  // Check if record block does not exist in the Page
-  // NOTE: Storing multiple record block with same ID in a single Page
-  // is not allowed.
-  RecordBlockCache::iterator it = cache.find(recordBlockId);
-  if (it != cache.end()) {
-    throw RecordBlockExistsError(recordBlockId);
-  }
-  // Append storage location entry to header for record block
-  Header::Entry *entry = header.useSpace(recordBlock.size());
-  // Insert record block to cache
+PageSlotId Page::addRecordBlock(RecordBlock &recordBlock) {
+  // Create slot for record block
+  Header::Slot *slot = header.createSlot(recordBlock.size());
+  // Insert record block at slot
   // TODO: Use move simantic instead of copy
-  cache.insert({recordBlockId, {recordBlock, entry}});
+  cache.insert({slot->id, {recordBlock, slot}});
   // Set the block to modified
   modified = true;
+
+  return slot->id;
 }
 
-void Page::removeRecordBlock(RecordBlockId recordBlockId) {
-  // Check if record block exists in the Page
-  RecordBlockCache::iterator it = cache.find(recordBlockId);
+void Page::removeRecordBlock(PageSlotId slotId) {
+  // Check if slot exists in the Page
+  RecordBlockCache::iterator it = cache.find(slotId);
   if (it == cache.end()) {
-    throw RecordBlockNotFoundError(recordBlockId);
+    throw RecordBlockNotFoundError(slotId);
   }
-
   // Adjusting header
-  header.freeSpace(it->second.second);
+  header.freeSlot(it->second.second);
   // Removing record block from cache
   cache.erase(it);
   // Set the block to modified
@@ -204,14 +207,14 @@ void Page::load(ByteBuffer &input) {
   // Load record blocks
   // TODO: Use spans to avoid vector constructions
   cache.clear();
-  for (Header::Entries::iterator it = header.entries.begin();
-       it != header.entries.end(); it++) {
+  for (Header::Slots::iterator it = header.slots.begin();
+       it != header.slots.end(); it++) {
     ByteBuffer::iterator start = input.begin() + it->offset;
     ByteBuffer::iterator end = start + it->size;
     ByteBuffer _input(start, end);
     RecordBlock recordBlock;
     recordBlock.load(_input);
-    cache.insert({recordBlock.getId(), {recordBlock, &(*it)}});
+    cache.insert({it->id, {recordBlock, &(*it)}});
   }
 }
 

@@ -39,13 +39,14 @@ namespace persist {
  * Record Block Header
  ***********************/
 
-RecordBlock::Header::Header(RecordBlockId blockId) : blockId(blockId) {}
-
 void RecordBlock::Header::load(ByteBuffer &input) {
   // Load JSON from UBJSON
   try {
     json data = json::from_ubjson(input, false);
-    data.at("blockId").get_to(blockId);
+    data.at("next").at("pageId").get_to(nextLocation.pageId);
+    data.at("next").at("slotId").get_to(nextLocation.slotId);
+    data.at("prev").at("pageId").get_to(prevLocation.pageId);
+    data.at("prev").at("slotId").get_to(prevLocation.slotId);
   } catch (json::parse_error &err) {
     throw RecordBlockParseError(err.what());
   }
@@ -55,7 +56,12 @@ ByteBuffer &RecordBlock::Header::dump() {
   // Create JSON object from header
   try {
     json data;
-    data["blockId"] = blockId;
+    data["next"] = json::object();
+    data["next"]["pageId"] = nextLocation.pageId;
+    data["next"]["slotId"] = nextLocation.slotId;
+    data["prev"] = json::object();
+    data["prev"]["pageId"] = prevLocation.pageId;
+    data["prev"]["slotId"] = prevLocation.slotId;
     // Convert JSON to UBJSON
     buffer = json::to_ubjson(data);
   } catch (json::parse_error &err) {
@@ -70,8 +76,6 @@ uint64_t RecordBlock::Header::size() { return dump().size(); }
 /************************
  * Record Block
  ***********************/
-
-RecordBlock::RecordBlock(RecordBlockId blockId) : header(blockId) {}
 
 RecordBlock::RecordBlock(RecordBlock::Header &header) : header(header) {}
 
@@ -92,8 +96,24 @@ ByteBuffer &RecordBlock::dump() {
   return buffer;
 }
 
-RecordBlockId &RecordBlock::getId() { return header.blockId; }
-
 uint64_t RecordBlock::size() { return header.size() + data.size(); }
+
+RecordBlock::Location &RecordBlock::getNextLocation() {
+  return header.nextLocation;
+}
+
+void RecordBlock::setNextLocation(Location &location) {
+  header.nextLocation.pageId = location.pageId;
+  header.nextLocation.slotId = location.slotId;
+}
+
+RecordBlock::Location &RecordBlock::getPrevLocation() {
+  return header.prevLocation;
+}
+
+void RecordBlock::setPrevLocation(Location &location) {
+  header.prevLocation.pageId = location.pageId;
+  header.prevLocation.slotId = location.slotId;
+}
 
 } // namespace persist

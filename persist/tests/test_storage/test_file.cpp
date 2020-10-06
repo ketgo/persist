@@ -35,8 +35,8 @@
 
 #include <utility.hpp>
 
-#include <persist/core/page.hpp>
 #include <persist/core/exceptions.hpp>
+#include <persist/core/page.hpp>
 #include <persist/core/storage/file_storage.hpp>
 
 using namespace persist;
@@ -62,7 +62,7 @@ protected:
 
 TEST_F(NewFileStorageTestFixture, TestReadBlock) {
   try {
-    std::unique_ptr<Page> dataBlock = readStorage->read(1);
+    std::unique_ptr<Page> page = readStorage->read(1);
     FAIL() << "Expected DataBlockNotFoundError Exception.";
   } catch (PageNotFoundError &err) {
     SUCCEED();
@@ -72,36 +72,35 @@ TEST_F(NewFileStorageTestFixture, TestReadBlock) {
 }
 
 TEST_F(NewFileStorageTestFixture, TestWriteBlock) {
-  RecordBlock recordBlock(1);
+  RecordBlock recordBlock;
   recordBlock.data = "testing";
 
-  Page dataBlock(1, blockSize);
-  dataBlock.addRecordBlock(recordBlock);
-  writeStorage->write(dataBlock);
+  Page page(1, blockSize);
+  PageSlotId slotId = page.addRecordBlock(recordBlock);
+  writeStorage->write(page);
 
   std::fstream file = file::open(writePath, std::ios::in | std::ios::binary);
   ByteBuffer buffer(blockSize);
   file::read(file, buffer, 0);
   Page _dataBlock;
   _dataBlock.load(buffer);
-  RecordBlock &_recordBlock = dataBlock.getRecordBlock(1);
+  RecordBlock &_recordBlock = page.getRecordBlock(slotId);
 
-  ASSERT_EQ(dataBlock.getId(), _dataBlock.getId());
-  ASSERT_EQ(recordBlock.getId(), _recordBlock.getId());
+  ASSERT_EQ(page.getId(), _dataBlock.getId());
   ASSERT_EQ(recordBlock.data, _recordBlock.data);
 }
 
 TEST_F(NewFileStorageTestFixture, TestReadMetaData) {
   std::unique_ptr<Storage::MetaData> metadata = readStorage->read();
 
-  ASSERT_EQ(metadata->blockSize, blockSize);
-  ASSERT_EQ(metadata->freeBlocks.size(), 0);
+  ASSERT_EQ(metadata->pageSize, blockSize);
+  ASSERT_EQ(metadata->freePages.size(), 0);
 }
 
 TEST_F(NewFileStorageTestFixture, TestWriteMetaData) {
   Storage::MetaData metadata;
-  metadata.blockSize = blockSize;
-  metadata.freeBlocks = {1, 2, 3};
+  metadata.pageSize = blockSize;
+  metadata.freePages = {1, 2, 3};
 
   writeStorage->write(metadata);
 
@@ -116,8 +115,8 @@ TEST_F(NewFileStorageTestFixture, TestWriteMetaData) {
   Storage::MetaData _metadata;
   _metadata.load(buffer);
 
-  ASSERT_EQ(metadata.freeBlocks, _metadata.freeBlocks);
-  ASSERT_EQ(metadata.blockSize, _metadata.blockSize);
+  ASSERT_EQ(metadata.freePages, _metadata.freePages);
+  ASSERT_EQ(metadata.pageSize, _metadata.pageSize);
 }
 
 /********************************
@@ -138,48 +137,46 @@ protected:
 };
 
 TEST_F(ExistingFileStorageTestFixture, TestReadBlock) {
-  std::unique_ptr<Page> dataBlock = readStorage->read(1);
-  RecordBlock &recordBlock = dataBlock->getRecordBlock(1);
+  std::unique_ptr<Page> page = readStorage->read(1);
+  RecordBlock &recordBlock = page->getRecordBlock(1);
 
-  ASSERT_EQ(dataBlock->getId(), 1);
-  ASSERT_EQ(recordBlock.getId(), 1);
+  ASSERT_EQ(page->getId(), 1);
   ASSERT_EQ(recordBlock.data, "testing");
 }
 
 TEST_F(ExistingFileStorageTestFixture, TestWriteBlock) {
-  RecordBlock recordBlock(1);
+  RecordBlock recordBlock;
   recordBlock.data = "testing";
 
-  Page dataBlock(1, blockSize);
-  dataBlock.addRecordBlock(recordBlock);
-  writeStorage->write(dataBlock);
+  Page page(1, blockSize);
+  PageSlotId slotId = page.addRecordBlock(recordBlock);
+  writeStorage->write(page);
 
   std::fstream file = file::open(writePath, std::ios::in | std::ios::binary);
   ByteBuffer buffer(blockSize);
   file::read(file, buffer, 0);
   Page _dataBlock;
   _dataBlock.load(buffer);
-  RecordBlock &_recordBlock = dataBlock.getRecordBlock(1);
+  RecordBlock &_recordBlock = page.getRecordBlock(slotId);
 
-  ASSERT_EQ(dataBlock.getId(), _dataBlock.getId());
-  ASSERT_EQ(recordBlock.getId(), _recordBlock.getId());
+  ASSERT_EQ(page.getId(), _dataBlock.getId());
   ASSERT_EQ(recordBlock.data, _recordBlock.data);
 }
 
 TEST_F(ExistingFileStorageTestFixture, TestReadMetaData) {
   std::unique_ptr<Storage::MetaData> metadata = readStorage->read();
   Storage::MetaData _metadata;
-  _metadata.blockSize = 1024; // Block size in saved metadata
-  _metadata.freeBlocks = {0, 1, 2};
+  _metadata.pageSize = 1024; // Block size in saved metadata
+  _metadata.freePages = {1, 2, 3};
 
-  ASSERT_EQ(metadata->blockSize, _metadata.blockSize);
-  ASSERT_EQ(metadata->freeBlocks, _metadata.freeBlocks);
+  ASSERT_EQ(metadata->pageSize, _metadata.pageSize);
+  ASSERT_EQ(metadata->freePages, _metadata.freePages);
 }
 
 TEST_F(ExistingFileStorageTestFixture, TestWriteMetaData) {
   Storage::MetaData metadata;
-  metadata.blockSize = 1024;
-  metadata.freeBlocks = {1, 2, 3};
+  metadata.pageSize = 1024;
+  metadata.freePages = {1, 2, 3};
 
   writeStorage->write(metadata);
 
@@ -194,6 +191,6 @@ TEST_F(ExistingFileStorageTestFixture, TestWriteMetaData) {
   Storage::MetaData _metadata;
   _metadata.load(buffer);
 
-  ASSERT_EQ(metadata.freeBlocks, _metadata.freeBlocks);
-  ASSERT_EQ(metadata.blockSize, _metadata.blockSize);
+  ASSERT_EQ(metadata.freePages, _metadata.freePages);
+  ASSERT_EQ(metadata.pageSize, _metadata.pageSize);
 }

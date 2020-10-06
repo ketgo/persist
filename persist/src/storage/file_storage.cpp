@@ -89,7 +89,7 @@ std::unique_ptr<Storage::MetaData> FileStorage::read() {
       std::make_unique<Storage::MetaData>();
   // Set default block size value in metadata. This gets updated once the
   // content of the saved metadata is loaded
-  metadataPtr->blockSize = blockSize;
+  metadataPtr->pageSize = blockSize;
 
   metadataFile = file::open(metadataPath, std::ios::in | std::ios::binary);
 
@@ -112,7 +112,7 @@ std::unique_ptr<Storage::MetaData> FileStorage::read() {
 
   // Load MetaData object
   metadataPtr->load(buffer);
-  blockSize = metadataPtr->blockSize;
+  blockSize = metadataPtr->pageSize;
 
   // Close metadata file
   metadataFile.close();

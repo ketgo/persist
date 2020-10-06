@@ -39,30 +39,33 @@ using namespace persist;
 class RecordBlockTestFixture : public ::testing::Test {
 protected:
   std::vector<uint8_t> input;
-  const RecordBlockId recordBlockId = 10;
+  const PageId nextPageId = 10, prevPageId = 1;
+  const PageSlotId nextSlotId = 100, prevSlotId = 10;
   const std::string data = "testing";
   std::unique_ptr<RecordBlock> block;
 
   void SetUp() override {
-    RecordBlock::Header header(recordBlockId);
+    RecordBlock::Header header;
+    header.nextLocation.pageId = nextPageId;
+    header.nextLocation.slotId = nextSlotId;
+    header.prevLocation.pageId = prevPageId;
+    header.prevLocation.slotId = prevSlotId;
     block = std::make_unique<RecordBlock>(header);
     block->data = data;
 
-    input = {123, 105, 7,   98,  108, 111, 99,  107, 73,  100,
-             105, 10,  125, 116, 101, 115, 116, 105, 110, 103};
+    input = {123, 105, 4,   110, 101, 120, 116, 123, 105, 6,   112, 97,  103,
+             101, 73,  100, 105, 10,  105, 6,   115, 108, 111, 116, 73,  100,
+             105, 100, 125, 105, 4,   112, 114, 101, 118, 123, 105, 6,   112,
+             97,  103, 101, 73,  100, 105, 1,   105, 6,   115, 108, 111, 116,
+             73,  100, 105, 10,  125, 125, 116, 101, 115, 116, 105, 110, 103};
   }
 };
-
-TEST_F(RecordBlockTestFixture, TestGetId) {
-  ASSERT_EQ(block->getId(), recordBlockId);
-}
 
 TEST_F(RecordBlockTestFixture, TestLoad) {
   RecordBlock _block;
   _block.load(input);
 
   ASSERT_EQ(_block.data, block->data);
-  ASSERT_EQ(_block.getId(), block->getId());
 }
 
 TEST_F(RecordBlockTestFixture, TestLoadError) {
@@ -88,4 +91,30 @@ TEST_F(RecordBlockTestFixture, TestSize) {
   ByteBuffer &output = block->dump();
 
   ASSERT_EQ(block->size(), output.size());
+}
+
+TEST_F(RecordBlockTestFixture, TestGetNextLocation) {
+  ASSERT_EQ(block->getNextLocation().pageId, nextPageId);
+  ASSERT_EQ(block->getNextLocation().slotId, nextSlotId);
+}
+
+TEST_F(RecordBlockTestFixture, TestSetNextLocation) {
+  RecordBlock::Location location(15, 5);
+  block->setNextLocation(location);
+
+  ASSERT_EQ(block->getNextLocation().pageId, location.pageId);
+  ASSERT_EQ(block->getNextLocation().slotId, location.slotId);
+}
+
+TEST_F(RecordBlockTestFixture, TestGetPrevLocation) {
+  ASSERT_EQ(block->getPrevLocation().pageId, prevPageId);
+  ASSERT_EQ(block->getPrevLocation().slotId, prevSlotId);
+}
+
+TEST_F(RecordBlockTestFixture, TestSetPrevLocation) {
+  RecordBlock::Location location(15, 5);
+  block->setPrevLocation(location);
+
+  ASSERT_EQ(block->getPrevLocation().pageId, location.pageId);
+  ASSERT_EQ(block->getPrevLocation().slotId, location.slotId);
 }

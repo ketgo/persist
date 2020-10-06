@@ -79,20 +79,20 @@ public:
     uint64_t pageSize;
 
     /**
-     * Data Entry
+     * Page Slots
      *
-     * Contains location and size information of data stored in the data
-     * block.
+     * Contains offset, size and ID of storage slots in the page.
      */
-    struct Entry {
+    struct Slot {
+      PageSlotId id;   //<- slot identifier
       uint64_t offset; //<- location offset from end of block
       uint64_t size;   //<- size of stored data
     };
-    typedef std::list<Entry> Entries;
+    typedef std::list<Slot> Slots;
     /**
-     * @brief Page record block entries
+     * @brief Page slots
      */
-    Entries entries;
+    Slots slots;
 
     /**
      * Constructors
@@ -114,20 +114,20 @@ public:
     uint64_t tail();
 
     /**
-     * Use up chunk of space of given size from the available free space of
-     * the block.
+     * Use up chunk of space of given size from the available free space in the 
+     * Page. This operation allocates storage slot.
      *
      * @param size amount of space in bytes to occupy
-     * @returns pointer to the new entry
+     * @returns pointer to the new slot
      */
-    Entry *useSpace(uint64_t size);
+    Slot *createSlot(uint64_t size);
 
     /**
-     * Free up used chunk of space occupied by given data entry.
+     * Free up used chunk of space occupied by given slot.
      *
-     * @param entry poiter to entry to free
+     * @param slot poiter to slot to free
      */
-    void freeSpace(Entry *entry);
+    void freeSlot(Slot *slot);
 
     /**
      * Load object from byte string
@@ -145,21 +145,30 @@ public:
   };
 
 private:
-  Header header; //<- block header
-  bool modified; //<- flag indicating the block has been modified
+  /**
+   * @brief Page header
+   */
+  Header header;
 
-  typedef std::unordered_map<RecordBlockId,
-                             std::pair<RecordBlock, Header::Entry *>>
+  /**
+   * @brief Flag indicating if the block has been modified
+   */
+  bool modified;
+
+  typedef std::unordered_map<PageSlotId, std::pair<RecordBlock, Header::Slot *>>
       RecordBlockCache;
-  RecordBlockCache cache; //<- cached collection of records stored in the block
+  /**
+   * @brief Cached collection of records stored in page slots
+   */
+  RecordBlockCache cache;
 
 public:
   /**
    * Constructors
    */
   Page();
-  Page(PageId blockId);
-  Page(PageId blockId, uint64_t blockSize);
+  Page(PageId pageId);
+  Page(PageId pageId, uint64_t pageSize);
 
   /**
    * Get block ID.
@@ -215,26 +224,27 @@ public:
   uint64_t freeSpace();
 
   /**
-   * Get RecordBlock object with given identifier.
+   * Get RecordBlock object at a given slot.
    *
-   * @param recordId data record identifier
+   * @param slotId slot identifier
    * @returns reference to RecordBlock object
    */
-  RecordBlock &getRecordBlock(RecordBlockId recordBlockId);
+  RecordBlock &getRecordBlock(PageSlotId slotId);
 
   /**
-   * Add RecordBlock object to the block.
+   * Add RecordBlock object to the page.
    *
    * @param recordBlock recRecordBlock object to be added
+   * @returns page slot ID where record block is stored
    */
-  void addRecordBlock(RecordBlock &recordBlock);
+  PageSlotId addRecordBlock(RecordBlock &recordBlock);
 
   /**
-   * Remove RecordBlock object with given identifier from block.
+   * Remove RecordBlock object at given slot.
    *
-   * @param recordBlockId record block identifier
+   * @param slotId slot identifier
    */
-  void removeRecordBlock(RecordBlockId recordBlockId);
+  void removeRecordBlock(PageSlotId slotId);
 
   /**
    * Load Block object from byte string.

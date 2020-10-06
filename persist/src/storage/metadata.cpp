@@ -44,8 +44,8 @@ void Storage::MetaData::load(ByteBuffer &input) {
   // Load JSON from UBJSON
   try {
     json data = json::from_ubjson(input, false);
-    data.at("blockSize").get_to(blockSize);
-    data.at("freeBlocks").get_to(freeBlocks);
+    data.at("pageSize").get_to(pageSize);
+    data.at("freePages").get_to(freePages);
   } catch (json::parse_error &err) {
     throw MetaDataParseError(err.what());
   }
@@ -55,8 +55,8 @@ ByteBuffer &Storage::MetaData::dump() {
   // Create JSON object from header
   try {
     json data;
-    data["blockSize"] = blockSize;
-    data["freeBlocks"] = freeBlocks;
+    data["pageSize"] = pageSize;
+    data["freePages"] = freePages;
     // Convert JSON to UBJSON
     buffer = json::to_ubjson(data);
   } catch (json::parse_error &err) {

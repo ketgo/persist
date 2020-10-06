@@ -57,31 +57,16 @@ public:
  * Record Block Not Found Error
  *
  * This error is thrown when a record block does not exists inside
- * a data block.
+ * a page.
  */
 class RecordBlockNotFoundError : public std::exception {
 private:
   std::string msg;
 
 public:
-  RecordBlockNotFoundError(persist::RecordBlockId &blockId)
-      : msg(std::string("Record Block '") + std::to_string(blockId) +
-            std::string("' not found.")) {}
-
-  const char *what() const throw() { return msg.c_str(); }
-};
-
-/**
- * Record Block Exists Error
- */
-class RecordBlockExistsError : public std::exception {
-private:
-  std::string msg;
-
-public:
-  RecordBlockExistsError(persist::RecordBlockId &blockId)
-      : msg(std::string("Record Block '") + std::to_string(blockId) +
-            std::string("' exists.")) {}
+  RecordBlockNotFoundError(persist::PageSlotId &slotId)
+      : msg(std::string("Record Block not found at slot '") +
+            std::to_string(slotId) + std::string("'.")) {}
 
   const char *what() const throw() { return msg.c_str(); }
 };

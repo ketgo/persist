@@ -46,11 +46,11 @@ protected:
 
   void SetUp() override {
     metadata = std::make_unique<Storage::MetaData>();
-    metadata->blockSize = blockSize;
-    metadata->freeBlocks = freeBlocks;
-    input = {123, 105, 9,   98, 108, 111, 99,  107, 83,  105, 122, 101, 73,
-             4,   0,   105, 10, 102, 114, 101, 101, 66,  108, 111, 99,  107,
-             115, 91,  105, 0,  105, 1,   105, 2,   105, 3,   93,  125};
+    metadata->pageSize = blockSize;
+    metadata->freePages = freeBlocks;
+    input = {123, 105, 9,   102, 114, 101, 101, 80,  97, 103, 101, 115,
+             91,  105, 0,   105, 1,   105, 2,   105, 3,  93,  105, 8,
+             112, 97,  103, 101, 83,  105, 122, 101, 73, 4,   0,   125};
   }
 };
 
@@ -58,8 +58,8 @@ TEST_F(MetaDataTestFixture, TestLoad) {
   Storage::MetaData _metadata;
   _metadata.load(input);
 
-  ASSERT_EQ(_metadata.blockSize, metadata->blockSize);
-  ASSERT_EQ(_metadata.freeBlocks, metadata->freeBlocks);
+  ASSERT_EQ(_metadata.pageSize, metadata->pageSize);
+  ASSERT_EQ(_metadata.freePages, metadata->freePages);
 }
 
 TEST_F(MetaDataTestFixture, TestLoadError) {

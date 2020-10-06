@@ -8,24 +8,11 @@ file(
     ${CMAKE_CURRENT_SOURCE_DIR}/*.c
 )
 
-# Create executable
-add_executable(
-    ${BINARY} 
-    ${SOURCES}
-)
-
 # Create static lib for running test suits
 add_library(
     ${LIB} 
     STATIC 
     ${SOURCES}
-)
-
-# Add libraries to link for binary
-target_link_libraries(
-    ${BINARY}
-    PRIVATE 
-    nlohmann_json::nlohmann_json
 )
 
 # Add libraries to link for lib
