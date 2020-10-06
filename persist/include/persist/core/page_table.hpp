@@ -26,8 +26,8 @@
  * Block Manager Header
  */
 
-#ifndef MANAGER_HPP
-#define MANAGER_HPP
+#ifndef PAGE_TABLE_HPP
+#define PAGE_TABLE_HPP
 
 #include <list>
 #include <memory>
@@ -41,71 +41,72 @@
 namespace persist {
 
 /**
- * DataBlock Buffer Type
+ * Page Buffer Type
  */
-typedef std::list<std::unique_ptr<Page>> DataBlockBuffer;
+typedef std::list<std::unique_ptr<Page>> PageBuffer;
 
 /**
- * Buffer Manager Class
+ * Page Table Class
  *
- * The buffer manager is responsible for loading and writing modified data
- * blocks to backend storage. It implements LRU buffer-relplacement policy.
+ * The page table is a buffer of pages loaded in memory. It is responsible for
+ * reading and writing modified pages to backend storage in compliance with LRU
+ * page relplacement policy.
  *
  * - Get block with given identifer
  * - Get block with free space
  * - Create new block if no blocks with free space are available
  * - Track modified blocks and write them to storage
  */
-class BufferManager {
+class PageTable {
 private:
   Storage &storage;                            //<- backend storage
-  std::unique_ptr<Storage::MetaData> metadata; //<- data block storage metadata
-  DataBlockBuffer buffer;                      //<- buffer of data blocks
-  std::unordered_map<PageId, DataBlockBuffer::iterator>
-      map;          //<- Stores mapped references to data blocks in the buffer
+  std::unique_ptr<Storage::MetaData> metadata; //<- page storage metadata
+  PageBuffer buffer;                           //<- buffer of pages
+  std::unordered_map<PageId, PageBuffer::iterator>
+      map;          //<- Stores mapped references to pages in the buffer
   uint64_t maxSize; //<- maximum size of buffer
 
   /**
-   * Add data block to buffer.
+   * Add page to buffer.
    *
-   * @param dataBlock pointer reference to data block
+   * @param dataBlock pointer reference to page
    */
   void put(std::unique_ptr<Page> &dataBlock);
 
 public:
   /**
-   * Construct a new Buffer Manager object
+   * Construct a new Page Table object
    *
    * @param storage reference to backend storage
    * @param maxSize maximum buffer size
    */
-  BufferManager(Storage &storage);
-  BufferManager(Storage &storage, uint64_t maxSize);
+  PageTable(Storage &storage);
+  PageTable(Storage &storage, uint64_t maxSize);
 
   /**
-   * Get a data block with free space. If no such data block is available a new
-   * block is created and loaded in buffer.
+   * Get a page with free space. If no such page is available a new page is
+   * created and loaded in buffer.
    *
-   * @returns referece to data block in buffer
+   * @returns referece to page in buffer
    */
   Page &get();
 
   /**
-   * Get data block with given ID. The data block is loaded from the backend
-   * storage if it is not already found in the buffer. In case the block is not
-   * found in the backend then DataBlockNotFoundError exception is raised.
+   * Get page with given ID. The page is loaded from the backend storage if it
+   * is not already found in the buffer. In case the page is not found in the
+   * backend then PageNotFoundError exception is raised.
    *
-   * @param blockId data block ID
-   * @returns referece to data block in buffer
+   * @param pageId page ID
+   * @returns referece to page in buffer
    */
-  Page &get(PageId blockId);
+  Page &get(PageId pageId);
 
   /**
-   * Save all modifed data blocks in the buffer to backend storage.
+   * Save all modifed pages in the buffer to backend storage.
    */
   void flush();
 };
 
 } // namespace persist
 
-#endif /* MANAGER_HPP */
+#endif /* PAGE_TABLE_HPP */

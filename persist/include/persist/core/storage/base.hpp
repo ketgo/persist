@@ -81,23 +81,20 @@ public:
   virtual ~Storage() {} //<- Virtual destructor
 
   /**
-   * Read storage metadata information. In case no metadata
-   * information is available a null pointer is returned.
-   *
-   * Note: Some storage types dont store metadata as it is not
-   * needed by the underlying implementation.
+   * Read storage metadata information. In case no metadata information is
+   * available a pointer to new metadata object is returned.
    *
    * @return pointer to MetaData object
    */
   virtual std::unique_ptr<MetaData> read() = 0;
 
   /**
-   * Read DataBlock with given identifier from storage.
+   * Read Page with given identifier from storage.
    *
-   * @param blockId block identifier
-   * @returns pointer to requested DataBlock object
+   * @param pageId page identifier
+   * @returns pointer to Page object
    */
-  virtual std::unique_ptr<Page> read(PageId blockId) = 0;
+  virtual std::unique_ptr<Page> read(PageId pageId) = 0;
 
   /**
    * Write MetaData object to storage.
@@ -107,11 +104,11 @@ public:
   virtual void write(MetaData &metadata) = 0;
 
   /**
-   * Write DataBlock object to storage.
+   * Write Page object to storage.
    *
-   * @param block reference to DataBlock object to be written
+   * @param page reference to Page object to be written
    */
-  virtual void write(Page &block) = 0;
+  virtual void write(Page &page) = 0;
 };
 
 } // namespace persist

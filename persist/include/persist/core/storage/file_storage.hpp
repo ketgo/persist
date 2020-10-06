@@ -89,12 +89,12 @@ public:
   std::unique_ptr<Storage::MetaData> read() override;
 
   /**
-   * Reads DataBlock with given identifier from storage file.
+   * Reads Page with given identifier from storage file.
    *
-   * @param blockId block identifier
-   * @returns pointer to requested Block object
+   * @param pageId page identifier
+   * @returns pointer to requested Page object
    */
-  std::unique_ptr<Page> read(PageId blockId) override;
+  std::unique_ptr<Page> read(PageId pageId) override;
 
   /**
    * Write MetaData object to storage file.
@@ -104,11 +104,11 @@ public:
   void write(Storage::MetaData &metadata) override;
 
   /**
-   * Writes DataBlock to storage file.
+   * Writes Page to storage file.
    *
-   * @param block reference to DataBlock object to be written
+   * @param page reference to Page object to be written
    */
-  void write(Page &block) override;
+  void write(Page &page) override;
 };
 
 } // namespace persist

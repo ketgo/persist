@@ -68,7 +68,7 @@ A `Cursor` is just an iterator on persistent collections. It is used to traverse
 
 #### Buffer Manager
 
-The buffer manager is responsible for loading [pages](#page) from [backend storage](#backend-storage) and writing modified [pages](#page) back. It utilizes the exposed API by the `Storage` interface to achieve its goals. The buffer size is kept fixed and the least recently used (LRU) policy is used to replace a page. If the page has been modified since last read, it is written back onto the storage. The following API are exposed by the manager:
+The buffer manager is responsible for loading [pages](#page) from [backend storage](#backend-storage) and writing modified [pages](#page) back. It utilizes the exposed API by the `Storage` interface to achieve its goals. The buffer size is kept fixed and the least recently used (LRU) policy is used to replace a page. If the page has been modified since the last read, it is written back onto the storage. The following API are exposed by the manager:
 
 ```c++
 /**

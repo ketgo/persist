@@ -31,24 +31,24 @@
 #include <memory>
 #include <vector>
 
-#include <persist/core/buffer_manager.hpp>
+#include <persist/core/page_table.hpp>
 #include <persist/core/exceptions.hpp>
 
 using namespace persist;
 
-class BufferManagerTestFixture : public ::testing::Test {
+class PageTableTestFixture : public ::testing::Test {
 protected:
-  std::unique_ptr<BufferManager> manager;
+  std::unique_ptr<PageTable> manager;
 
   void SetUp() override {}
 };
 
-TEST_F(BufferManagerTestFixture, TestGetFreeSpaceDataBlock) {}
+TEST_F(PageTableTestFixture, TestGetFreeSpaceDataBlock) {}
 
-TEST_F(BufferManagerTestFixture, TestGetNewDataBlock) {}
+TEST_F(PageTableTestFixture, TestGetNewDataBlock) {}
 
-TEST_F(BufferManagerTestFixture, TestGetDataBlockWithId) {}
+TEST_F(PageTableTestFixture, TestGetDataBlockWithId) {}
 
-TEST_F(BufferManagerTestFixture, TestGetDataBlockWithIdError) {}
+TEST_F(PageTableTestFixture, TestGetDataBlockWithIdError) {}
 
-TEST_F(BufferManagerTestFixture, Testflush) {}
+TEST_F(PageTableTestFixture, Testflush) {}

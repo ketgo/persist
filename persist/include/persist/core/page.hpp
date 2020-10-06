@@ -98,8 +98,8 @@ public:
      * Constructors
      */
     Header();
-    Header(PageId blockId);
-    Header(PageId blockId, uint64_t blockSize);
+    Header(PageId pageId);
+    Header(PageId pageId, uint64_t pageSize);
 
     /**
      * Get storage size of header.

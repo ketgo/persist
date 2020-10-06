@@ -22,66 +22,66 @@
  * SOFTWARE.
  */
 
-#include <persist/core/buffer_manager.hpp>
+#include <persist/core/page_table.hpp>
 
 namespace persist {
 
-BufferManager::BufferManager(Storage &storage)
+PageTable::PageTable(Storage &storage)
     : storage(storage), maxSize(DEFAULT_MAX_BUFFER_SIZE) {
   // Read metadata
   metadata = storage.read();
 }
 
-BufferManager::BufferManager(Storage &storage, uint64_t maxSize)
+PageTable::PageTable(Storage &storage, uint64_t maxSize)
     : storage(storage), maxSize(maxSize) {
   // Read metadata
   metadata = storage.read();
 }
 
-void BufferManager::put(std::unique_ptr<Page> &dataBlock) {
-  // If buffer is full then remove the LRU data block
+void PageTable::put(std::unique_ptr<Page> &page) {
+  // If buffer is full then remove the LRU page
   if (buffer.size() == maxSize) {
-    // Get last data block in buffer
-    std::unique_ptr<Page> &lruBlock = buffer.back();
-    PageId lruBlockId = lruBlock->getId();
-    // Write to storage if block is updated
-    if (lruBlock->isModified()) {
-      storage.write(*lruBlock);
+    // Get last page in buffer
+    std::unique_ptr<Page> &lruPage = buffer.back();
+    PageId lruPageId = lruPage->getId();
+    // Write to storage if page is updated
+    if (lruPage->isModified()) {
+      storage.write(*lruPage);
     }
-    // Remove data block from buffer
-    buffer.erase(map[lruBlockId]);
-    map.erase(lruBlockId);
+    // Remove page from buffer
+    buffer.erase(map[lruPageId]);
+    map.erase(lruPageId);
   }
-  PageId blockId = dataBlock->getId();
-  // Check if blockId present in cache
-  if (map.find(blockId) == map.end()) {
-    // Block ID not present in cache
-    buffer.push_front(std::move(dataBlock));
-    map[blockId] = buffer.begin();
+  PageId pageId = page->getId();
+  // Check if pageId present in cache
+  if (map.find(pageId) == map.end()) {
+    // Page ID not present in cache
+    buffer.push_front(std::move(page));
+    map[pageId] = buffer.begin();
   } else {
-    // Block ID present in cache
-    *map[blockId] = std::move(dataBlock);
+    // Page ID present in cache
+    *map[pageId] = std::move(page);
   }
 }
 
-Page &BufferManager::get() {
+Page &PageTable::get() {
   // TODO
 }
 
-Page &BufferManager::get(PageId blockId) {
-  // Check if data block not present in buffer
-  if (map.find(blockId) == map.end()) {
-    // Load data block from storage
-    std::unique_ptr<Page> dataBlock = storage.read(blockId);
-    // Insert data block in buffer in accordance with LRU strategy
-    put(dataBlock);
+Page &PageTable::get(PageId pageId) {
+  // Check if page not present in buffer
+  if (map.find(pageId) == map.end()) {
+    // Load page from storage
+    std::unique_ptr<Page> page = storage.read(pageId);
+    // Insert page in buffer in accordance with LRU strategy
+    put(page);
   }
-  // Move the entry for given blockId to front to accordance with LRU strategy
-  buffer.splice(buffer.begin(), buffer, map[blockId]);
+  // Move the entry for given pageId to front in accordance with LRU strategy
+  buffer.splice(buffer.begin(), buffer, map[pageId]);
 
-  return *(*map[blockId]);
+  return *(*map[pageId]);
 }
 
-void BufferManager::flush() {}
+void PageTable::flush() {}
 
 } // namespace persist

@@ -63,11 +63,11 @@ protected:
 TEST_F(NewFileStorageTestFixture, TestReadBlock) {
   try {
     std::unique_ptr<Page> page = readStorage->read(1);
-    FAIL() << "Expected DataBlockNotFoundError Exception.";
+    FAIL() << "Expected PageNotFoundError Exception.";
   } catch (PageNotFoundError &err) {
     SUCCEED();
   } catch (...) {
-    FAIL() << "Expected DataBlockNotFoundError Exception.";
+    FAIL() << "Expected PageNotFoundError Exception.";
   }
 }
 
@@ -166,7 +166,7 @@ TEST_F(ExistingFileStorageTestFixture, TestWriteBlock) {
 TEST_F(ExistingFileStorageTestFixture, TestReadMetaData) {
   std::unique_ptr<Storage::MetaData> metadata = readStorage->read();
   Storage::MetaData _metadata;
-  _metadata.pageSize = 1024; // Block size in saved metadata
+  _metadata.pageSize = 1024; // Page in saved metadata
   _metadata.freePages = {1, 2, 3};
 
   ASSERT_EQ(metadata->pageSize, _metadata.pageSize);
