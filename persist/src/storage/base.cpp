@@ -45,6 +45,8 @@ void Storage::MetaData::load(ByteBuffer &input) {
   try {
     json data = json::from_ubjson(input, false);
     data.at("pageSize").get_to(pageSize);
+    data.at("firstPageId").get_to(firstPageId);
+    data.at("lastPageId").get_to(lastPageId);
     data.at("freePages").get_to(freePages);
   } catch (json::parse_error &err) {
     throw MetaDataParseError(err.what());
@@ -56,6 +58,8 @@ ByteBuffer &Storage::MetaData::dump() {
   try {
     json data;
     data["pageSize"] = pageSize;
+    data["firstPageId"] = firstPageId;
+    data["lastPageId"] = lastPageId;
     data["freePages"] = freePages;
     // Convert JSON to UBJSON
     buffer = json::to_ubjson(data);

@@ -48,17 +48,6 @@ private:
   std::string path;   //<- storage file name with path
   std::fstream file;  //<- IO stream for file
 
-  /**
-   * Opens storage file.
-   */
-  void open();
-
-  /**
-   * Closes opened storage file. No operation is performed if
-   * no file is opened.
-   */
-  void close();
-
 public:
   /**
    * Constructors
@@ -82,11 +71,34 @@ public:
   ~FileStorage();
 
   /**
+   * Opens storage file.
+   */
+  void open() override;
+
+  /**
+   * Checks if storage file is open
+   */
+  bool is_open() override;
+
+  /**
+   * Closes opened storage file. No operation is performed if
+   * no file is opened.
+   */
+  void close() override;
+
+  /**
    * Read metadata information from storage file
    *
    * @return pointer to MetaData object
    */
   std::unique_ptr<Storage::MetaData> read() override;
+
+  /**
+   * Write MetaData object to storage file.
+   *
+   * @param metadata reference to MetaData object to be written
+   */
+  void write(Storage::MetaData &metadata) override;
 
   /**
    * Reads Page with given identifier from storage file.
@@ -95,13 +107,6 @@ public:
    * @returns pointer to requested Page object
    */
   std::unique_ptr<Page> read(PageId pageId) override;
-
-  /**
-   * Write MetaData object to storage file.
-   *
-   * @param metadata reference to MetaData object to be written
-   */
-  void write(Storage::MetaData &metadata) override;
 
   /**
    * Writes Page to storage file.

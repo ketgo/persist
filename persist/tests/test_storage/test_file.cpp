@@ -44,7 +44,7 @@ using namespace persist;
 const std::string base = "persist/tests/data";
 
 /********************************
- * Testing for Next Storage
+ * Testing for New Storage
  ********************************/
 
 class NewFileStorageTestFixture : public ::testing::Test {
@@ -56,7 +56,14 @@ protected:
 
   void SetUp() override {
     readStorage = std::make_unique<FileStorage>(readPath, blockSize);
+    readStorage->open();
     writeStorage = std::make_unique<FileStorage>(writePath, blockSize);
+    writeStorage->open();
+  }
+
+  void TearDown() override {
+    readStorage->close();
+    writeStorage->close();
   }
 };
 
@@ -94,6 +101,8 @@ TEST_F(NewFileStorageTestFixture, TestReadMetaData) {
   std::unique_ptr<Storage::MetaData> metadata = readStorage->read();
 
   ASSERT_EQ(metadata->pageSize, blockSize);
+  ASSERT_EQ(metadata->firstPageId, 0);
+  ASSERT_EQ(metadata->lastPageId, 0);
   ASSERT_EQ(metadata->freePages.size(), 0);
 }
 
@@ -116,6 +125,8 @@ TEST_F(NewFileStorageTestFixture, TestWriteMetaData) {
   _metadata.load(buffer);
 
   ASSERT_EQ(metadata.freePages, _metadata.freePages);
+  ASSERT_EQ(metadata.firstPageId, _metadata.firstPageId);
+  ASSERT_EQ(metadata.lastPageId, _metadata.lastPageId);
   ASSERT_EQ(metadata.pageSize, _metadata.pageSize);
 }
 
@@ -132,7 +143,14 @@ protected:
 
   void SetUp() override {
     readStorage = std::make_unique<FileStorage>(readPath, blockSize);
+    readStorage->open();
     writeStorage = std::make_unique<FileStorage>(writePath, blockSize);
+    writeStorage->open();
+  }
+
+  void TearDown() override {
+    readStorage->close();
+    writeStorage->close();
   }
 };
 
@@ -167,15 +185,21 @@ TEST_F(ExistingFileStorageTestFixture, TestReadMetaData) {
   std::unique_ptr<Storage::MetaData> metadata = readStorage->read();
   Storage::MetaData _metadata;
   _metadata.pageSize = 1024; // Page in saved metadata
+  _metadata.firstPageId = 1;
+  _metadata.lastPageId = 10;
   _metadata.freePages = {1, 2, 3};
 
   ASSERT_EQ(metadata->pageSize, _metadata.pageSize);
+  ASSERT_EQ(metadata->firstPageId, _metadata.firstPageId);
+  ASSERT_EQ(metadata->lastPageId, _metadata.lastPageId);
   ASSERT_EQ(metadata->freePages, _metadata.freePages);
 }
 
 TEST_F(ExistingFileStorageTestFixture, TestWriteMetaData) {
   Storage::MetaData metadata;
   metadata.pageSize = 1024;
+  metadata.firstPageId = 1;
+  metadata.lastPageId = 10;
   metadata.freePages = {1, 2, 3};
 
   writeStorage->write(metadata);
@@ -192,5 +216,7 @@ TEST_F(ExistingFileStorageTestFixture, TestWriteMetaData) {
   _metadata.load(buffer);
 
   ASSERT_EQ(metadata.freePages, _metadata.freePages);
+  ASSERT_EQ(metadata.firstPageId, _metadata.firstPageId);
+  ASSERT_EQ(metadata.lastPageId, _metadata.lastPageId);
   ASSERT_EQ(metadata.pageSize, _metadata.pageSize);
 }

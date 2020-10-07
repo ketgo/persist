@@ -42,15 +42,21 @@ protected:
   std::vector<uint8_t> input;
   std::unique_ptr<Storage::MetaData> metadata;
   const uint64_t blockSize = 1024;
+  const PageId firstPageId = 1;
+  const PageId lastPageId = 10;
   const std::list<PageId> freeBlocks = {0, 1, 2, 3};
 
   void SetUp() override {
     metadata = std::make_unique<Storage::MetaData>();
     metadata->pageSize = blockSize;
+    metadata->firstPageId = firstPageId;
+    metadata->lastPageId = lastPageId;
     metadata->freePages = freeBlocks;
-    input = {123, 105, 9,   102, 114, 101, 101, 80,  97, 103, 101, 115,
-             91,  105, 0,   105, 1,   105, 2,   105, 3,  93,  105, 8,
-             112, 97,  103, 101, 83,  105, 122, 101, 73, 4,   0,   125};
+    input = {123, 105, 11,  102, 105, 114, 115, 116, 80,  97,  103, 101, 73,
+             100, 105, 1,   105, 9,   102, 114, 101, 101, 80,  97,  103, 101,
+             115, 91,  105, 0,   105, 1,   105, 2,   105, 3,   93,  105, 10,
+             108, 97,  115, 116, 80,  97,  103, 101, 73,  100, 105, 10,  105,
+             8,   112, 97,  103, 101, 83,  105, 122, 101, 73,  4,   0,   125};
   }
 };
 
@@ -59,6 +65,8 @@ TEST_F(MetaDataTestFixture, TestLoad) {
   _metadata.load(input);
 
   ASSERT_EQ(_metadata.pageSize, metadata->pageSize);
+  ASSERT_EQ(_metadata.firstPageId, metadata->firstPageId);
+  ASSERT_EQ(_metadata.lastPageId, metadata->lastPageId);
   ASSERT_EQ(_metadata.freePages, metadata->freePages);
 }
 

@@ -42,37 +42,24 @@ namespace persist {
 FileStorage::FileStorage() {}
 
 FileStorage::FileStorage(std::string path)
-    : path(path), blockSize(DEFAULT_PAGE_SIZE) {
-  // Open storage file
-  open();
-}
+    : path(path), blockSize(DEFAULT_PAGE_SIZE) {}
 
 FileStorage::FileStorage(const char *path)
-    : path(path), blockSize(DEFAULT_PAGE_SIZE) {
-  // Open storage file
-  open();
-}
+    : path(path), blockSize(DEFAULT_PAGE_SIZE) {}
 
 FileStorage::FileStorage(std::string path, uint64_t blockSize)
-    : path(path), blockSize(blockSize) {
-  // Open storage file
-  open();
-}
+    : path(path), blockSize(blockSize) {}
 
 FileStorage::FileStorage(const char *path, uint64_t blockSize)
-    : path(path), blockSize(blockSize) {
-  // Open storage file
-  open();
-}
+    : path(path), blockSize(blockSize) {}
 
-FileStorage::~FileStorage() {
-  // Close opened storage file
-  close();
-}
+FileStorage::~FileStorage() {}
 
 void FileStorage::open() {
   file = file::open(path, std::ios::binary | std::ios::in | std::ios::out);
 }
+
+bool FileStorage::is_open() { return file.is_open(); }
 
 void FileStorage::close() {
   // Close storage file if opened

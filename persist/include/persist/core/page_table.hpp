@@ -23,7 +23,7 @@
  */
 
 /**
- * Block Manager Header
+ * Page Table Header
  */
 
 #ifndef PAGE_TABLE_HPP

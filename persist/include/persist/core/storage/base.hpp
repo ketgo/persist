@@ -56,12 +56,14 @@ public:
   class MetaData : public Serializable {
   public:
     uint64_t pageSize;
+    PageId firstPageId;
+    PageId lastPageId;
     std::list<PageId> freePages;
 
     /**
      * Constructor
      */
-    MetaData() {}
+    MetaData() : pageSize(DEFAULT_PAGE_SIZE), firstPageId(0), lastPageId(0) {}
 
     /**
      * Load object from byte string
@@ -81,6 +83,21 @@ public:
   virtual ~Storage() {} //<- Virtual destructor
 
   /**
+   * Open storage.
+   */
+  virtual void open() = 0;
+
+  /**
+   * Check if storage is open.
+   */
+  virtual bool is_open() = 0;
+
+  /**
+   * Close storage.
+   */
+  virtual void close() = 0;
+
+  /**
    * Read storage metadata information. In case no metadata information is
    * available a pointer to new metadata object is returned.
    *
@@ -89,19 +106,19 @@ public:
   virtual std::unique_ptr<MetaData> read() = 0;
 
   /**
+   * Write MetaData object to storage.
+   *
+   * @param metadata reference to MetaData object to be written
+   */
+  virtual void write(MetaData &metadata) = 0;
+
+  /**
    * Read Page with given identifier from storage.
    *
    * @param pageId page identifier
    * @returns pointer to Page object
    */
   virtual std::unique_ptr<Page> read(PageId pageId) = 0;
-
-  /**
-   * Write MetaData object to storage.
-   *
-   * @param metadata reference to MetaData object to be written
-   */
-  virtual void write(MetaData &metadata) = 0;
 
   /**
    * Write Page object to storage.
