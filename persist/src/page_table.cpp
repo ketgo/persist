@@ -130,8 +130,18 @@ Page &PageTable::get(PageId pageId) {
  * Page Table Session
  ******************/
 
-void PageTable::Session::stage(PageId pageId) {}
+void PageTable::Session::stage(PageId pageId) {
+  // Stage page ID
+  staged.insert(pageId);
+  // Mark page for commit
+  table.mark(pageId);
+}
 
-void PageTable::Session::commit() {}
+void PageTable::Session::commit() {
+  // Flush all staged pages
+  for (auto pageId : staged) {
+    table.flush(pageId);
+  }
+}
 
 } // namespace persist
