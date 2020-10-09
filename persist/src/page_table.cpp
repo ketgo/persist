@@ -65,38 +65,52 @@ void PageTable::put(std::unique_ptr<Page> &page) {
     map[pageId] = buffer.begin();
   } else {
     // Page ID present in cache. Updated the page slot
-    map[pageId]->page = std::move(page);
+    map.at(pageId)->page = std::move(page);
   }
 }
 
 void PageTable::mark(PageId pageId) {
-  // Check if page not present in buffer
-  if (map.find(pageId) == map.end()) {
-    throw PageNotFoundError(pageId);
-  }
-  map[pageId]->modified = true;
+  map.at(pageId)->modified = true;
   // TODO: Create and add MetaDataDiff
 }
 
 void PageTable::flush(PageId pageId) {
-  // Check if page not present in buffer
-  if (map.find(pageId) == map.end()) {
-    throw PageNotFoundError(pageId);
-  }
   // Save page if modified
-  if (map[pageId]->modified) {
+  if (map.at(pageId)->modified) {
     // TODO: Apply MetaDataDiff to metadata
-    storage.write(*(map[pageId]->page));
+    storage.write(*(map.at(pageId)->page));
     // Since the page has been saved it is now marked as un-modified.
-    map[pageId]->modified = false;
+    map.at(pageId)->modified = false;
   }
 }
 
 // Public Methods
 
-Page &PageTable::getFree() {}
+Page &PageTable::getNew() {
+  // Create new page and load it on buffer
+  PageId pageId = metadata->numPages + 1;
+  std::unique_ptr<Page> page =
+      std::make_unique<Page>(pageId, metadata->pageSize);
+  put(page);
 
-Page &PageTable::getNew() {}
+  // Update metadata
+  metadata->numPages += 1;
+  metadata->freePages.insert(pageId);
+
+  return get(pageId);
+}
+
+Page &PageTable::getFree() {
+  // Create new page if no free space page is available
+  if (metadata->freePages.empty()) {
+    return getNew();
+  }
+  // Get ID of page with free space. Currently the last ID in free space list is
+  // used.
+  PageId pageId = *std::prev(metadata->freePages.end());
+
+  return get(pageId);
+}
 
 Page &PageTable::get(PageId pageId) {
   // Check if page not present in buffer
@@ -107,9 +121,9 @@ Page &PageTable::get(PageId pageId) {
     put(page);
   }
   // Move the entry for given pageId to front in accordance with LRU strategy
-  buffer.splice(buffer.begin(), buffer, map[pageId]);
+  buffer.splice(buffer.begin(), buffer, map.at(pageId));
 
-  return *(map[pageId]->page);
+  return *(map.at(pageId)->page);
 }
 
 /*******************

@@ -141,19 +141,20 @@ public:
   PageTable(Storage &storage, uint64_t maxSize);
 
   /**
-   * Get a page with free space.
-   *
-   * @returns referece to page in buffer
-   */
-  Page &getFree();
-
-  /**
    * Get a new page. The method creates a new page and loads it into buffer. The
    * `numPage` attribute in the storage metadata is increased by one.
    *
    * @returns referece to page in buffer
    */
   Page &getNew();
+
+  /**
+   * Get a page with free space. If no such page is available then a new page is
+   * created.
+   *
+   * @returns referece to page in buffer
+   */
+  Page &getFree();
 
   /**
    * Get page with given ID. The page is loaded from the backend storage if it
