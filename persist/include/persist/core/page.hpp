@@ -114,7 +114,7 @@ public:
     uint64_t tail();
 
     /**
-     * Use up chunk of space of given size from the available free space in the 
+     * Use up chunk of space of given size from the available free space in the
      * Page. This operation allocates storage slot.
      *
      * @param size amount of space in bytes to occupy
@@ -149,11 +149,6 @@ private:
    * @brief Page header
    */
   Header header;
-
-  /**
-   * @brief Flag indicating if the block has been modified
-   */
-  bool modified;
 
   typedef std::unordered_map<PageSlotId, std::pair<RecordBlock, Header::Slot *>>
       RecordBlockCache;
@@ -208,13 +203,6 @@ public:
    * @param pageId previous page ID value to set
    */
   void setPrevPageId(PageId pageId) { header.prevPageId = pageId; }
-
-  /**
-   * Check if the page has been modified since being read from storage.
-   *
-   * @returns true if modifed else false
-   */
-  bool isModified() { return modified; }
 
   /**
    * Get free space in bytes available in the block.

@@ -34,7 +34,7 @@
 #include <list>
 #include <memory>
 
-#include <persist/core/common.hpp>
+#include <persist/core/metadata.hpp>
 #include <persist/core/page.hpp>
 
 namespace persist {
@@ -45,41 +45,6 @@ namespace persist {
  */
 class Storage {
 public:
-  /**
-   * Storage MetaData
-   *
-   * The metadata class contains the block size and free block Ids in the
-   * backend storage. This information is utilized by the data block buffer
-   * manager for efficient handling of data block lifecycle.
-   *
-   */
-  class MetaData : public Serializable {
-  public:
-    uint64_t pageSize;
-    PageId firstPageId;
-    PageId lastPageId;
-    std::list<PageId> freePages;
-
-    /**
-     * Constructor
-     */
-    MetaData() : pageSize(DEFAULT_PAGE_SIZE), firstPageId(0), lastPageId(0) {}
-
-    /**
-     * Load object from byte string
-     *
-     * @param input input buffer to load
-     */
-    void load(ByteBuffer &input);
-
-    /**
-     * Dump object as byte string
-     *
-     * @returns reference to the buffer with results
-     */
-    ByteBuffer &dump();
-  };
-
   virtual ~Storage() {} //<- Virtual destructor
 
   /**
@@ -122,6 +87,8 @@ public:
 
   /**
    * Write Page object to storage.
+   *
+   * TODO: Save metadata if the block is no longer free
    *
    * @param page reference to Page object to be written
    */

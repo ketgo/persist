@@ -229,8 +229,6 @@ TEST_F(PageTestFixture, TestAddRecordBlock) {
   pageHeader->createSlot(recordBlock_2.size());
   newDataSize = pageSize - block->freeSpace() - pageHeader->size();
   ASSERT_TRUE(newDataSize - oldDataSize == recordBlock_2.size());
-
-  ASSERT_EQ(block->isModified(), true);
 }
 
 TEST_F(PageTestFixture, TestRemoveRecordBlock) {
@@ -247,8 +245,6 @@ TEST_F(PageTestFixture, TestRemoveRecordBlock) {
   newDataSize = pageSize - block->freeSpace() - pageHeader->size();
   ASSERT_THROW(block->getRecordBlock(slotId_1), RecordBlockNotFoundError);
   ASSERT_TRUE(oldDataSize - newDataSize == recordBlock_1->size());
-
-  ASSERT_EQ(block->isModified(), true);
 }
 
 TEST_F(PageTestFixture, TestRemoveRecordBlockError) {
@@ -277,8 +273,6 @@ TEST_F(PageTestFixture, TestLoad) {
   ASSERT_EQ(_recordBlock_2.data, recordBlockData_2);
   ASSERT_TRUE(_recordBlock_2.getNextLocation().is_null());
   ASSERT_TRUE(_recordBlock_2.getPrevLocation().is_null());
-
-  ASSERT_EQ(_block.isModified(), false);
 }
 
 TEST_F(PageTestFixture, TestLoadError) {

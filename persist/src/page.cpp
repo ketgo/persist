@@ -144,18 +144,17 @@ ByteBuffer &Page::Header::dump() {
  * Page
  ***********************/
 
-Page::Page() : modified(false) {
+Page::Page() {
   // Resize internal buffer to specified block size
   buffer.resize(DEFAULT_PAGE_SIZE);
 }
 
-Page::Page(PageId pageId) : header(pageId), modified(false) {
+Page::Page(PageId pageId) : header(pageId) {
   // Resize internal buffer to specified block size
   buffer.resize(DEFAULT_PAGE_SIZE);
 }
 
-Page::Page(PageId pageId, uint64_t pageSize)
-    : header(pageId, pageSize), modified(false) {
+Page::Page(PageId pageId, uint64_t pageSize) : header(pageId, pageSize) {
   // Check block size greater than minimum size
   if (pageSize < MINIMUM_PAGE_SIZE) {
     throw PageSizeError(pageSize);
@@ -181,8 +180,6 @@ PageSlotId Page::addRecordBlock(RecordBlock &recordBlock) {
   // Insert record block at slot
   // TODO: Use move simantic instead of copy
   cache.insert({slot->id, {recordBlock, slot}});
-  // Set the block to modified
-  modified = true;
 
   return slot->id;
 }
@@ -197,8 +194,6 @@ void Page::removeRecordBlock(PageSlotId slotId) {
   header.freeSlot(it->second.second);
   // Removing record block from cache
   cache.erase(it);
-  // Set the block to modified
-  modified = true;
 }
 
 void Page::load(ByteBuffer &input) {

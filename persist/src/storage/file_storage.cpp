@@ -68,12 +68,11 @@ void FileStorage::close() {
   }
 }
 
-std::unique_ptr<Storage::MetaData> FileStorage::read() {
+std::unique_ptr<MetaData> FileStorage::read() {
   // Open metadata file
   std::fstream metadataFile;
   std::string metadataPath = path + ".metadata";
-  std::unique_ptr<Storage::MetaData> metadataPtr =
-      std::make_unique<Storage::MetaData>();
+  std::unique_ptr<MetaData> metadataPtr = std::make_unique<MetaData>();
   // Set default block size value in metadata. This gets updated once the
   // content of the saved metadata is loaded
   metadataPtr->pageSize = blockSize;
@@ -137,7 +136,7 @@ std::unique_ptr<Page> FileStorage::read(PageId blockId) {
   return dataBlockPtr;
 }
 
-void FileStorage::write(Storage::MetaData &metadata) {
+void FileStorage::write(MetaData &metadata) {
   ByteBuffer &buffer = metadata.dump();
 
   // Open metadata file

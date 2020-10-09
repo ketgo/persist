@@ -91,14 +91,14 @@ public:
    *
    * @return pointer to MetaData object
    */
-  std::unique_ptr<Storage::MetaData> read() override;
+  std::unique_ptr<MetaData> read() override;
 
   /**
    * Write MetaData object to storage file.
    *
    * @param metadata reference to MetaData object to be written
    */
-  void write(Storage::MetaData &metadata) override;
+  void write(MetaData &metadata) override;
 
   /**
    * Reads Page with given identifier from storage file.

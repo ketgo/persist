@@ -31,8 +31,10 @@
 
 #include <list>
 #include <memory>
+#include <set>
 #include <unordered_map>
 
+#include <persist/core/metadata.hpp>
 #include <persist/core/page.hpp>
 #include <persist/core/storage/base.hpp>
 
@@ -41,37 +43,92 @@
 namespace persist {
 
 /**
- * Page Buffer Type
- */
-typedef std::list<std::unique_ptr<Page>> PageBuffer;
-
-/**
  * Page Table Class
  *
  * The page table is a buffer of pages loaded in memory. It is responsible for
  * reading and writing modified pages to backend storage in compliance with LRU
  * page relplacement policy.
- *
- * - Get block with given identifer
- * - Get block with free space
- * - Create new block if no blocks with free space are available
- * - Track modified blocks and write them to storage
  */
 class PageTable {
 private:
-  Storage &storage;                            //<- backend storage
-  std::unique_ptr<Storage::MetaData> metadata; //<- page storage metadata
-  PageBuffer buffer;                           //<- buffer of pages
-  std::unordered_map<PageId, PageBuffer::iterator>
-      map;          //<- Stores mapped references to pages in the buffer
-  uint64_t maxSize; //<- maximum size of buffer
+  /**
+   * Page Table Session Class
+   *
+   * Any operations perfored on the page table are grouped under a session to
+   * facilitates atomicity and concurency control.
+   */
+  class Session {
+  private:
+    /**
+     * @brief Reference to page table associated with the session.
+     */
+    PageTable &table;
+    /**
+     * @brief Set of staged page ID.
+     */
+    std::set<PageId> staged;
+
+  public:
+    /**
+     * Constructor
+     */
+    Session(PageTable &table) : table(table) {}
+
+    /**
+     * Stage the page with given ID for commit. This adds the page ID to the
+     * stage list and marks the corresponding page as modified.
+     *
+     * @param pageId page identifier
+     */
+    void stage(PageId pageId);
+
+    /**
+     * Persist all modified pages and metadata to backend storage.
+     */
+    void commit();
+  };
+
+  /**
+   * Page Slot Struct
+   *
+   * The data structure contains page pointer and status information. A
+   * collection of slots make up the memory buffer of a page table.
+   */
+  struct PageSlot {
+    std::unique_ptr<Page> page;
+    bool modified;
+  };
+
+  Storage &storage;                   //<- backend storage
+  std::unique_ptr<MetaData> metadata; //<- storage metadata
+  uint64_t maxSize;                   //<- maximum size of buffer
+
+  std::list<PageSlot> buffer; //<- buffer of page slots
+  std::unordered_map<PageId, std::list<PageSlot>::iterator>
+      map; //<- stores mapped references to pages in the buffer
 
   /**
    * Add page to buffer.
    *
-   * @param dataBlock pointer reference to page
+   * @param page pointer reference to page
    */
-  void put(std::unique_ptr<Page> &dataBlock);
+  void put(std::unique_ptr<Page> &page);
+
+  /**
+   * Mark a page with given ID as modified and the free space map in the storage
+   * metadata is updated.
+   *
+   * @param pageId page identifier
+   */
+  void mark(PageId pageId);
+
+  /**
+   * Save a single page to backend storage. The page will be stored only
+   * if it is marked as modified.
+   *
+   * @param pageId page identifer
+   */
+  void flush(PageId pageId);
 
 public:
   /**
@@ -84,12 +141,19 @@ public:
   PageTable(Storage &storage, uint64_t maxSize);
 
   /**
-   * Get a page with free space. If no such page is available a new page is
-   * created and loaded in buffer.
+   * Get a page with free space.
    *
    * @returns referece to page in buffer
    */
-  Page &get();
+  Page &getFree();
+
+  /**
+   * Get a new page. The method creates a new page and loads it into buffer. The
+   * `numPage` attribute in the storage metadata is increased by one.
+   *
+   * @returns referece to page in buffer
+   */
+  Page &getNew();
 
   /**
    * Get page with given ID. The page is loaded from the backend storage if it
@@ -102,9 +166,11 @@ public:
   Page &get(PageId pageId);
 
   /**
-   * Save all modifed pages in the buffer to backend storage.
+   * @brief Creates a Session object
+   *
+   * @return Session new session object
    */
-  void flush();
+  Session createSession() { return Session(*this); }
 };
 
 } // namespace persist

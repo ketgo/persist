@@ -22,9 +22,14 @@
  * SOFTWARE.
  */
 
+#include <persist/core/exceptions.hpp>
 #include <persist/core/page_table.hpp>
 
 namespace persist {
+
+/********************
+ * Page Table
+ *******************/
 
 PageTable::PageTable(Storage &storage)
     : storage(storage), maxSize(DEFAULT_MAX_BUFFER_SIZE) {
@@ -38,16 +43,16 @@ PageTable::PageTable(Storage &storage, uint64_t maxSize)
   metadata = storage.read();
 }
 
+// Private Methods
+
 void PageTable::put(std::unique_ptr<Page> &page) {
   // If buffer is full then remove the LRU page
   if (buffer.size() == maxSize) {
     // Get last page in buffer
-    std::unique_ptr<Page> &lruPage = buffer.back();
-    PageId lruPageId = lruPage->getId();
-    // Write to storage if page is updated
-    if (lruPage->isModified()) {
-      storage.write(*lruPage);
-    }
+    PageSlot &lruPageSlot = buffer.back();
+    PageId lruPageId = lruPageSlot.page->getId();
+    // Write page to storage if modified
+    flush(lruPageId);
     // Remove page from buffer
     buffer.erase(map[lruPageId]);
     map.erase(lruPageId);
@@ -55,18 +60,43 @@ void PageTable::put(std::unique_ptr<Page> &page) {
   PageId pageId = page->getId();
   // Check if pageId present in cache
   if (map.find(pageId) == map.end()) {
-    // Page ID not present in cache
-    buffer.push_front(std::move(page));
+    // Page ID not present in cache. Insert it into a new slot in the buffer.
+    buffer.push_front({std::move(page), false});
     map[pageId] = buffer.begin();
   } else {
-    // Page ID present in cache
-    *map[pageId] = std::move(page);
+    // Page ID present in cache. Updated the page slot
+    map[pageId]->page = std::move(page);
   }
 }
 
-Page &PageTable::get() {
-  // TODO
+void PageTable::mark(PageId pageId) {
+  // Check if page not present in buffer
+  if (map.find(pageId) == map.end()) {
+    throw PageNotFoundError(pageId);
+  }
+  map[pageId]->modified = true;
+  // TODO: Create and add MetaDataDiff
 }
+
+void PageTable::flush(PageId pageId) {
+  // Check if page not present in buffer
+  if (map.find(pageId) == map.end()) {
+    throw PageNotFoundError(pageId);
+  }
+  // Save page if modified
+  if (map[pageId]->modified) {
+    // TODO: Apply MetaDataDiff to metadata
+    storage.write(*(map[pageId]->page));
+    // Since the page has been saved it is now marked as un-modified.
+    map[pageId]->modified = false;
+  }
+}
+
+// Public Methods
+
+Page &PageTable::getFree() {}
+
+Page &PageTable::getNew() {}
 
 Page &PageTable::get(PageId pageId) {
   // Check if page not present in buffer
@@ -79,9 +109,15 @@ Page &PageTable::get(PageId pageId) {
   // Move the entry for given pageId to front in accordance with LRU strategy
   buffer.splice(buffer.begin(), buffer, map[pageId]);
 
-  return *(*map[pageId]);
+  return *(map[pageId]->page);
 }
 
-void PageTable::flush() {}
+/*******************
+ * Page Table Session
+ ******************/
+
+void PageTable::Session::stage(PageId pageId) {}
+
+void PageTable::Session::commit() {}
 
 } // namespace persist

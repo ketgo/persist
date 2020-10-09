@@ -98,8 +98,8 @@ private:
   std::string msg;
 
 public:
-  PageNotFoundError(persist::PageId &blockId)
-      : msg(std::string("Data Block '") + std::to_string(blockId) +
+  PageNotFoundError(persist::PageId &pageId)
+      : msg(std::string("Data Block '") + std::to_string(pageId) +
             std::string("' not found.")) {}
 
   const char *what() const throw() { return msg.c_str(); }
@@ -115,8 +115,8 @@ private:
   std::string msg;
 
 public:
-  PageSizeError(uint64_t &blockSize)
-      : msg(std::string("Data Block size '") + std::to_string(blockSize) +
+  PageSizeError(uint64_t &pageSize)
+      : msg(std::string("Data Block size '") + std::to_string(pageSize) +
             std::string("' less then minimum required size of '") +
             std::to_string(MINIMUM_PAGE_SIZE) + std::string("'.")) {}
 
@@ -136,6 +136,23 @@ public:
   MetaDataParseError() : msg("MetaData parsing error.") {}
   MetaDataParseError(const char *msg) : msg(msg) {}
   MetaDataParseError(std::string &msg) : msg(msg) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
+ * MetaDataDelta Parsing Error
+ *
+ * This error is thrown if unable to parse storage metadata delta.
+ */
+class MetaDataDeltaParseError : public std::exception {
+private:
+  std::string msg;
+
+public:
+  MetaDataDeltaParseError() : msg("MetaDataDelta parsing error.") {}
+  MetaDataDeltaParseError(const char *msg) : msg(msg) {}
+  MetaDataDeltaParseError(std::string &msg) : msg(msg) {}
 
   const char *what() const throw() { return msg.c_str(); }
 };

@@ -98,16 +98,16 @@ TEST_F(NewFileStorageTestFixture, TestWriteBlock) {
 }
 
 TEST_F(NewFileStorageTestFixture, TestReadMetaData) {
-  std::unique_ptr<Storage::MetaData> metadata = readStorage->read();
+  std::unique_ptr<MetaData> metadata = readStorage->read();
 
   ASSERT_EQ(metadata->pageSize, blockSize);
   ASSERT_EQ(metadata->firstPageId, 0);
-  ASSERT_EQ(metadata->lastPageId, 0);
+  ASSERT_EQ(metadata->numPages, 0);
   ASSERT_EQ(metadata->freePages.size(), 0);
 }
 
 TEST_F(NewFileStorageTestFixture, TestWriteMetaData) {
-  Storage::MetaData metadata;
+  MetaData metadata;
   metadata.pageSize = blockSize;
   metadata.freePages = {1, 2, 3};
 
@@ -121,12 +121,12 @@ TEST_F(NewFileStorageTestFixture, TestWriteMetaData) {
   buffer.resize(fileSize);
   file::read(file, buffer, 0);
 
-  Storage::MetaData _metadata;
+  MetaData _metadata;
   _metadata.load(buffer);
 
   ASSERT_EQ(metadata.freePages, _metadata.freePages);
   ASSERT_EQ(metadata.firstPageId, _metadata.firstPageId);
-  ASSERT_EQ(metadata.lastPageId, _metadata.lastPageId);
+  ASSERT_EQ(metadata.numPages, _metadata.numPages);
   ASSERT_EQ(metadata.pageSize, _metadata.pageSize);
 }
 
@@ -182,24 +182,24 @@ TEST_F(ExistingFileStorageTestFixture, TestWriteBlock) {
 }
 
 TEST_F(ExistingFileStorageTestFixture, TestReadMetaData) {
-  std::unique_ptr<Storage::MetaData> metadata = readStorage->read();
-  Storage::MetaData _metadata;
+  std::unique_ptr<MetaData> metadata = readStorage->read();
+  MetaData _metadata;
   _metadata.pageSize = 1024; // Page in saved metadata
   _metadata.firstPageId = 1;
-  _metadata.lastPageId = 10;
+  _metadata.numPages = 10;
   _metadata.freePages = {1, 2, 3};
 
   ASSERT_EQ(metadata->pageSize, _metadata.pageSize);
   ASSERT_EQ(metadata->firstPageId, _metadata.firstPageId);
-  ASSERT_EQ(metadata->lastPageId, _metadata.lastPageId);
+  ASSERT_EQ(metadata->numPages, _metadata.numPages);
   ASSERT_EQ(metadata->freePages, _metadata.freePages);
 }
 
 TEST_F(ExistingFileStorageTestFixture, TestWriteMetaData) {
-  Storage::MetaData metadata;
+  MetaData metadata;
   metadata.pageSize = 1024;
   metadata.firstPageId = 1;
-  metadata.lastPageId = 10;
+  metadata.numPages = 10;
   metadata.freePages = {1, 2, 3};
 
   writeStorage->write(metadata);
@@ -212,11 +212,11 @@ TEST_F(ExistingFileStorageTestFixture, TestWriteMetaData) {
   buffer.resize(fileSize);
   file::read(file, buffer, 0);
 
-  Storage::MetaData _metadata;
+  MetaData _metadata;
   _metadata.load(buffer);
 
   ASSERT_EQ(metadata.freePages, _metadata.freePages);
   ASSERT_EQ(metadata.firstPageId, _metadata.firstPageId);
-  ASSERT_EQ(metadata.lastPageId, _metadata.lastPageId);
+  ASSERT_EQ(metadata.numPages, _metadata.numPages);
   ASSERT_EQ(metadata.pageSize, _metadata.pageSize);
 }

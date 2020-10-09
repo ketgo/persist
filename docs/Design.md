@@ -46,7 +46,7 @@ The following uses cases are supported:
 
 - Update an existing object in the persistent collection.
 
-- Search objects in persistent collection.
+- Search objects in a persistent collection.
 
 The proposed API for each use case is the rest of the document.
 
@@ -66,16 +66,18 @@ This is any C++ data type that can be parsed from and into a binary form. The pa
 
 A `Cursor` is just an iterator on persistent collections. It is used to traverse the collection while pointing to the stored objects. Each collection type implements its version of the cursor.
 
+#### Record Manager
+
+The record manager handles read and write operations of [objects](#objects) on [pages](#page). Internally it interfaces with the buffer manager to access the required pages. One or more operations performed by the record manager are logged for concurrency control and durability. The following API is exposed by the record manager:
+
+```c++
+```
+
 #### Buffer Manager
 
 The buffer manager is responsible for loading [pages](#page) from [backend storage](#backend-storage) and writing modified [pages](#page) back. It utilizes the exposed API by the `Storage` interface to achieve its goals. The buffer size is kept fixed and the least recently used (LRU) policy is used to replace a page. If the page has been modified since the last read, it is written back onto the storage. The following API are exposed by the manager:
 
 ```c++
-/**
- * Get a page containing free space in buffer. If no such page exists, either it loads an existing one from storage or facilitates creation of a new page.
- */
-Page& get();
-
 /**
  * Get page with specified ID in buffer. If no such page exists, it either loads one from backend storage or throws PageNotFound exception.
  */
@@ -88,15 +90,36 @@ A persistent collection can be stored upon a volatile or in-volatile storage med
 
 For efficient input-output performance, the storage is logically divided into contiguous blocks of space called [pages](#page). Each page consists of metadata which facilitates reading and writing [record blocks](#record-block).
 
+The `Storage` interface exposes the following API:
+
+```c++
+/**
+ * Read Page with given identifier from storage.
+ *
+ * @param pageId page identifier
+ * @returns pointer to Page object
+ */
+std::unique_ptr<Page> read(PageId pageId) = 0;
+
+/**
+ * Write Page object to storage.
+ *
+ * @param page reference to Page object to be written
+ */
+void write(Page &page) = 0;
+```
+
+#### Storage MetaData
+
 #### Page
 
 A Page is a logical chunk of space on backend storage. Each page comprises of a header, free space, and stored [record blocks](#record-block). The page header contains the page unique identifier along with the next and previous page identifiers in case the page is linked. It also contains entries of offset values indicating where each record-block in the page is located.
 
-#### Page MetaData
-
-#### Storage MetaData
+#### Page Header
 
 #### Record Block
+
+#### Record Block Header
 
 ### Operations Manager
 
