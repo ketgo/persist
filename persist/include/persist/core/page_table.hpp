@@ -96,6 +96,7 @@ private:
    */
   struct PageSlot {
     std::unique_ptr<Page> page;
+    std::unique_ptr<MetaDataDelta> metaDelta;
     bool modified;
   };
 

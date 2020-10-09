@@ -30,6 +30,11 @@
 
 #include <persist/core/common.hpp>
 
+/**
+ * @brief Minimum size expected by a record block in bytes
+ */
+#define MIN_RECORD_BLOCK_SIZE 150
+
 namespace persist {
 
 /**

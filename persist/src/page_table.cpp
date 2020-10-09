@@ -24,6 +24,7 @@
 
 #include <persist/core/exceptions.hpp>
 #include <persist/core/page_table.hpp>
+#include <persist/core/record_block.hpp>
 
 namespace persist {
 
@@ -61,7 +62,8 @@ void PageTable::put(std::unique_ptr<Page> &page) {
   // Check if pageId present in cache
   if (map.find(pageId) == map.end()) {
     // Page ID not present in cache. Insert it into a new slot in the buffer.
-    buffer.push_front({std::move(page), false});
+    buffer.push_front(
+        {std::move(page), std::make_unique<MetaDataDelta>(), false});
     map[pageId] = buffer.begin();
   } else {
     // Page ID present in cache. Updated the page slot
@@ -71,13 +73,28 @@ void PageTable::put(std::unique_ptr<Page> &page) {
 
 void PageTable::mark(PageId pageId) {
   map.at(pageId)->modified = true;
-  // TODO: Create and add MetaDataDiff
+  // Check if page has free space and update metadata delta accordingly
+  if (map.at(pageId)->page->freeSpace() > MIN_RECORD_BLOCK_SIZE) {
+    map.at(pageId)->metaDelta->addFreePage(pageId);
+  } else {
+    map.at(pageId)->metaDelta->removeFreePage(pageId);
+  }
 }
 
 void PageTable::flush(PageId pageId) {
   // Save page if modified
   if (map.at(pageId)->modified) {
-    // TODO: Apply MetaDataDiff to metadata
+    // NOTE: System failure can lead to invalid state of the storage. That is,
+    // the metadata gets updated but the page insert fails. Need failure
+    // recovery via operation logs and commit checkpoints.
+
+    // Persist updated metadata
+    // Refactor: Keep copy of persisted metadata in cache
+    std::unique_ptr<MetaData> _metadata = storage.read();
+    map.at(pageId)->metaDelta->apply(*_metadata);
+    storage.write(*_metadata);
+
+    // Persist page
     storage.write(*(map.at(pageId)->page));
     // Since the page has been saved it is now marked as un-modified.
     map.at(pageId)->modified = false;
@@ -92,6 +109,9 @@ Page &PageTable::getNew() {
   std::unique_ptr<Page> page =
       std::make_unique<Page>(pageId, metadata->pageSize);
   put(page);
+  // Set page slot metadata delta
+  map.at(pageId)->metaDelta->numPagesUp();
+  map.at(pageId)->metaDelta->addFreePage(pageId);
 
   // Update metadata
   metadata->numPages += 1;

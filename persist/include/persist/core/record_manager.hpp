@@ -29,16 +29,9 @@
 #include <string>
 
 #include <persist/core/page_table.hpp>
+#include <persist/core/record_block.hpp>
 
 namespace persist {
-
-/**
- * Record Location
- */
-struct RecordLocation {
-  PageId pageId;
-  PageSlotId slotId;
-};
 
 /**
  * Record Manager Class
@@ -63,7 +56,7 @@ public:
    * @param buffer string buffer into which the record will be stored
    * @param location record starting location
    */
-  void get(std::string &buffer, RecordLocation location);
+  void get(std::string &buffer, RecordBlock::Location location);
 
   /**
    * @brief Insert record stored in buffer to storage. The method returns the
@@ -72,7 +65,7 @@ public:
    * @param buffer string buffer containing record data
    * @return RecordLocation inserted location of the record
    */
-  RecordLocation insert(std::string &buffer);
+  RecordBlock::Location insert(std::string &buffer);
 
   /**
    * @brief Update record stored at given location.
@@ -80,14 +73,14 @@ public:
    * @param buffer buffer containing updated record
    * @param location starting location of record
    */
-  void update(std::string &buffer, RecordLocation location);
+  void update(std::string &buffer, RecordBlock::Location location);
 
   /**
    * @brief Remove record stored at given location.
    *
    * @param location starting location of record
    */
-  void remove(RecordLocation location);
+  void remove(RecordBlock::Location location);
 };
 
 } // namespace persist
