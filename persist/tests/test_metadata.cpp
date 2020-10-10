@@ -42,21 +42,18 @@ protected:
   std::vector<uint8_t> input;
   std::unique_ptr<MetaData> metadata;
   const uint64_t pageSize = 1024;
-  const PageId firstPageId = 1;
-  const PageId numPages = 10;
+  const uint64_t numPages = 10;
   const std::set<PageId> freeBlocks = {0, 1, 2, 3};
 
   void SetUp() override {
     metadata = std::make_unique<MetaData>();
     metadata->pageSize = pageSize;
-    metadata->firstPageId = firstPageId;
     metadata->numPages = numPages;
     metadata->freePages = freeBlocks;
-    input = {123, 105, 11,  102, 105, 114, 115, 116, 80,  97, 103, 101, 73,
-             100, 105, 1,   105, 9,   102, 114, 101, 101, 80, 97,  103, 101,
-             115, 91,  105, 0,   105, 1,   105, 2,   105, 3,  93,  105, 8,
-             110, 117, 109, 80,  97,  103, 101, 115, 105, 10, 105, 8,   112,
-             97,  103, 101, 83,  105, 122, 101, 73,  4,   0,  125};
+    input = {123, 105, 9,   102, 114, 101, 101, 80,  97,  103, 101, 115,
+             91,  105, 0,   105, 1,   105, 2,   105, 3,   93,  105, 8,
+             110, 117, 109, 80,  97,  103, 101, 115, 105, 10,  105, 8,
+             112, 97,  103, 101, 83,  105, 122, 101, 73,  4,   0,   125};
   }
 };
 
@@ -65,7 +62,6 @@ TEST_F(MetaDataTestFixture, TestLoad) {
   _metadata.load(input);
 
   ASSERT_EQ(_metadata.pageSize, metadata->pageSize);
-  ASSERT_EQ(_metadata.firstPageId, metadata->firstPageId);
   ASSERT_EQ(_metadata.numPages, metadata->numPages);
   ASSERT_EQ(_metadata.freePages, metadata->freePages);
 }
@@ -103,7 +99,6 @@ protected:
     // Create metadata
     metadata = std::make_unique<MetaData>();
     metadata->pageSize = pageSize;
-    metadata->firstPageId = firstPageId;
     metadata->numPages = numPages;
     metadata->freePages = freeBlocks;
 
@@ -120,7 +115,6 @@ TEST_F(MetaDataDeltaTestFixture, TestApplyNoChange) {
   delta->apply(*metadata);
 
   ASSERT_EQ(metadata->pageSize, pageSize);
-  ASSERT_EQ(metadata->firstPageId, firstPageId);
   ASSERT_EQ(metadata->numPages, numPages);
   ASSERT_EQ(metadata->freePages, freeBlocks);
 }
@@ -132,7 +126,6 @@ TEST_F(MetaDataDeltaTestFixture, TestApply) {
   delta->apply(*metadata);
 
   ASSERT_EQ(metadata->pageSize, pageSize);
-  ASSERT_EQ(metadata->firstPageId, firstPageId);
   ASSERT_EQ(metadata->numPages, numPages + 1);
   ASSERT_EQ(metadata->freePages, std::set<PageId>({0, 1, 2, 4}));
 
@@ -140,7 +133,6 @@ TEST_F(MetaDataDeltaTestFixture, TestApply) {
   delta->apply(*metadata);
 
   ASSERT_EQ(metadata->pageSize, pageSize);
-  ASSERT_EQ(metadata->firstPageId, firstPageId);
   ASSERT_EQ(metadata->numPages, numPages + 2); //<- double increase
   ASSERT_EQ(metadata->freePages, std::set<PageId>({0, 1, 2, 4})); //<- no change
 
@@ -148,7 +140,6 @@ TEST_F(MetaDataDeltaTestFixture, TestApply) {
   delta->apply(*metadata);
 
   ASSERT_EQ(metadata->pageSize, pageSize);
-  ASSERT_EQ(metadata->firstPageId, firstPageId);
   ASSERT_EQ(metadata->numPages, numPages + 3); //<- tripple increase
   ASSERT_EQ(metadata->freePages, std::set<PageId>({0, 1, 2, 4})); //<- no change
 }
@@ -160,7 +151,6 @@ TEST_F(MetaDataDeltaTestFixture, TestUndo) {
   delta->undo(*metadata);
 
   ASSERT_EQ(metadata->pageSize, pageSize);
-  ASSERT_EQ(metadata->firstPageId, firstPageId);
   ASSERT_EQ(metadata->numPages, numPages - 1);
   ASSERT_EQ(metadata->freePages, freeBlocks); //<- no change
 
@@ -168,7 +158,6 @@ TEST_F(MetaDataDeltaTestFixture, TestUndo) {
   delta->undo(*metadata);
 
   ASSERT_EQ(metadata->pageSize, pageSize);
-  ASSERT_EQ(metadata->firstPageId, firstPageId);
   ASSERT_EQ(metadata->numPages, numPages - 2); //<- double decrease
   ASSERT_EQ(metadata->freePages, std::set<PageId>({0, 1, 3}));
 }
@@ -179,7 +168,6 @@ TEST_F(MetaDataDeltaTestFixture, TestLoad) {
   _delta.apply(*metadata);
 
   ASSERT_EQ(metadata->pageSize, pageSize);
-  ASSERT_EQ(metadata->firstPageId, firstPageId);
   ASSERT_EQ(metadata->numPages, numPages + 1);
   ASSERT_EQ(metadata->freePages, std::set<PageId>({0, 1, 2}));
 }

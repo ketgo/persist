@@ -45,7 +45,6 @@ std::unique_ptr<MetaData> MemoryStorage::read() {
 
 void MemoryStorage::write(MetaData &metadata) {
   this->metadata.pageSize = metadata.pageSize;
-  this->metadata.firstPageId = metadata.firstPageId;
   this->metadata.numPages = metadata.numPages;
   this->metadata.freePages = metadata.freePages;
 }

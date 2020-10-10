@@ -49,7 +49,6 @@ void MetaData::load(ByteBuffer &input) {
   try {
     json data = json::from_ubjson(input, false);
     data.at("pageSize").get_to(pageSize);
-    data.at("firstPageId").get_to(firstPageId);
     data.at("numPages").get_to(numPages);
     data.at("freePages").get_to(freePages);
   } catch (json::parse_error &err) {
@@ -62,7 +61,6 @@ ByteBuffer &MetaData::dump() {
   try {
     json data;
     data["pageSize"] = pageSize;
-    data["firstPageId"] = firstPageId;
     data["numPages"] = numPages;
     data["freePages"] = freePages;
     // Convert JSON to UBJSON

@@ -73,8 +73,8 @@ std::unique_ptr<MetaData> FileStorage::read() {
   std::fstream metadataFile;
   std::string metadataPath = path + ".metadata";
   std::unique_ptr<MetaData> metadataPtr = std::make_unique<MetaData>();
-  // Set default block size value in metadata. This gets updated once the
-  // content of the saved metadata is loaded
+  // Set block size value in metadata. This gets updated once the content of
+  // the saved metadata is loaded
   metadataPtr->pageSize = pageSize;
 
   metadataFile = file::open(metadataPath, std::ios::in | std::ios::binary);

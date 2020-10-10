@@ -54,12 +54,6 @@ public:
    */
   uint64_t pageSize;
   /**
-   * @brief ID of the first page in the storage.
-   *
-   * NOTE: IF set to '0' then there is no first page.
-   */
-  PageId firstPageId;
-  /**
    * @brief Number of pages in the storage.
    *
    */
@@ -74,7 +68,7 @@ public:
   /**
    * Constructor
    */
-  MetaData() : pageSize(DEFAULT_PAGE_SIZE), firstPageId(0), numPages(0) {}
+  MetaData() : pageSize(DEFAULT_PAGE_SIZE), numPages(0) {}
 
   /**
    * Load object from byte string

@@ -39,12 +39,34 @@ using namespace persist;
 
 class PageTableTestFixture : public ::testing::Test {
 protected:
-  const uint64_t maxSize = 100;
+  const uint64_t pageSize = DEFAULT_PAGE_SIZE;
+  const uint64_t maxSize = 2;
+  std::unique_ptr<Page> page_1, page_2, page_3;
+  std::unique_ptr<MetaData> metadata;
   std::unique_ptr<PageTable> table;
   std::unique_ptr<MemoryStorage> storage;
 
   void SetUp() override {
-    storage = std::make_unique<MemoryStorage>();
+    // setting up pages
+    page_1 = std::make_unique<Page>(1, pageSize);
+    page_2 = std::make_unique<Page>(2, pageSize);
+    page_3 = std::make_unique<Page>(3, pageSize);
+
+    // setting up metadata
+    metadata = std::make_unique<MetaData>();
+    metadata->pageSize = pageSize;
+    metadata->numPages = 3;
+    metadata->freePages.insert(1);
+    metadata->freePages.insert(2);
+    metadata->freePages.insert(3);
+
+    // setting up storage
+    storage = std::make_unique<MemoryStorage>(pageSize);
+    storage->write(*page_1);
+    storage->write(*page_2);
+    storage->write(*page_3);
+    storage->write(*metadata);
+
     table = std::make_unique<PageTable>(*storage, maxSize);
   }
 };

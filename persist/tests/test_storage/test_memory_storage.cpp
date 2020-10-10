@@ -86,7 +86,6 @@ TEST_F(MemoryStorageTestFixture, TestReadWriteMetaData) {
   std::unique_ptr<MetaData> _metadata = storage->read();
 
   ASSERT_EQ(metadata.freePages, _metadata->freePages);
-  ASSERT_EQ(metadata.firstPageId, _metadata->firstPageId);
   ASSERT_EQ(metadata.numPages, _metadata->numPages);
   ASSERT_EQ(metadata.pageSize, _metadata->pageSize);
 }
