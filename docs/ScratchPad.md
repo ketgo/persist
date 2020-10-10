@@ -1,8 +1,10 @@
-# Page Table Diagrams
+# Scratch Pad
+
+## Page Table Diagrams
 
 The following diagrams depict the pages on backend storage before and while different operations are performed.
 
-## Initial Diagram
+### Initial Diagram
 
 Page 1
 +----+------------+---------+--+---+
@@ -19,7 +21,7 @@ Page 3
 
 Free Pages ID: 3
 
-## Delete
+### Delete
 
 Operation: Delete R4
 
@@ -38,7 +40,7 @@ Page 3
 
 Free Pages ID: 3, 2, 1
 
-## Insert
+### Insert
 
 Operation: Insert R7
 
@@ -56,3 +58,18 @@ Page 3
 +----+---------------------+--+----+
 
 Free Pages ID: 3, 1
+
+## Page Table Transaction
+
+List of operations:
+
+- Get Page with ID
+
+- Get New Page
+  - Create a new page
+  - Update storage metadata
+
+- Get a Page with free space
+
+- Mark Page as dirty
+  - Updates metadata if free space is available in the page.

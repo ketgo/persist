@@ -31,7 +31,7 @@
 
 #include <fstream>
 
-#include <persist/common.hpp>
+#include <persist/core/common.hpp>
 
 namespace persist {
 

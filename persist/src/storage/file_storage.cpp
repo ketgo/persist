@@ -30,8 +30,8 @@
 
 #include "utility.hpp"
 
-#include <persist/exceptions.hpp>
-#include <persist/storage/file_storage.hpp>
+#include <persist/core/exceptions.hpp>
+#include <persist/core/storage/file_storage.hpp>
 
 namespace persist {
 
@@ -42,37 +42,24 @@ namespace persist {
 FileStorage::FileStorage() {}
 
 FileStorage::FileStorage(std::string path)
-    : path(path), blockSize(DEFAULT_DATA_BLOCK_SIZE) {
-  // Open storage file
-  open();
-}
+    : path(path), blockSize(DEFAULT_PAGE_SIZE) {}
 
 FileStorage::FileStorage(const char *path)
-    : path(path), blockSize(DEFAULT_DATA_BLOCK_SIZE) {
-  // Open storage file
-  open();
-}
+    : path(path), blockSize(DEFAULT_PAGE_SIZE) {}
 
 FileStorage::FileStorage(std::string path, uint64_t blockSize)
-    : path(path), blockSize(blockSize) {
-  // Open storage file
-  open();
-}
+    : path(path), blockSize(blockSize) {}
 
 FileStorage::FileStorage(const char *path, uint64_t blockSize)
-    : path(path), blockSize(blockSize) {
-  // Open storage file
-  open();
-}
+    : path(path), blockSize(blockSize) {}
 
-FileStorage::~FileStorage() {
-  // Close opened storage file
-  close();
-}
+FileStorage::~FileStorage() {}
 
 void FileStorage::open() {
   file = file::open(path, std::ios::binary | std::ios::in | std::ios::out);
 }
+
+bool FileStorage::is_open() { return file.is_open(); }
 
 void FileStorage::close() {
   // Close storage file if opened
@@ -81,15 +68,14 @@ void FileStorage::close() {
   }
 }
 
-std::unique_ptr<Storage::MetaData> FileStorage::read() {
+std::unique_ptr<MetaData> FileStorage::read() {
   // Open metadata file
   std::fstream metadataFile;
   std::string metadataPath = path + ".metadata";
-  std::unique_ptr<Storage::MetaData> metadataPtr =
-      std::make_unique<Storage::MetaData>();
+  std::unique_ptr<MetaData> metadataPtr = std::make_unique<MetaData>();
   // Set default block size value in metadata. This gets updated once the
   // content of the saved metadata is loaded
-  metadataPtr->blockSize = blockSize;
+  metadataPtr->pageSize = blockSize;
 
   metadataFile = file::open(metadataPath, std::ios::in | std::ios::binary);
 
@@ -112,7 +98,7 @@ std::unique_ptr<Storage::MetaData> FileStorage::read() {
 
   // Load MetaData object
   metadataPtr->load(buffer);
-  blockSize = metadataPtr->blockSize;
+  blockSize = metadataPtr->pageSize;
 
   // Close metadata file
   metadataFile.close();
@@ -120,7 +106,7 @@ std::unique_ptr<Storage::MetaData> FileStorage::read() {
   return metadataPtr;
 }
 
-std::unique_ptr<DataBlock> FileStorage::read(DataBlockId blockId) {
+std::unique_ptr<Page> FileStorage::read(PageId blockId) {
   // The block ID and blockSize is used to compute the offset of the block in
   // the file.
   uint64_t offset = blockSize * (blockId - 1);
@@ -133,8 +119,8 @@ std::unique_ptr<DataBlock> FileStorage::read(DataBlockId blockId) {
 
   ByteBuffer buffer;
   buffer.resize(blockSize);
-  std::unique_ptr<DataBlock> dataBlockPtr =
-      std::make_unique<DataBlock>(blockId, blockSize);
+  std::unique_ptr<Page> dataBlockPtr =
+      std::make_unique<Page>(blockId, blockSize);
 
   // Load data block from file
   file::read(file, buffer, offset);
@@ -144,13 +130,13 @@ std::unique_ptr<DataBlock> FileStorage::read(DataBlockId blockId) {
   try {
     dataBlockPtr->load(buffer);
   } catch (...) {
-    throw DataBlockNotFoundError(blockId);
+    throw PageNotFoundError(blockId);
   }
 
   return dataBlockPtr;
 }
 
-void FileStorage::write(Storage::MetaData &metadata) {
+void FileStorage::write(MetaData &metadata) {
   ByteBuffer &buffer = metadata.dump();
 
   // Open metadata file
@@ -165,7 +151,7 @@ void FileStorage::write(Storage::MetaData &metadata) {
   metadataFile.close();
 }
 
-void FileStorage::write(DataBlock &block) {
+void FileStorage::write(Page &block) {
   // The block ID and blockSize is used to compute the offset of the block
   // in the file.
   uint64_t offset = blockSize * (block.getId() - 1);

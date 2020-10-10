@@ -28,15 +28,14 @@
 #include <cstdint>
 #include <string>
 
-#include <persist/common.hpp>
+#include <persist/core/common.hpp>
+
+/**
+ * @brief Minimum size expected by a record block in bytes
+ */
+#define MIN_RECORD_BLOCK_SIZE 150
 
 namespace persist {
-/**
- * Record Block identifer type
- *
- * NOTE: An ID with value 0 is considered NULL
- */
-typedef uint64_t RecordBlockId;
 
 /**
  * Record Block Class
@@ -48,6 +47,34 @@ typedef uint64_t RecordBlockId;
 class RecordBlock : public Serializable {
 public:
   /**
+   * Record Block Location Class
+   *
+   * The class contains location information of a record block.
+   */
+  struct Location {
+    /**
+     * @brief ID of page containing record block.
+     */
+    PageId pageId;
+    /**
+     * @brief ID of slot inside the above page containing record block.
+     */
+    PageSlotId slotId;
+
+    /**
+     * Constructor
+     */
+    Location() : pageId(0), slotId(0) {}
+    Location(PageId pageId, PageSlotId slotId)
+        : pageId(pageId), slotId(slotId) {}
+
+    /**
+     * @brief Check if location is NULL
+     */
+    bool is_null() { return pageId == 0; }
+  };
+
+  /**
    * Record Block Header Class
    *
    * Header data type for Record Block. It contains the metadata information for
@@ -56,20 +83,37 @@ public:
    */
   class Header : public Serializable {
   public:
-    RecordBlockId blockId; //<- record identifier
+    /**
+     * @brief Next RecordBlock location
+     */
+    Location nextLocation;
+    /**
+     * @brief Previous RecordBlock location
+     */
+    Location prevLocation;
 
     /**
      * Constructors
      */
     Header() {}
-    Header(RecordBlockId blockId);
 
     /**
      * Get storage size of header.
      */
     uint64_t size();
 
+    /**
+     * Load record block header from byte string.
+     *
+     * @param input input buffer to load
+     */
     void load(ByteBuffer &input) override;
+
+    /**
+     * Dump record block header as byte string.
+     *
+     * @returns reference to the buffer with results
+     */
     ByteBuffer &dump() override;
   };
 
@@ -83,18 +127,40 @@ public:
    * Constructors
    */
   RecordBlock() {}
-  RecordBlock(RecordBlockId blockId);
   RecordBlock(RecordBlock::Header &header);
-
-  /**
-   * Get record block ID
-   */
-  RecordBlockId &getId();
 
   /**
    * Get storage size of record block.
    */
   uint64_t size();
+
+  /**
+   * @brief Get the next RecordBlock location object
+   *
+   * @return Location reference to the next record block
+   */
+  Location &getNextLocation();
+
+  /**
+   * @brief Set the next RecordBlock location object
+   *
+   * @param location reference to the next record block value to set
+   */
+  void setNextLocation(Location &location);
+
+  /**
+   * @brief Get the previous RecordBlock location object
+   *
+   * @return Location reference to the previous record block
+   */
+  Location &getPrevLocation();
+
+  /**
+   * @brief Set the previous RecordBlock location object
+   *
+   * @param location reference to the previous record block value to set
+   */
+  void setPrevLocation(Location &location);
 
   /**
    * Load RecordBlock object from byte string.

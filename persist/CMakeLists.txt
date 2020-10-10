@@ -15,8 +15,6 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-# Set project binary name
-set(BINARY ${PROJECT_NAME})
 # Set project lib name
 set(LIB ${PROJECT_NAME}_lib)
 # Set test binary name

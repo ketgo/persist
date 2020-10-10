@@ -33,7 +33,7 @@
 #include <memory>
 #include <string>
 
-#include <persist/storage/base.hpp>
+#include <persist/core/storage/base.hpp>
 
 namespace persist {
 /**
@@ -47,17 +47,6 @@ private:
   uint64_t blockSize; //<- data block size
   std::string path;   //<- storage file name with path
   std::fstream file;  //<- IO stream for file
-
-  /**
-   * Opens storage file.
-   */
-  void open();
-
-  /**
-   * Closes opened storage file. No operation is performed if
-   * no file is opened.
-   */
-  void close();
 
 public:
   /**
@@ -82,33 +71,49 @@ public:
   ~FileStorage();
 
   /**
+   * Opens storage file.
+   */
+  void open() override;
+
+  /**
+   * Checks if storage file is open
+   */
+  bool is_open() override;
+
+  /**
+   * Closes opened storage file. No operation is performed if
+   * no file is opened.
+   */
+  void close() override;
+
+  /**
    * Read metadata information from storage file
    *
    * @return pointer to MetaData object
    */
-  std::unique_ptr<Storage::MetaData> read() override;
-
-  /**
-   * Reads DataBlock with given identifier from storage file.
-   *
-   * @param blockId block identifier
-   * @returns pointer to requested Block object
-   */
-  std::unique_ptr<DataBlock> read(DataBlockId blockId) override;
+  std::unique_ptr<MetaData> read() override;
 
   /**
    * Write MetaData object to storage file.
    *
    * @param metadata reference to MetaData object to be written
    */
-  void write(Storage::MetaData &metadata) override;
+  void write(MetaData &metadata) override;
 
   /**
-   * Writes DataBlock to storage file.
+   * Reads Page with given identifier from storage file.
    *
-   * @param block reference to DataBlock object to be written
+   * @param pageId page identifier
+   * @returns pointer to requested Page object
    */
-  void write(DataBlock &block) override;
+  std::unique_ptr<Page> read(PageId pageId) override;
+
+  /**
+   * Writes Page to storage file.
+   *
+   * @param page reference to Page object to be written
+   */
+  void write(Page &page) override;
 };
 
 } // namespace persist

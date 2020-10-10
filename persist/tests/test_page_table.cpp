@@ -1,5 +1,5 @@
 /**
- * common.hpp - Persist
+ * test_manager.cpp - Persist
  *
  * Copyright 2020 Ketan Goyal
  *
@@ -23,49 +23,47 @@
  */
 
 /**
- * This header file contains common classes and methods used in the package.
+ * Block Manager Cache Unit Tests
  */
 
-#ifndef COMMON_HPP
-#define COMMON_HPP
+#include <gtest/gtest.h>
 
+#include <memory>
 #include <vector>
 
-namespace persist {
+#include <persist/core/exceptions.hpp>
+#include <persist/core/page_table.hpp>
+#include <persist/core/storage/base.hpp>
 
-/**
- * @brief Byte buffer type
- */
-typedef std::vector<uint8_t> ByteBuffer;
+using namespace persist;
 
-/**
- * Abstract Base Serializable class
- */
-class Serializable {
-protected:
-  /**
-   * @brief Internal buffer to store serialization result
-   */
-  ByteBuffer buffer;
-
+class MockStorage : public Storage {
 public:
-  virtual ~Serializable() {} //<- Virtual Destructor
-
-  /**
-   * Load object from byte string
-   *
-   * @param input input buffer to load
-   */
-  virtual void load(ByteBuffer &input) = 0;
-
-  /**
-   * Dump object as byte string
-   *
-   * @returns reference to the buffer with results
-   */
-  virtual ByteBuffer &dump() = 0;
+  void open() override {}
+  bool is_open() override { return true; }
+  void close() override {}
+  std::unique_ptr<MetaData> read() override { return nullptr; }
+  void write(MetaData &metadata) override {}
+  std::unique_ptr<Page> read(PageId pageId) override { return nullptr; }
+  void write(Page &page) override {}
 };
 
-} // namespace persist
+class PageTableTestFixture : public ::testing::Test {
+protected:
+  const uint64_t maxSize = 100;
+  std::unique_ptr<PageTable> manager;
+  std::unique_ptr<MockStorage> storage;
 
-#endif /* COMMON_HPP */
+  void SetUp() override {
+    storage = std::make_unique<MockStorage>();
+    manager = std::make_unique<PageTable>(*storage, maxSize);
+  }
+};
+
+TEST_F(PageTableTestFixture, TestGet) {}
+
+TEST_F(PageTableTestFixture, TestGetError) {}
+
+TEST_F(PageTableTestFixture, TestMark) {}
+
+TEST_F(PageTableTestFixture, TestFlush) {}

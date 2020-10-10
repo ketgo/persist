@@ -34,8 +34,8 @@
 #include <list>
 #include <memory>
 
-#include <persist/common.hpp>
-#include <persist/data_block.hpp>
+#include <persist/core/metadata.hpp>
+#include <persist/core/page.hpp>
 
 namespace persist {
 /**
@@ -45,59 +45,30 @@ namespace persist {
  */
 class Storage {
 public:
-  /**
-   * Storage MetaData
-   *
-   * The metadata class contains the block size and free block Ids in the
-   * backend storage. This information is utilized by the data block buffer
-   * manager for efficient handling of data block lifecycle.
-   *
-   */
-  class MetaData : public Serializable {
-  public:
-    uint64_t blockSize;
-    std::list<DataBlockId> freeBlocks;
-
-    /**
-     * Constructor
-     */
-    MetaData() {}
-
-    /**
-     * Load object from byte string
-     *
-     * @param input input buffer to load
-     */
-    void load(ByteBuffer &input);
-
-    /**
-     * Dump object as byte string
-     *
-     * @returns reference to the buffer with results
-     */
-    ByteBuffer &dump();
-  };
-
   virtual ~Storage() {} //<- Virtual destructor
 
   /**
-   * Read storage metadata information. In case no metadata
-   * information is available a null pointer is returned.
-   *
-   * Note: Some storage types dont store metadata as it is not
-   * needed by the underlying implementation.
+   * Open storage.
+   */
+  virtual void open() = 0;
+
+  /**
+   * Check if storage is open.
+   */
+  virtual bool is_open() = 0;
+
+  /**
+   * Close storage.
+   */
+  virtual void close() = 0;
+
+  /**
+   * Read storage metadata information. In case no metadata information is
+   * available a pointer to new metadata object is returned.
    *
    * @return pointer to MetaData object
    */
   virtual std::unique_ptr<MetaData> read() = 0;
-
-  /**
-   * Read DataBlock with given identifier from storage.
-   *
-   * @param blockId block identifier
-   * @returns pointer to requested DataBlock object
-   */
-  virtual std::unique_ptr<DataBlock> read(DataBlockId blockId) = 0;
 
   /**
    * Write MetaData object to storage.
@@ -107,11 +78,21 @@ public:
   virtual void write(MetaData &metadata) = 0;
 
   /**
-   * Write DataBlock object to storage.
+   * Read Page with given identifier from storage.
    *
-   * @param block reference to DataBlock object to be written
+   * @param pageId page identifier
+   * @returns pointer to Page object
    */
-  virtual void write(DataBlock &block) = 0;
+  virtual std::unique_ptr<Page> read(PageId pageId) = 0;
+
+  /**
+   * Write Page object to storage.
+   *
+   * TODO: Save metadata if the block is no longer free
+   *
+   * @param page reference to Page object to be written
+   */
+  virtual void write(Page &page) = 0;
 };
 
 } // namespace persist

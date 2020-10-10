@@ -1,5 +1,5 @@
 /**
- * test_manager.cpp - Persist
+ * common.hpp - Persist
  *
  * Copyright 2020 Ketan Goyal
  *
@@ -23,32 +23,61 @@
  */
 
 /**
- * Block Manager Cache Unit Tests
+ * This header file contains common classes and methods used in the package.
  */
 
-#include <gtest/gtest.h>
+#ifndef COMMON_HPP
+#define COMMON_HPP
 
-#include <memory>
 #include <vector>
 
-#include <persist/buffer_manager.hpp>
-#include <persist/exceptions.hpp>
+namespace persist {
 
-using namespace persist;
+/**
+ * Page identifier type
+ *
+ * NOTE: An ID with value 0 is considered NULL
+ */
+typedef uint64_t PageId;
 
-class BufferManagerTestFixture : public ::testing::Test {
+/**
+ * Page slot identifier type
+ */
+typedef uint64_t PageSlotId;
+
+/**
+ * @brief Byte buffer type
+ */
+typedef std::vector<uint8_t> ByteBuffer;
+
+/**
+ * Abstract Base Serializable class
+ */
+class Serializable {
 protected:
-  std::unique_ptr<BufferManager> manager;
+  /**
+   * @brief Internal buffer to store serialization result
+   */
+  ByteBuffer buffer;
 
-  void SetUp() override {}
+public:
+  virtual ~Serializable() {} //<- Virtual Destructor
+
+  /**
+   * Load object from byte string
+   *
+   * @param input input buffer to load
+   */
+  virtual void load(ByteBuffer &input) = 0;
+
+  /**
+   * Dump object as byte string
+   *
+   * @returns reference to the buffer with results
+   */
+  virtual ByteBuffer &dump() = 0;
 };
 
-TEST_F(BufferManagerTestFixture, TestGetFreeSpaceDataBlock) {}
+} // namespace persist
 
-TEST_F(BufferManagerTestFixture, TestGetNewDataBlock) {}
-
-TEST_F(BufferManagerTestFixture, TestGetDataBlockWithId) {}
-
-TEST_F(BufferManagerTestFixture, TestGetDataBlockWithIdError) {}
-
-TEST_F(BufferManagerTestFixture, Testflush) {}
+#endif /* COMMON_HPP */

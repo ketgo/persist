@@ -32,7 +32,7 @@
 #include <exception>
 #include <string>
 
-#include <persist/data_block.hpp>
+#include <persist/core/page.hpp>
 
 namespace persist {
 
@@ -57,83 +57,68 @@ public:
  * Record Block Not Found Error
  *
  * This error is thrown when a record block does not exists inside
- * a data block.
+ * a page.
  */
 class RecordBlockNotFoundError : public std::exception {
 private:
   std::string msg;
 
 public:
-  RecordBlockNotFoundError(persist::RecordBlockId &blockId)
-      : msg(std::string("Record Block '") + std::to_string(blockId) +
+  RecordBlockNotFoundError(persist::PageSlotId &slotId)
+      : msg(std::string("Record Block not found at slot '") +
+            std::to_string(slotId) + std::string("'.")) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
+ * Page Parsing Error
+ *
+ * This error is thrown if unable to parse page.
+ */
+class PageParseError : public std::exception {
+private:
+  std::string msg;
+
+public:
+  PageParseError() : msg("Data block parsing error.") {}
+  PageParseError(const char *msg) : msg(msg) {}
+  PageParseError(std::string &msg) : msg(msg) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
+ * Page Not Found Error
+ *
+ * This error is thrown if page is not found.
+ */
+class PageNotFoundError : public std::exception {
+private:
+  std::string msg;
+
+public:
+  PageNotFoundError(persist::PageId &pageId)
+      : msg(std::string("Data Block '") + std::to_string(pageId) +
             std::string("' not found.")) {}
 
   const char *what() const throw() { return msg.c_str(); }
 };
 
 /**
- * Record Block Exists Error
- */
-class RecordBlockExistsError : public std::exception {
-private:
-  std::string msg;
-
-public:
-  RecordBlockExistsError(persist::RecordBlockId &blockId)
-      : msg(std::string("Record Block '") + std::to_string(blockId) +
-            std::string("' exists.")) {}
-
-  const char *what() const throw() { return msg.c_str(); }
-};
-
-/**
- * Data Block Parsing Error
+ * Page Size Error
  *
- * This error is thrown if unable to parse data block.
+ * This error is thrown if page size is less than minimum required size.
  */
-class DataBlockParseError : public std::exception {
+class PageSizeError : public std::exception {
 private:
   std::string msg;
 
 public:
-  DataBlockParseError() : msg("Data block parsing error.") {}
-  DataBlockParseError(const char *msg) : msg(msg) {}
-  DataBlockParseError(std::string &msg) : msg(msg) {}
-
-  const char *what() const throw() { return msg.c_str(); }
-};
-
-/**
- * Data Block Not Found Error
- *
- * This error is thrown if data block is not found.
- */
-class DataBlockNotFoundError : public std::exception {
-private:
-  std::string msg;
-
-public:
-  DataBlockNotFoundError(persist::DataBlockId &blockId)
-      : msg(std::string("Data Block '") + std::to_string(blockId) +
-            std::string("' not found.")) {}
-
-  const char *what() const throw() { return msg.c_str(); }
-};
-
-/**
- * Data Block Size Error
- *
- * This error is thrown if data block size is less than minimum required size.
- */
-class DataBlockSizeError : public std::exception {
-private:
-  std::string msg;
-
-public:
-  DataBlockSizeError(uint64_t &blockSize)
-      : msg(std::string("Data Block size '") + std::to_string(blockSize) +
+  PageSizeError(uint64_t &pageSize)
+      : msg(std::string("Data Block size '") + std::to_string(pageSize) +
             std::string("' less then minimum required size of '") +
-            std::to_string(MINIMUM_DATA_BLOCK_SIZE) + std::string("'.")) {}
+            std::to_string(MINIMUM_PAGE_SIZE) + std::string("'.")) {}
 
   const char *what() const throw() { return msg.c_str(); }
 };
@@ -151,6 +136,23 @@ public:
   MetaDataParseError() : msg("MetaData parsing error.") {}
   MetaDataParseError(const char *msg) : msg(msg) {}
   MetaDataParseError(std::string &msg) : msg(msg) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
+ * MetaDataDelta Parsing Error
+ *
+ * This error is thrown if unable to parse storage metadata delta.
+ */
+class MetaDataDeltaParseError : public std::exception {
+private:
+  std::string msg;
+
+public:
+  MetaDataDeltaParseError() : msg("MetaDataDelta parsing error.") {}
+  MetaDataDeltaParseError(const char *msg) : msg(msg) {}
+  MetaDataDeltaParseError(std::string &msg) : msg(msg) {}
 
   const char *what() const throw() { return msg.c_str(); }
 };
