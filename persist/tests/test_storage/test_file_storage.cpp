@@ -51,13 +51,13 @@ class NewFileStorageTestFixture : public ::testing::Test {
 protected:
   const std::string readPath = base + "/_read.storage";
   const std::string writePath = base + "/_write.storage";
-  const uint64_t blockSize = 512;
+  const uint64_t pageSize = 512;
   std::unique_ptr<FileStorage> readStorage, writeStorage;
 
   void SetUp() override {
-    readStorage = std::make_unique<FileStorage>(readPath, blockSize);
+    readStorage = std::make_unique<FileStorage>(readPath, pageSize);
     readStorage->open();
-    writeStorage = std::make_unique<FileStorage>(writePath, blockSize);
+    writeStorage = std::make_unique<FileStorage>(writePath, pageSize);
     writeStorage->open();
   }
 
@@ -82,12 +82,12 @@ TEST_F(NewFileStorageTestFixture, TestWriteBlock) {
   RecordBlock recordBlock;
   recordBlock.data = "testing";
 
-  Page page(1, blockSize);
+  Page page(1, pageSize);
   PageSlotId slotId = page.addRecordBlock(recordBlock);
   writeStorage->write(page);
 
   std::fstream file = file::open(writePath, std::ios::in | std::ios::binary);
-  ByteBuffer buffer(blockSize);
+  ByteBuffer buffer(pageSize);
   file::read(file, buffer, 0);
   Page _dataBlock;
   _dataBlock.load(buffer);
@@ -100,7 +100,7 @@ TEST_F(NewFileStorageTestFixture, TestWriteBlock) {
 TEST_F(NewFileStorageTestFixture, TestReadMetaData) {
   std::unique_ptr<MetaData> metadata = readStorage->read();
 
-  ASSERT_EQ(metadata->pageSize, blockSize);
+  ASSERT_EQ(metadata->pageSize, pageSize);
   ASSERT_EQ(metadata->firstPageId, 0);
   ASSERT_EQ(metadata->numPages, 0);
   ASSERT_EQ(metadata->freePages.size(), 0);
@@ -108,7 +108,7 @@ TEST_F(NewFileStorageTestFixture, TestReadMetaData) {
 
 TEST_F(NewFileStorageTestFixture, TestWriteMetaData) {
   MetaData metadata;
-  metadata.pageSize = blockSize;
+  metadata.pageSize = pageSize;
   metadata.freePages = {1, 2, 3};
 
   writeStorage->write(metadata);
@@ -138,13 +138,13 @@ class ExistingFileStorageTestFixture : public ::testing::Test {
 protected:
   const std::string readPath = base + "/test_read.storage";
   const std::string writePath = base + "/test_write.storage";
-  const uint64_t blockSize = 512;
+  const uint64_t pageSize = 512;
   std::unique_ptr<FileStorage> readStorage, writeStorage;
 
   void SetUp() override {
-    readStorage = std::make_unique<FileStorage>(readPath, blockSize);
+    readStorage = std::make_unique<FileStorage>(readPath, pageSize);
     readStorage->open();
-    writeStorage = std::make_unique<FileStorage>(writePath, blockSize);
+    writeStorage = std::make_unique<FileStorage>(writePath, pageSize);
     writeStorage->open();
   }
 
@@ -166,12 +166,12 @@ TEST_F(ExistingFileStorageTestFixture, TestWriteBlock) {
   RecordBlock recordBlock;
   recordBlock.data = "testing";
 
-  Page page(1, blockSize);
+  Page page(1, pageSize);
   PageSlotId slotId = page.addRecordBlock(recordBlock);
   writeStorage->write(page);
 
   std::fstream file = file::open(writePath, std::ios::in | std::ios::binary);
-  ByteBuffer buffer(blockSize);
+  ByteBuffer buffer(pageSize);
   file::read(file, buffer, 0);
   Page _dataBlock;
   _dataBlock.load(buffer);

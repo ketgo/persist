@@ -1,5 +1,5 @@
 /**
- * persist.hpp - Persist
+ * memory_storage.cpp - Persist
  *
  * Copyright 2020 Ketan Goyal
  *
@@ -22,39 +22,42 @@
  * SOFTWARE.
  */
 
-/**
- * The file contains definition of the Persist class used by package users for
- * saving data records on backend storage.
- */
-
-#ifndef PERSIST_HPP
-#define PERSIST_HPP
-
-#include <cstdint>
-#include <string>
+#include <persist/core/exceptions.hpp>
+#include <persist/core/storage/memory_storage.hpp>
 
 namespace persist {
 
-/**
- * Record unique identifer type
- */
-typedef uint64_t RecordId;
+MemoryStorage::MemoryStorage() : pageSize(DEFAULT_PAGE_SIZE) {}
 
-/**
- * Persist Class
- *
- * This class exposes user facing methods for operating on data records
- * storage in the backend storage. The class supports the standard GET,
- * INSERT, UPDATE and REMOVE operations while complying with ACID (Atomic,
- * Consistent, Isolated and Durable) requirements.
- */
-class Persist {
-public:
-  RecordId insert(std::string data);
-  void update(RecordId id, std::string data);
-  void remove(RecordId id);
-};
+MemoryStorage::MemoryStorage(uint64_t pageSize) : pageSize(pageSize) {}
+
+void MemoryStorage::open() {}
+
+bool MemoryStorage::is_open() { return true; }
+
+void MemoryStorage::close() {}
+
+std::unique_ptr<MetaData> MemoryStorage::read() {
+  std::unique_ptr<MetaData> _metadata = std::make_unique<MetaData>(metadata);
+
+  return _metadata;
+}
+
+void MemoryStorage::write(MetaData &metadata) {
+  this->metadata.pageSize = metadata.pageSize;
+  this->metadata.firstPageId = metadata.firstPageId;
+  this->metadata.numPages = metadata.numPages;
+  this->metadata.freePages = metadata.freePages;
+}
+
+std::unique_ptr<Page> MemoryStorage::read(PageId pageId) {
+  if (data.find(pageId) == data.end()) {
+    throw PageNotFoundError(pageId);
+  }
+
+  return std::make_unique<Page>(data.at(pageId));
+}
+
+void MemoryStorage::write(Page &page) { data[page.getId()] = page; }
 
 } // namespace persist
-
-#endif /* PERSIST_HPP */
