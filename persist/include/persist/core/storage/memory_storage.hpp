@@ -1,5 +1,5 @@
 /**
- * storage/base.hpp - Persist
+ * memory_storage.hpp - Persist
  *
  * Copyright 2020 Ketan Goyal
  *
@@ -22,45 +22,48 @@
  * SOFTWARE.
  */
 
-/**
- * Backend Storage Interface
- *
- * The header file exposes interface to implement non-volatile backend storage.
- */
+#ifndef MEMORY_STORAGE_HPP
+#define MEMORY_STORAGE_HPP
 
-#ifndef STORAGE_BASE_HPP
-#define STORAGE_BASE_HPP
-
-#include <list>
 #include <memory>
+#include <unordered_map>
 
-#include <persist/core/metadata.hpp>
-#include <persist/core/page.hpp>
+#include <persist/core/storage/base.hpp>
 
 namespace persist {
 /**
- * Storage Abstract Class
+ * Memory Storage
  *
- * Exposes interface to open and close a backend storage.
+ * In memory backend storage to store data in RAM. Note that this is a volatile
+ * storage and should be used accordingly.
  */
-class Storage {
+class MemoryStorage : public Storage {
+private:
+  uint64_t pageSize;                     //<- page block size
+  MetaData metadata;                     //<- storage metadata
+  std::unordered_map<PageId, Page> data; //<- pages stored as map
+
 public:
-  virtual ~Storage() {} //<- Virtual destructor
+  /**
+   * Constructor
+   */
+  MemoryStorage();
+  MemoryStorage(uint64_t pageSize);
 
   /**
-   * Open storage.
+   * @brief Open memory storage. No operation is performed.
    */
-  virtual void open() = 0;
+  void open() override;
 
   /**
-   * Check if storage is open.
+   * Check if memory storage is open. Always returns `true`.
    */
-  virtual bool is_open() = 0;
+  bool is_open() override;
 
   /**
-   * Close storage.
+   * Close memory storage. No operation is performed.
    */
-  virtual void close() = 0;
+  void close() override;
 
   /**
    * Read storage metadata information. In case no metadata information is
@@ -68,14 +71,14 @@ public:
    *
    * @return pointer to MetaData object
    */
-  virtual std::unique_ptr<MetaData> read() = 0;
+  std::unique_ptr<MetaData> read() override;
 
   /**
    * Write MetaData object to storage.
    *
    * @param metadata reference to MetaData object to be written
    */
-  virtual void write(MetaData &metadata) = 0;
+  void write(MetaData &metadata) override;
 
   /**
    * Read Page with given identifier from storage.
@@ -83,16 +86,16 @@ public:
    * @param pageId page identifier
    * @returns pointer to Page object
    */
-  virtual std::unique_ptr<Page> read(PageId pageId) = 0;
+  std::unique_ptr<Page> read(PageId pageId) override;
 
   /**
    * Write Page object to storage.
    *
    * @param page reference to Page object to be written
    */
-  virtual void write(Page &page) = 0;
+  void write(Page &page) override;
 };
 
 } // namespace persist
 
-#endif /* STORAGE_BASE_HPP */
+#endif /* MEMORY_STORAGE_HPP */

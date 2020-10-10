@@ -44,7 +44,7 @@ namespace persist {
  */
 class FileStorage : public Storage {
 private:
-  uint64_t blockSize; //<- data block size
+  uint64_t pageSize; //<- page block size
   std::string path;   //<- storage file name with path
   std::fstream file;  //<- IO stream for file
 
@@ -57,13 +57,13 @@ public:
    * storage file the block size stored in its metadata is used.
    *
    * @param path path to storage file
-   * @param blockSize storage size of data block. Default set to 1024
+   * @param pageSize storage size of data block. Default set to 1024
    */
   FileStorage();
   FileStorage(std::string path);
   FileStorage(const char *path);
-  FileStorage(std::string path, uint64_t blockSize);
-  FileStorage(const char *path, uint64_t blockSize);
+  FileStorage(std::string path, uint64_t pageSize);
+  FileStorage(const char *path, uint64_t pageSize);
 
   /**
    * Destructor

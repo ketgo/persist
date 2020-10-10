@@ -33,30 +33,19 @@
 
 #include <persist/core/exceptions.hpp>
 #include <persist/core/page_table.hpp>
-#include <persist/core/storage/base.hpp>
+#include <persist/core/storage/memory_storage.hpp>
 
 using namespace persist;
-
-class MockStorage : public Storage {
-public:
-  void open() override {}
-  bool is_open() override { return true; }
-  void close() override {}
-  std::unique_ptr<MetaData> read() override { return nullptr; }
-  void write(MetaData &metadata) override {}
-  std::unique_ptr<Page> read(PageId pageId) override { return nullptr; }
-  void write(Page &page) override {}
-};
 
 class PageTableTestFixture : public ::testing::Test {
 protected:
   const uint64_t maxSize = 100;
-  std::unique_ptr<PageTable> manager;
-  std::unique_ptr<MockStorage> storage;
+  std::unique_ptr<PageTable> table;
+  std::unique_ptr<MemoryStorage> storage;
 
   void SetUp() override {
-    storage = std::make_unique<MockStorage>();
-    manager = std::make_unique<PageTable>(*storage, maxSize);
+    storage = std::make_unique<MemoryStorage>();
+    table = std::make_unique<PageTable>(*storage, maxSize);
   }
 };
 
@@ -64,6 +53,14 @@ TEST_F(PageTableTestFixture, TestGet) {}
 
 TEST_F(PageTableTestFixture, TestGetError) {}
 
-TEST_F(PageTableTestFixture, TestMark) {}
+TEST_F(PageTableTestFixture, TestGetLRUPersist) {}
 
-TEST_F(PageTableTestFixture, TestFlush) {}
+TEST_F(PageTableTestFixture, TestGetNew) {}
+
+TEST_F(PageTableTestFixture, TestGetFree) {}
+
+TEST_F(PageTableTestFixture, TestGetFreeNew) {}
+
+TEST_F(PageTableTestFixture, TestSessionStage) {}
+
+TEST_F(PageTableTestFixture, TestSessionCommit) {}

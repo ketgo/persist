@@ -41,14 +41,14 @@ class MetaDataTestFixture : public ::testing::Test {
 protected:
   std::vector<uint8_t> input;
   std::unique_ptr<MetaData> metadata;
-  const uint64_t blockSize = 1024;
+  const uint64_t pageSize = 1024;
   const PageId firstPageId = 1;
   const PageId numPages = 10;
   const std::set<PageId> freeBlocks = {0, 1, 2, 3};
 
   void SetUp() override {
     metadata = std::make_unique<MetaData>();
-    metadata->pageSize = blockSize;
+    metadata->pageSize = pageSize;
     metadata->firstPageId = firstPageId;
     metadata->numPages = numPages;
     metadata->freePages = freeBlocks;
@@ -94,7 +94,7 @@ protected:
   std::vector<uint8_t> input;
   std::unique_ptr<MetaData> metadata;
   std::unique_ptr<MetaDataDelta> delta;
-  const uint64_t blockSize = 1024;
+  const uint64_t pageSize = 1024;
   const PageId firstPageId = 1;
   const PageId numPages = 10;
   const std::set<PageId> freeBlocks = {0, 1, 2, 3};
@@ -102,7 +102,7 @@ protected:
   void SetUp() override {
     // Create metadata
     metadata = std::make_unique<MetaData>();
-    metadata->pageSize = blockSize;
+    metadata->pageSize = pageSize;
     metadata->firstPageId = firstPageId;
     metadata->numPages = numPages;
     metadata->freePages = freeBlocks;
@@ -119,7 +119,7 @@ protected:
 TEST_F(MetaDataDeltaTestFixture, TestApplyNoChange) {
   delta->apply(*metadata);
 
-  ASSERT_EQ(metadata->pageSize, blockSize);
+  ASSERT_EQ(metadata->pageSize, pageSize);
   ASSERT_EQ(metadata->firstPageId, firstPageId);
   ASSERT_EQ(metadata->numPages, numPages);
   ASSERT_EQ(metadata->freePages, freeBlocks);
@@ -131,7 +131,7 @@ TEST_F(MetaDataDeltaTestFixture, TestApply) {
   delta->addFreePage(4);
   delta->apply(*metadata);
 
-  ASSERT_EQ(metadata->pageSize, blockSize);
+  ASSERT_EQ(metadata->pageSize, pageSize);
   ASSERT_EQ(metadata->firstPageId, firstPageId);
   ASSERT_EQ(metadata->numPages, numPages + 1);
   ASSERT_EQ(metadata->freePages, std::set<PageId>({0, 1, 2, 4}));
@@ -139,7 +139,7 @@ TEST_F(MetaDataDeltaTestFixture, TestApply) {
   delta->removeFreePage(3); //<- removing page no present in list
   delta->apply(*metadata);
 
-  ASSERT_EQ(metadata->pageSize, blockSize);
+  ASSERT_EQ(metadata->pageSize, pageSize);
   ASSERT_EQ(metadata->firstPageId, firstPageId);
   ASSERT_EQ(metadata->numPages, numPages + 2); //<- double increase
   ASSERT_EQ(metadata->freePages, std::set<PageId>({0, 1, 2, 4})); //<- no change
@@ -147,7 +147,7 @@ TEST_F(MetaDataDeltaTestFixture, TestApply) {
   delta->addFreePage(4); //<- adding page already present in list
   delta->apply(*metadata);
 
-  ASSERT_EQ(metadata->pageSize, blockSize);
+  ASSERT_EQ(metadata->pageSize, pageSize);
   ASSERT_EQ(metadata->firstPageId, firstPageId);
   ASSERT_EQ(metadata->numPages, numPages + 3); //<- tripple increase
   ASSERT_EQ(metadata->freePages, std::set<PageId>({0, 1, 2, 4})); //<- no change
@@ -159,7 +159,7 @@ TEST_F(MetaDataDeltaTestFixture, TestUndo) {
   delta->addFreePage(4);
   delta->undo(*metadata);
 
-  ASSERT_EQ(metadata->pageSize, blockSize);
+  ASSERT_EQ(metadata->pageSize, pageSize);
   ASSERT_EQ(metadata->firstPageId, firstPageId);
   ASSERT_EQ(metadata->numPages, numPages - 1);
   ASSERT_EQ(metadata->freePages, freeBlocks); //<- no change
@@ -167,7 +167,7 @@ TEST_F(MetaDataDeltaTestFixture, TestUndo) {
   delta->addFreePage(2);
   delta->undo(*metadata);
 
-  ASSERT_EQ(metadata->pageSize, blockSize);
+  ASSERT_EQ(metadata->pageSize, pageSize);
   ASSERT_EQ(metadata->firstPageId, firstPageId);
   ASSERT_EQ(metadata->numPages, numPages - 2); //<- double decrease
   ASSERT_EQ(metadata->freePages, std::set<PageId>({0, 1, 3}));
@@ -178,7 +178,7 @@ TEST_F(MetaDataDeltaTestFixture, TestLoad) {
   _delta.load(input);
   _delta.apply(*metadata);
 
-  ASSERT_EQ(metadata->pageSize, blockSize);
+  ASSERT_EQ(metadata->pageSize, pageSize);
   ASSERT_EQ(metadata->firstPageId, firstPageId);
   ASSERT_EQ(metadata->numPages, numPages + 1);
   ASSERT_EQ(metadata->freePages, std::set<PageId>({0, 1, 2}));

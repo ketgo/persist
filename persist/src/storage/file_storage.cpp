@@ -42,16 +42,16 @@ namespace persist {
 FileStorage::FileStorage() {}
 
 FileStorage::FileStorage(std::string path)
-    : path(path), blockSize(DEFAULT_PAGE_SIZE) {}
+    : path(path), pageSize(DEFAULT_PAGE_SIZE) {}
 
 FileStorage::FileStorage(const char *path)
-    : path(path), blockSize(DEFAULT_PAGE_SIZE) {}
+    : path(path), pageSize(DEFAULT_PAGE_SIZE) {}
 
 FileStorage::FileStorage(std::string path, uint64_t blockSize)
-    : path(path), blockSize(blockSize) {}
+    : path(path), pageSize(blockSize) {}
 
 FileStorage::FileStorage(const char *path, uint64_t blockSize)
-    : path(path), blockSize(blockSize) {}
+    : path(path), pageSize(blockSize) {}
 
 FileStorage::~FileStorage() {}
 
@@ -75,7 +75,7 @@ std::unique_ptr<MetaData> FileStorage::read() {
   std::unique_ptr<MetaData> metadataPtr = std::make_unique<MetaData>();
   // Set default block size value in metadata. This gets updated once the
   // content of the saved metadata is loaded
-  metadataPtr->pageSize = blockSize;
+  metadataPtr->pageSize = pageSize;
 
   metadataFile = file::open(metadataPath, std::ios::in | std::ios::binary);
 
@@ -98,7 +98,7 @@ std::unique_ptr<MetaData> FileStorage::read() {
 
   // Load MetaData object
   metadataPtr->load(buffer);
-  blockSize = metadataPtr->pageSize;
+  pageSize = metadataPtr->pageSize;
 
   // Close metadata file
   metadataFile.close();
@@ -109,7 +109,7 @@ std::unique_ptr<MetaData> FileStorage::read() {
 std::unique_ptr<Page> FileStorage::read(PageId blockId) {
   // The block ID and blockSize is used to compute the offset of the block in
   // the file.
-  uint64_t offset = blockSize * (blockId - 1);
+  uint64_t offset = pageSize * (blockId - 1);
 
   // If offset is negative that means blockId is 0 so return null pointer.
   // This is because blockId of 0 is considered NULL.
@@ -118,9 +118,9 @@ std::unique_ptr<Page> FileStorage::read(PageId blockId) {
   }
 
   ByteBuffer buffer;
-  buffer.resize(blockSize);
+  buffer.resize(pageSize);
   std::unique_ptr<Page> dataBlockPtr =
-      std::make_unique<Page>(blockId, blockSize);
+      std::make_unique<Page>(blockId, pageSize);
 
   // Load data block from file
   file::read(file, buffer, offset);
@@ -154,7 +154,7 @@ void FileStorage::write(MetaData &metadata) {
 void FileStorage::write(Page &block) {
   // The block ID and blockSize is used to compute the offset of the block
   // in the file.
-  uint64_t offset = blockSize * (block.getId() - 1);
+  uint64_t offset = pageSize * (block.getId() - 1);
 
   // If offset is negative that means blockId is 0 so return. This is because
   // blockId of 0 is considered NULL.
