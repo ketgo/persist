@@ -62,6 +62,7 @@ protected:
 
     // setting up storage
     storage = std::make_unique<MemoryStorage>(pageSize);
+    storage->open();
     storage->write(*page_1);
     storage->write(*page_2);
     storage->write(*page_3);
@@ -69,6 +70,8 @@ protected:
 
     table = std::make_unique<PageTable>(*storage, maxSize);
   }
+
+  void TearDown() override { storage->close(); }
 };
 
 TEST_F(PageTableTestFixture, TestGet) {

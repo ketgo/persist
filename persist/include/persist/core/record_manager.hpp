@@ -42,13 +42,31 @@ namespace persist {
 class RecordManager {
 private:
   std::unique_ptr<Storage> storage;
-  std::unique_ptr<PageTable> table;
+  PageTable table;
 
 public:
   /**
-   * @brief Construct a new Record Manager object
+   * @brief Construct a new Record Manager object.
+   *
+   * @param connectionString url containing the type of storage backend and its
+   * arguments. The url schema is `<type>://<host>/<path>?<args>`. For example a
+   * file storage url looks like `file:///myCollection.db` where the backend
+   * uses the file `myCollection.db` in the root folder `/` to store data.
+   * @param cacheSize the amount of memory in bytes to use for internal cache.
    */
-  RecordManager() {}
+  RecordManager(std::string connectionString, uint64_t cacheSize);
+
+  /**
+   * @brief Start record manager. This opens the backend storage if not already
+   * opened.
+   */
+  void start();
+
+  /**
+   * @brief Stop record manager. This closes the backend storage if opened.
+   *
+   */
+  void stop();
 
   /**
    * @brief Get record stored at given location.

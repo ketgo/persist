@@ -24,4 +24,27 @@
 
 #include <persist/core/record_manager.hpp>
 
-namespace persist {}
+namespace persist {
+
+static uint64_t cachesizeToBufferCount(uint64_t cacheSize) {
+  // TODO: Calculate page table max size from given cache size
+  return cacheSize;
+}
+
+RecordManager::RecordManager(std::string storageURL, uint64_t cacheSize)
+    : storage(Storage::create(storageURL)),
+      table(*storage, cachesizeToBufferCount(cacheSize)) {}
+
+void RecordManager::start() {
+  if (!storage->is_open()) {
+    storage->open();
+  }
+}
+
+void RecordManager::stop() {
+  if (storage->is_open()) {
+    storage->close();
+  }
+}
+
+} // namespace persist

@@ -138,7 +138,8 @@ public:
   /**
    * Construct a new Page Table object
    *
-   * @param storage reference to backend storage
+   * @param storage reference to backend storage. Note that the storage should
+   * be opened before calling any member methods.
    * @param maxSize maximum buffer size
    */
   PageTable(Storage &storage);

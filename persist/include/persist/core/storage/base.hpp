@@ -26,6 +26,9 @@
  * Backend Storage Interface
  *
  * The header file exposes interface to implement non-volatile backend storage.
+ * List of supported backends are:
+ * - file
+ * - memory
  */
 
 #ifndef STORAGE_BASE_HPP
@@ -38,6 +41,7 @@
 #include <persist/core/page.hpp>
 
 namespace persist {
+
 /**
  * Storage Abstract Class
  *
@@ -91,6 +95,16 @@ public:
    * @param page reference to Page object to be written
    */
   virtual void write(Page &page) = 0;
+
+  /**
+   * @brief Factory method to create backend storage object
+   *
+   * @param connectionString url containing the type of storage backend and its
+   * arguments. The url schema is `<type>://<host>/<path>?<args>`. For example a
+   * file storage url looks like `file:///myCollection.db` where the backend
+   * uses the file `myCollection.db` in the root folder `/` to store data.
+   */
+  static std::unique_ptr<Storage> create(std::string connectionString);
 };
 
 } // namespace persist
