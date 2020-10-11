@@ -45,8 +45,8 @@ namespace persist {
 class FileStorage : public Storage {
 private:
   uint64_t pageSize; //<- page block size
-  std::string path;   //<- storage file name with path
-  std::fstream file;  //<- IO stream for file
+  std::string path;  //<- storage file name with path
+  std::fstream file; //<- IO stream for file
 
 public:
   /**
@@ -69,6 +69,11 @@ public:
    * Destructor
    */
   ~FileStorage();
+
+  /**
+   * @brief Get file path to storage
+   */
+  std::string getPath() { return path; }
 
   /**
    * Opens storage file.
