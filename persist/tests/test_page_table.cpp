@@ -71,18 +71,127 @@ protected:
   }
 };
 
-TEST_F(PageTableTestFixture, TestGet) {}
+TEST_F(PageTableTestFixture, TestGet) {
+  PageId pageId = page_1->getId();
+  Page page = table->get(pageId);
 
-TEST_F(PageTableTestFixture, TestGetError) {}
+  ASSERT_EQ(page.getId(), pageId);
+  ASSERT_EQ(page.getNextPageId(), page_1->getNextPageId());
+  ASSERT_EQ(page.getPrevPageId(), page_1->getPrevPageId());
+  ASSERT_EQ(page.freeSpace(), page_1->freeSpace());
+}
 
-TEST_F(PageTableTestFixture, TestGetLRUPersist) {}
+TEST_F(PageTableTestFixture, TestGetError) {
+  try {
+    Page page = table->get(10);
+    FAIL() << "Expected PageNotFoundError Exception.";
+  } catch (PageNotFoundError &err) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected PageNotFoundError Exception.";
+  }
+}
 
-TEST_F(PageTableTestFixture, TestGetNew) {}
+TEST_F(PageTableTestFixture, TestGetLRUPersist) {
+  PageTable::Session session = table->createSession();
 
-TEST_F(PageTableTestFixture, TestGetFree) {}
+  // Getting the first page and modifying it
+  Page &_page_1 = table->get(1);
+  RecordBlock block;
+  block.data =
+      std::string(_page_1.freeSpace() - MIN_RECORD_BLOCK_SIZE + 1, 'A');
+  PageSlotId slotId = _page_1.addRecordBlock(block);
+  session.stage(1);
 
-TEST_F(PageTableTestFixture, TestGetFreeNew) {}
+  // Filling up page table cache
+  table->get(2);
+  table->get(3); //<- this should persist page 1
 
-TEST_F(PageTableTestFixture, TestSessionStage) {}
+  Page &__page_1 = table->get(1); //<- this will load page from storage
 
-TEST_F(PageTableTestFixture, TestSessionCommit) {}
+  ASSERT_EQ(__page_1.getId(), 1);
+  ASSERT_EQ(__page_1.getRecordBlock(slotId).data, block.data);
+
+  // Checking for update in metadata
+  std::unique_ptr<MetaData> _metadata = storage->read();
+
+  ASSERT_EQ(_metadata->numPages, metadata->numPages);
+  ASSERT_EQ(_metadata->freePages.size(), metadata->freePages.size() - 1);
+  ASSERT_EQ(_metadata->freePages, std::set<PageId>({2, 3}));
+}
+
+TEST_F(PageTableTestFixture, TestGetNewLRUPersist) {
+  PageTable::Session session = table->createSession();
+
+  // Getting the new page
+  Page &_page_4 = table->getNew();
+  session.stage(4);
+
+  // Filling up page table cache
+  table->get(1);
+  table->get(2); //<- this should persist page 4
+
+  Page &__page_4 = table->get(4); //<- this will load page from storage
+
+  ASSERT_EQ(__page_4.getId(), 4);
+
+  // Checking for update in metadata
+  std::unique_ptr<MetaData> _metadata = storage->read();
+
+  ASSERT_EQ(_metadata->numPages, metadata->numPages + 1);
+  ASSERT_EQ(_metadata->freePages.size(), metadata->freePages.size() + 1);
+  ASSERT_EQ(_metadata->freePages, std::set<PageId>({1, 2, 3, 4}));
+}
+
+TEST_F(PageTableTestFixture, TestGetFree) {
+  // Getting page with free space
+  Page &_page = table->getFree();
+
+  ASSERT_EQ(_page.getId(), 3); //<- returns the last page in free list
+}
+
+TEST_F(PageTableTestFixture, TestGetFreeNew) {
+  PageTable::Session session = table->createSession();
+
+  // Fill all pages
+  for (int i = 1; i <= 3; i++) {
+    Page &_page = table->get(i);
+    RecordBlock block;
+    block.data =
+        std::string(_page.freeSpace() - MIN_RECORD_BLOCK_SIZE + 1, 'A');
+    PageSlotId slotId = _page.addRecordBlock(block);
+    session.stage(i);
+  }
+
+  // Getting new page with free space
+  Page &_page = table->getFree();
+
+  ASSERT_EQ(_page.getId(), 4);
+}
+
+TEST_F(PageTableTestFixture, TestSessionCommit) {
+  PageTable::Session session = table->createSession();
+
+  // Getting the first page and modifying it
+  Page &_page_1 = table->get(1);
+  RecordBlock block;
+  block.data =
+      std::string(_page_1.freeSpace() - MIN_RECORD_BLOCK_SIZE + 1, 'A');
+  PageSlotId slotId = _page_1.addRecordBlock(block);
+  session.stage(1);
+
+  // Commit
+  session.commit();
+
+  Page &__page_1 = table->get(1); //<- this will load page from storage
+
+  ASSERT_EQ(__page_1.getId(), 1);
+  ASSERT_EQ(__page_1.getRecordBlock(slotId).data, block.data);
+
+  // Checking for update in metadata
+  std::unique_ptr<MetaData> _metadata = storage->read();
+
+  ASSERT_EQ(_metadata->numPages, metadata->numPages);
+  ASSERT_EQ(_metadata->freePages.size(), metadata->freePages.size() - 1);
+  ASSERT_EQ(_metadata->freePages, std::set<PageId>({2, 3}));
+}

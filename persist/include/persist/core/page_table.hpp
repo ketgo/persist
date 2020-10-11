@@ -50,7 +50,7 @@ namespace persist {
  * page relplacement policy.
  */
 class PageTable {
-private:
+public:
   /**
    * Page Table Session Class
    *
@@ -58,6 +58,8 @@ private:
    * facilitates atomicity and concurency control.
    */
   class Session {
+    friend PageTable;
+
   private:
     /**
      * @brief Reference to page table associated with the session.
@@ -68,12 +70,12 @@ private:
      */
     std::set<PageId> staged;
 
-  public:
     /**
      * Constructor
      */
     Session(PageTable &table) : table(table) {}
 
+  public:
     /**
      * Stage the page with given ID for commit. This adds the page ID to the
      * stage list and marks the corresponding page as modified.
@@ -88,6 +90,7 @@ private:
     void commit();
   };
 
+private:
   /**
    * Page Slot Struct
    *

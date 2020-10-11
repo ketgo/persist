@@ -73,10 +73,14 @@ void PageTable::put(std::unique_ptr<Page> &page) {
 
 void PageTable::mark(PageId pageId) {
   map.at(pageId)->modified = true;
-  // Check if page has free space and update metadata delta accordingly
+  // Check if page has free space and update metadata and metadata delta
+  // accordingly
   if (map.at(pageId)->page->freeSpace() > MIN_RECORD_BLOCK_SIZE) {
+    metadata->freePages.insert(
+        pageId); //<- set takes care of duplicates so no need to check
     map.at(pageId)->metaDelta->addFreePage(pageId);
   } else {
+    metadata->freePages.erase(pageId);
     map.at(pageId)->metaDelta->removeFreePage(pageId);
   }
 }
