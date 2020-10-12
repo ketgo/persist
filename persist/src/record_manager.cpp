@@ -22,6 +22,9 @@
  * SOFTWARE.
  */
 
+#include "utility.hpp"
+
+#include <persist/core/exceptions.hpp>
 #include <persist/core/record_manager.hpp>
 
 namespace persist {
@@ -33,7 +36,7 @@ static uint64_t cachesizeToBufferCount(uint64_t cacheSize) {
 
 RecordManager::RecordManager(std::string storageURL, uint64_t cacheSize)
     : storage(Storage::create(storageURL)),
-      table(*storage, cachesizeToBufferCount(cacheSize)), started(false) {}
+      pageTable(*storage, cachesizeToBufferCount(cacheSize)), started(false) {}
 
 void RecordManager::start() {
   if (!storage->is_open()) {
@@ -49,13 +52,65 @@ void RecordManager::stop() {
   }
 }
 
-void RecordManager::get(std::string &buffer, RecordBlock::Location location) {}
+void RecordManager::get(ByteBuffer &buffer, RecordBlock::Location location) {
+  // Check if record manager has started
+  if (!started) {
+    throw RecordManagerNotStartedError();
+  }
+  if (location.is_null()) {
+    throw RecordNotFoundError("Invalid location provided.");
+  }
 
-RecordBlock::Location RecordManager::insert(std::string &buffer) {}
+  RecordBlock::Location readLocation = location;
+  while (!readLocation.is_null()) {
+    // Get record block
+    Page &page = pageTable.get(readLocation.pageId);
+    RecordBlock &recordBlock = page.getRecordBlock(readLocation.slotId);
+    for (auto x : recordBlock.data) {
+      buffer.push_back(x);
+    }
+    // Update read location to next block
+    readLocation = recordBlock.getNextLocation();
+  }
+}
 
-void RecordManager::update(std::string &buffer,
-                           RecordBlock::Location location) {}
+RecordBlock::Location RecordManager::insert(ByteBuffer &buffer) {
+  if (!started) {
+    throw RecordManagerNotStartedError();
+  }
+  // Starting record block location returned by the method
+  RecordBlock::Location rvalue;
 
-void RecordManager::remove(RecordBlock::Location location) {}
+  uint64_t contentSize = buffer.size();
+  while (contentSize > 0) {
+    // Get free page
+    Page &page = pageTable.getFree();
+    RecordBlock recordBlock;
+    uint64_t writeSpace = page.freeSpace() - recordBlock.size();
+    if (writeSpace > contentSize) {
+      recordBlock.data.resize(contentSize);
+      write(recordBlock.data, buffer, 0);
+      contentSize = 0;
+    } else {
+      recordBlock.data.resize(writeSpace);
+      write(recordBlock.data, buffer, 0);
+      contentSize -= writeSpace;
+    }
+  }
+
+  return rvalue;
+}
+
+void RecordManager::update(ByteBuffer &buffer, RecordBlock::Location location) {
+  if (!started) {
+    throw RecordManagerNotStartedError();
+  }
+}
+
+void RecordManager::remove(RecordBlock::Location location) {
+  if (!started) {
+    throw RecordManagerNotStartedError();
+  }
+}
 
 } // namespace persist

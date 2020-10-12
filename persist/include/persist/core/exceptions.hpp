@@ -37,11 +37,50 @@
 namespace persist {
 
 /**
+ * @brief Persist Package Base Exception Class
+ *
+ * Use this to capture all package excpetions.
+ */
+class PersistException : public std::exception {};
+
+/**
+ * Record Not Found Error
+ *
+ * This error is thrown if a record is not found.
+ */
+class RecordNotFoundError : public PersistException {
+private:
+  std::string msg;
+
+public:
+  RecordNotFoundError() : msg("Record not found.") {}
+  RecordNotFoundError(const char *msg) : msg(msg) {}
+  RecordNotFoundError(std::string &msg) : msg(msg) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
+ * Record Manager Not Started Error
+ *
+ * This error is thrown if the record manager is not started.
+ */
+class RecordManagerNotStartedError : public PersistException {
+private:
+  std::string msg;
+
+public:
+  RecordManagerNotStartedError() : msg("Record manager not started.") {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
  * Record Block Parsing Error
  *
  * This error is thrown if unable to parse record block.
  */
-class RecordBlockParseError : public std::exception {
+class RecordBlockParseError : public PersistException {
 private:
   std::string msg;
 
@@ -59,7 +98,7 @@ public:
  * This error is thrown when a record block does not exists inside
  * a page.
  */
-class RecordBlockNotFoundError : public std::exception {
+class RecordBlockNotFoundError : public PersistException {
 private:
   std::string msg;
 
@@ -76,7 +115,7 @@ public:
  *
  * This error is thrown if unable to parse page.
  */
-class PageParseError : public std::exception {
+class PageParseError : public PersistException {
 private:
   std::string msg;
 
@@ -93,7 +132,7 @@ public:
  *
  * This error is thrown if page is not found.
  */
-class PageNotFoundError : public std::exception {
+class PageNotFoundError : public PersistException {
 private:
   std::string msg;
 
@@ -110,7 +149,7 @@ public:
  *
  * This error is thrown if page size is less than minimum required size.
  */
-class PageSizeError : public std::exception {
+class PageSizeError : public PersistException {
 private:
   std::string msg;
 
@@ -128,7 +167,7 @@ public:
  *
  * This error is thrown if unable to parse storage metadata.
  */
-class MetaDataParseError : public std::exception {
+class MetaDataParseError : public PersistException {
 private:
   std::string msg;
 
@@ -145,7 +184,7 @@ public:
  *
  * This error is thrown if unable to parse storage metadata delta.
  */
-class MetaDataDeltaParseError : public std::exception {
+class MetaDataDeltaParseError : public PersistException {
 private:
   std::string msg;
 
@@ -162,7 +201,7 @@ public:
  *
  * This error is thrown if unable to open backend storage.
  */
-class StorageError : public std::exception {
+class StorageError : public PersistException {
 private:
   std::string msg;
 
