@@ -58,8 +58,10 @@ protected:
   std::unique_ptr<Page::Header> pageHeader;
   PageSlotId slotId_1, slotId_2;
   std::unique_ptr<RecordBlock> recordBlock_1, recordBlock_2;
-  const std::string recordBlockData_1 = "testing_1",
-                    recordBlockData_2 = "testing_2";
+  const ByteBuffer recordBlockData_1 = {'t', 'e', 's', 't', 'i',
+                                        'n', 'g', '_', '1'},
+                   recordBlockData_2 = {'t', 'e', 's', 't', 'i',
+                                        'n', 'g', '_', '2'};
 
   void SetUp() override {
     // Setup valid test header
@@ -213,9 +215,9 @@ TEST_F(PageTestFixture, TestGetRecordBlockError) {
 
 TEST_F(PageTestFixture, TestAddRecordBlock) {
   RecordBlock recordBlock_1;
-  recordBlock_1.data = "testing_1";
+  recordBlock_1.data = {'t', 'e', 's', 't', 'i', 'n', 'g', '_', '1'};
   RecordBlock recordBlock_2;
-  recordBlock_2.data = "testing_2";
+  recordBlock_2.data = {'t', 'e', 's', 't', 'i', 'n', 'g', '_', '2'};
 
   // Current free space in block
   uint64_t oldDataSize = pageSize - block->freeSpace() - pageHeader->size();

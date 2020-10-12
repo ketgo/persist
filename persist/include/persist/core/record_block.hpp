@@ -121,7 +121,7 @@ private:
   Header header; //<- record block header
 
 public:
-  std::string data; //<- data contained in the record block
+  ByteBuffer data; //<- data contained in the record block
 
   /**
    * Constructors
