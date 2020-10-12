@@ -33,18 +33,29 @@ static uint64_t cachesizeToBufferCount(uint64_t cacheSize) {
 
 RecordManager::RecordManager(std::string storageURL, uint64_t cacheSize)
     : storage(Storage::create(storageURL)),
-      table(*storage, cachesizeToBufferCount(cacheSize)) {}
+      table(*storage, cachesizeToBufferCount(cacheSize)), started(false) {}
 
 void RecordManager::start() {
   if (!storage->is_open()) {
     storage->open();
+    started = true;
   }
 }
 
 void RecordManager::stop() {
   if (storage->is_open()) {
     storage->close();
+    started = false;
   }
 }
+
+void RecordManager::get(std::string &buffer, RecordBlock::Location location) {}
+
+RecordBlock::Location RecordManager::insert(std::string &buffer) {}
+
+void RecordManager::update(std::string &buffer,
+                           RecordBlock::Location location) {}
+
+void RecordManager::remove(RecordBlock::Location location) {}
 
 } // namespace persist

@@ -43,6 +43,7 @@ class RecordManager {
 private:
   std::unique_ptr<Storage> storage;
   PageTable table;
+  bool started;
 
 public:
   /**

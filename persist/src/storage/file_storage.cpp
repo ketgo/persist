@@ -125,8 +125,8 @@ std::unique_ptr<Page> FileStorage::read(PageId blockId) {
   // Load data block from file
   file::read(file, buffer, offset);
 
-  // TODO: Needs more restrictive exception handling. The block not found error
-  // should be thrown if the offset exceeds EOF
+  // TODO: Needs more selective exception handling. The page not found error
+  // should be thrown only if the offset exceeds EOF
   try {
     dataBlockPtr->load(buffer);
   } catch (...) {
