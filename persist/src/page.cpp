@@ -39,7 +39,6 @@ using json = nlohmann::json;
 // ---------------------------------------------------------------------------
 // TODO:
 // - Increase performance by moving away from JSON based serialization.
-// - Improved caching
 // ---------------------------------------------------------------------------
 
 namespace persist {
@@ -58,7 +57,11 @@ Page::Header::Header(PageId pageId)
 Page::Header::Header(PageId pageId, uint64_t tail)
     : pageId(pageId), nextPageId(0), prevPageId(0), pageSize(tail) {}
 
-uint64_t Page::Header::size() { return dump().size(); }
+uint64_t Page::Header::size() {
+  // TODO: Use binary header serialization so that no dump is needed for
+  // size calculation.
+  return dump().size();
+}
 
 uint64_t Page::Header::tail() {
   if (slots.empty()) {
@@ -167,8 +170,8 @@ uint64_t Page::freeSpace() { return header.tail() - header.size(); }
 
 RecordBlock &Page::getRecordBlock(PageSlotId slotId) {
   // Check if slot exists
-  RecordBlockCache::iterator it = cache.find(slotId);
-  if (it == cache.end()) {
+  RecordBlockMap::iterator it = recordBlocks.find(slotId);
+  if (it == recordBlocks.end()) {
     throw RecordBlockNotFoundError(slotId);
   }
   return it->second.first;
@@ -179,21 +182,21 @@ PageSlotId Page::addRecordBlock(RecordBlock &recordBlock) {
   Header::Slot *slot = header.createSlot(recordBlock.size());
   // Insert record block at slot
   // TODO: Use move simantic instead of copy
-  cache.insert({slot->id, {recordBlock, slot}});
+  recordBlocks.insert({slot->id, {recordBlock, slot}});
 
   return slot->id;
 }
 
 void Page::removeRecordBlock(PageSlotId slotId) {
   // Check if slot exists in the Page
-  RecordBlockCache::iterator it = cache.find(slotId);
-  if (it == cache.end()) {
+  RecordBlockMap::iterator it = recordBlocks.find(slotId);
+  if (it == recordBlocks.end()) {
     throw RecordBlockNotFoundError(slotId);
   }
   // Adjusting header
   header.freeSlot(it->second.second);
   // Removing record block from cache
-  cache.erase(it);
+  recordBlocks.erase(it);
 }
 
 void Page::load(ByteBuffer &input) {
@@ -201,7 +204,7 @@ void Page::load(ByteBuffer &input) {
   header.load(input);
   // Load record blocks
   // TODO: Use spans to avoid vector constructions
-  cache.clear();
+  recordBlocks.clear();
   for (Header::Slots::iterator it = header.slots.begin();
        it != header.slots.end(); it++) {
     ByteBuffer::iterator start = input.begin() + it->offset;
@@ -209,14 +212,14 @@ void Page::load(ByteBuffer &input) {
     ByteBuffer _input(start, end);
     RecordBlock recordBlock;
     recordBlock.load(_input);
-    cache.insert({it->id, {recordBlock, &(*it)}});
+    recordBlocks.insert({it->id, {recordBlock, &(*it)}});
   }
 }
 
 ByteBuffer &Page::dump() {
   // Dump record blocks
   std::vector<uint8_t> _output;
-  for (auto &element : cache) {
+  for (auto &element : recordBlocks) {
     ByteBuffer &recordBlockBuffer = element.second.first.dump();
     uint64_t offset = element.second.second->offset;
     write(buffer, recordBlockBuffer, offset);

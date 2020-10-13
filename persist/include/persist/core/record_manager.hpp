@@ -42,7 +42,7 @@ namespace persist {
 class RecordManager {
 private:
   std::unique_ptr<Storage> storage;
-  PageTable table;
+  PageTable pageTable;
   bool started;
 
 public:
@@ -72,27 +72,27 @@ public:
   /**
    * @brief Get record stored at given location.
    *
-   * @param buffer string buffer into which the record will be stored
+   * @param buffer byte buffer into which the record will be stored
    * @param location record starting location
    */
-  void get(std::string &buffer, RecordBlock::Location location);
+  void get(ByteBuffer &buffer, RecordBlock::Location location);
 
   /**
    * @brief Insert record stored in buffer to storage. The method returns the
    * insert location of the record.
    *
-   * @param buffer string buffer containing record data
+   * @param buffer byte buffer containing record data
    * @return RecordLocation inserted location of the record
    */
-  RecordBlock::Location insert(std::string &buffer);
+  RecordBlock::Location insert(ByteBuffer &buffer);
 
   /**
    * @brief Update record stored at given location.
    *
-   * @param buffer buffer containing updated record
+   * @param buffer byte buffer containing updated record
    * @param location starting location of record
    */
-  void update(std::string &buffer, RecordBlock::Location location);
+  void update(ByteBuffer &buffer, RecordBlock::Location location);
 
   /**
    * @brief Remove record stored at given location.

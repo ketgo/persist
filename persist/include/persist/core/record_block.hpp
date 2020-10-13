@@ -31,9 +31,11 @@
 #include <persist/core/common.hpp>
 
 /**
- * @brief Minimum size expected by a record block in bytes
+ * @brief Size of record block header in bytes
+ *
+ * TODO: This should be removed once binary serialization is implemented
  */
-#define MIN_RECORD_BLOCK_SIZE 150
+#define RECORD_BLOCK_HEADER_SIZE 150
 
 namespace persist {
 

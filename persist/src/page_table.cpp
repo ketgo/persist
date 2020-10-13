@@ -22,6 +22,8 @@
  * SOFTWARE.
  */
 
+#include <iostream>
+
 #include <persist/core/exceptions.hpp>
 #include <persist/core/page_table.hpp>
 #include <persist/core/record_block.hpp>
@@ -75,9 +77,10 @@ void PageTable::mark(PageId pageId) {
   map.at(pageId)->modified = true;
   // Check if page has free space and update metadata and metadata delta
   // accordingly
-  if (map.at(pageId)->page->freeSpace() > MIN_RECORD_BLOCK_SIZE) {
-    metadata->freePages.insert(
-        pageId); //<- set takes care of duplicates so no need to check
+  if (map.at(pageId)->page->freeSpace() > RECORD_BLOCK_HEADER_SIZE) {
+    std::cout << map.at(pageId)->page->freeSpace() << "\n";
+    // Set takes care of duplicates so no need to check
+    metadata->freePages.insert(pageId);
     map.at(pageId)->metaDelta->addFreePage(pageId);
   } else {
     metadata->freePages.erase(pageId);

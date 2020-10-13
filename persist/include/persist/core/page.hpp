@@ -32,7 +32,7 @@
 #include <persist/core/common.hpp>
 #include <persist/core/record_block.hpp>
 
-#define MINIMUM_PAGE_SIZE 256
+#define MINIMUM_PAGE_SIZE 512
 #define DEFAULT_PAGE_SIZE 1024
 
 namespace persist {
@@ -151,11 +151,11 @@ private:
   Header header;
 
   typedef std::unordered_map<PageSlotId, std::pair<RecordBlock, Header::Slot *>>
-      RecordBlockCache;
+      RecordBlockMap;
   /**
-   * @brief Cached collection of records stored in page slots
+   * @brief Collection of record blocks mapped to their slots in page header
    */
-  RecordBlockCache cache;
+  RecordBlockMap recordBlocks;
 
 public:
   /**
