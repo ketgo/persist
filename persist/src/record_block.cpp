@@ -64,6 +64,8 @@ ByteBuffer &RecordBlock::Header::dump() {
     data["prev"]["slotId"] = prevLocation.slotId;
     // Convert JSON to UBJSON
     buffer = json::to_ubjson(data);
+    // Added pading to fix size of header
+    buffer.resize(RECORD_BLOCK_HEADER_SIZE);
   } catch (json::parse_error &err) {
     throw PageParseError(err.what());
   }
@@ -71,7 +73,11 @@ ByteBuffer &RecordBlock::Header::dump() {
   return buffer;
 }
 
-uint64_t RecordBlock::Header::size() { return dump().size(); }
+uint64_t RecordBlock::Header::size() {
+  // TODO: Use fixed size header serialization so that the size can be
+  // calculated using sizeof operation
+  return RECORD_BLOCK_HEADER_SIZE;
+}
 
 /************************
  * Record Block
