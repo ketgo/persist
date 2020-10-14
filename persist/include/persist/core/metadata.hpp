@@ -35,7 +35,7 @@
 #include <set>
 #include <unordered_map>
 
-#include <persist/core/common.hpp>
+#include <persist/core/defs.hpp>
 #include <persist/core/page.hpp>
 
 namespace persist {
@@ -47,7 +47,13 @@ namespace persist {
  * is utilized by the page table for efficient handling of page lifecycle.
  *
  */
-class MetaData : public Serializable {
+class MetaData {
+  PERSIST_PRIVATE
+  /**
+   * @brief Computes checksum for record block.
+   */
+  Checksum _checksum();
+
 public:
   /**
    * @brief Size of each page
@@ -66,23 +72,49 @@ public:
   std::set<PageId> freePages;
 
   /**
+   * @brief Checksum to detect metadata corruption
+   */
+  Checksum checksum;
+
+  /**
+   * @brief Total size in bytes of fixed length data members of the metadata.
+   * The value includes:
+   * - sizeof(pageSize)
+   * - sizeof(numPages)
+   * - sizeof(freePages.size())
+   * - sizeof(Checksome)
+   */
+  static const size_t fixedSize =
+      2 * sizeof(uint64_t) + sizeof(size_t) + sizeof(Checksum);
+
+  /**
    * Constructor
    */
   MetaData() : pageSize(DEFAULT_PAGE_SIZE), numPages(0) {}
 
   /**
+   * Storage size of metadata. The size comprises of:
+   * - sizeof(pageSize)
+   * - sizeof(numPages)
+   * - sizeof(freePages.size())
+   * - freePages.size() * sizeof(PageId)
+   * - sizeof(Checksome)
+   */
+  uint64_t size() { return fixedSize + sizeof(PageId) * freePages.size(); }
+
+  /**
    * Load object from byte string
    *
-   * @param input input buffer to load
+   * @param input input buffer span to load
    */
-  void load(ByteBuffer &input) override;
+  void load(Span input);
 
   /**
    * Dump object as byte string
    *
-   * @returns reference to the buffer with results
+   * @param output output buffer span to dump
    */
-  ByteBuffer &dump() override;
+  void dump(Span output);
 };
 
 /**
@@ -90,7 +122,7 @@ public:
  *
  * Contains changes to be applied on metadata object.
  */
-class MetaDataDelta : public Serializable {
+class MetaDataDelta {
 private:
   /**
    * Variable to indicate the number of pages increased or decreased. If the
@@ -158,14 +190,14 @@ public:
    *
    * @param input input buffer to load
    */
-  void load(ByteBuffer &input) override;
+  void load(ByteBuffer &input);
 
   /**
    * Dump object as byte string
    *
-   * @returns reference to the buffer with results
+   * @param output output buffer to dump
    */
-  ByteBuffer &dump() override;
+  void dump(ByteBuffer &output);
 };
 
 } // namespace persist

@@ -31,31 +31,9 @@
 
 #include <fstream>
 
-#include <persist/core/common.hpp>
+#include <persist/core/defs.hpp>
 
 namespace persist {
-
-/**
- * Utility function to fill values in one ByteBuffer from another starting
- * at given offset.
- *
- * @param buffer_1 buffer to fill
- * @param buffer_2 buffer from which to retrive values
- * @param offset offset at which to start filling values in buffer
- */
-void write(ByteBuffer &buffer_1, ByteBuffer &buffer_2, size_t offset);
-
-/**
- * Utility function to fill values in ByteBuffer with given value, at starting
- * offset and limit.
- *
- * @param buffer buffer to fill
- * @param value value to fill
- * @param offset offset at which to start filling buffer
- * @param limit amount of values to fill
- */
-void write(ByteBuffer &buffer, uint8_t value, size_t offset, size_t limit);
-
 namespace file {
 
 /**
@@ -78,9 +56,9 @@ uint64_t size(std::fstream &file);
 
 /**
  * Read file content starting at given postion into a ByteBuffer. The amount of
- * data read is determined by the size of the passed ByteBuffer. 
- * 
- * Note: 
+ * data read is determined by the size of the passed ByteBuffer.
+ *
+ * Note:
  * - If the size of the ByteBuffer is zero then no data will be read.
  * - The content of the ByteBuffer will be overwritten
  *

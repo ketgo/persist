@@ -22,8 +22,6 @@
  * SOFTWARE.
  */
 
-#include <iostream>
-
 #include <persist/core/exceptions.hpp>
 #include <persist/core/page_table.hpp>
 #include <persist/core/record_block.hpp>
@@ -76,9 +74,9 @@ void PageTable::put(std::unique_ptr<Page> &page) {
 void PageTable::mark(PageId pageId) {
   map.at(pageId)->modified = true;
   // Check if page has free space and update metadata and metadata delta
-  // accordingly
-  if (map.at(pageId)->page->freeSpace() > RECORD_BLOCK_HEADER_SIZE) {
-    std::cout << map.at(pageId)->page->freeSpace() << "\n";
+  // accordingly. The minimum amount of space a page should contain is the size
+  // of a record block header.
+  if (map.at(pageId)->page->freeSpace() > sizeof(RecordBlock::Header)) {
     // Set takes care of duplicates so no need to check
     metadata->freePages.insert(pageId);
     map.at(pageId)->metaDelta->addFreePage(pageId);

@@ -29,8 +29,8 @@
 #include <gtest/gtest.h>
 
 #include <memory>
-#include <vector>
 
+#include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
 #include <persist/core/page.hpp>
 
@@ -49,7 +49,7 @@ TEST(DataBlockTest, PageSizeError) {
 
 class PageTestFixture : public ::testing::Test {
 protected:
-  std::vector<uint8_t> input;
+  ByteBuffer input;
   const PageId pageId = 12;
   const PageId nextPageId = 15;
   const PageId prevPageId = 1;
@@ -84,15 +84,13 @@ protected:
     pageHeader->createSlot(recordBlock_2->size());
 
     input = {
-        123, 105, 10,  110, 101, 120, 116, 80,  97,  103, 101, 73,  100, 105,
-        15,  105, 6,   112, 97,  103, 101, 73,  100, 105, 12,  105, 8,   112,
-        97,  103, 101, 83,  105, 122, 101, 73,  4,   0,   105, 10,  112, 114,
-        101, 118, 80,  97,  103, 101, 73,  100, 105, 1,   105, 5,   115, 108,
-        111, 116, 115, 91,  123, 105, 2,   105, 100, 105, 1,   105, 6,   111,
-        102, 102, 115, 101, 116, 73,  3,   97,  105, 4,   115, 105, 122, 101,
-        85,  159, 125, 123, 105, 2,   105, 100, 105, 2,   105, 6,   111, 102,
-        102, 115, 101, 116, 73,  2,   194, 105, 4,   115, 105, 122, 101, 85,
-        159, 125, 93,  125, 0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+        12,  0,   0,   0,   0,   0,   0,   0,   15,  0,   0,   0,   0,   0,
+        0,   0,   1,   0,   0,   0,   0,   0,   0,   0,   2,   0,   0,   0,
+        0,   0,   0,   0,   1,   0,   0,   0,   0,   0,   0,   0,   207, 3,
+        0,   0,   0,   0,   0,   0,   49,  0,   0,   0,   0,   0,   0,   0,
+        2,   0,   0,   0,   0,   0,   0,   0,   158, 3,   0,   0,   0,   0,
+        0,   0,   49,  0,   0,   0,   0,   0,   0,   0,   143, 202, 183, 195,
+        60,  97,  29,  198, 0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -134,29 +132,31 @@ protected:
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   123, 105, 4,   110, 101, 120, 116, 123,
-        105, 6,   112, 97,  103, 101, 73,  100, 105, 0,   105, 6,   115, 108,
-        111, 116, 73,  100, 105, 0,   125, 105, 4,   112, 114, 101, 118, 123,
-        105, 6,   112, 97,  103, 101, 73,  100, 105, 0,   105, 6,   115, 108,
-        111, 116, 73,  100, 105, 0,   125, 125, 0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   116, 101, 115, 116, 105, 110, 103, 95,  50,  123, 105, 4,
-        110, 101, 120, 116, 123, 105, 6,   112, 97,  103, 101, 73,  100, 105,
-        0,   105, 6,   115, 108, 111, 116, 73,  100, 105, 0,   125, 105, 4,
-        112, 114, 101, 118, 123, 105, 6,   112, 97,  103, 101, 73,  100, 105,
-        0,   105, 6,   115, 108, 111, 116, 73,  100, 105, 0,   125, 125, 0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   116, 101, 115, 116, 105, 110, 103,
+        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+        0,   0,   0,   0,   0,   0,   31,  137, 223, 200, 40,  173, 239, 136,
+        116, 101, 115, 116, 105, 110, 103, 95,  50,  0,   0,   0,   0,   0,
+        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   16,
+        137, 223, 200, 40,  173, 239, 136, 116, 101, 115, 116, 105, 110, 103,
         95,  49};
   }
 };
@@ -192,6 +192,8 @@ TEST_F(PageTestFixture, TestFreeSpace) {
   _block.setPrevPageId(prevPageId);
 
   ASSERT_EQ(_block.freeSpace(), pageSize - header.size());
+  ASSERT_EQ(_block.freeSpace(true),
+            pageSize - header.size() - sizeof(Page::Header::Slot));
 }
 
 TEST_F(PageTestFixture, TestGetRecordBlock) {
@@ -262,7 +264,7 @@ TEST_F(PageTestFixture, TestRemoveRecordBlockError) {
 
 TEST_F(PageTestFixture, TestLoad) {
   Page _block;
-  _block.load(input);
+  _block.load(Span({input.data(), input.size()}));
 
   ASSERT_EQ(_block.getId(), block->getId());
 
@@ -279,9 +281,9 @@ TEST_F(PageTestFixture, TestLoad) {
 
 TEST_F(PageTestFixture, TestLoadError) {
   try {
-    std::vector<uint8_t> _input;
+    ByteBuffer _input;
     RecordBlock _block;
-    _block.load(_input);
+    _block.load(Span({_input.data(), _input.size()}));
     FAIL() << "Expected RecordBlockParseError Exception.";
   } catch (RecordBlockParseError &err) {
     SUCCEED();
@@ -291,8 +293,8 @@ TEST_F(PageTestFixture, TestLoadError) {
 }
 
 TEST_F(PageTestFixture, TestDump) {
-  ByteBuffer &output = block->dump();
+  ByteBuffer output(pageSize);
+  block->dump(Span({output.data(), output.size()}));
 
   ASSERT_EQ(input, output);
-  ASSERT_EQ(output.size(), pageSize);
 }

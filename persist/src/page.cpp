@@ -26,20 +26,14 @@
  * Page Implementation
  */
 
-#include <nlohmann/json.hpp>
-
-#include "utility.hpp"
-
-#include <persist/core/common.hpp>
 #include <persist/core/exceptions.hpp>
 #include <persist/core/page.hpp>
 
-using json = nlohmann::json;
-
-// ---------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 // TODO:
-// - Increase performance by moving away from JSON based serialization.
-// ---------------------------------------------------------------------------
+//  - Little and Big Eddien mismatch during serialization. Maybe this is not
+//  even needed.
+// ----------------------------------------------------------------------------
 
 namespace persist {
 
@@ -47,20 +41,30 @@ namespace persist {
  * Page Header
  ***********************/
 
-Page::Header::Header()
-    : pageId(0), nextPageId(0), prevPageId(0), pageSize(DEFAULT_PAGE_SIZE) {}
+Checksum Page::Header::_checksum() {
 
-Page::Header::Header(PageId pageId)
-    : pageId(pageId), nextPageId(0), prevPageId(0),
-      pageSize(DEFAULT_PAGE_SIZE) {}
+  // Implemented hash function based on comment in
+  // https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
 
-Page::Header::Header(PageId pageId, uint64_t tail)
-    : pageId(pageId), nextPageId(0), prevPageId(0), pageSize(tail) {}
+  Checksum seed = size();
 
-uint64_t Page::Header::size() {
-  // TODO: Use binary header serialization so that no dump is needed for
-  // size calculation.
-  return dump().size();
+  seed = std::hash<PageId>()(pageId) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+  seed ^=
+      std::hash<PageId>()(nextPageId) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+  seed ^=
+      std::hash<PageId>()(prevPageId) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+  seed ^= std::hash<size_t>()(slots.size()) + 0x9e3779b9 + (seed << 6) +
+          (seed >> 2);
+  for (auto &slot : slots) {
+    seed ^= std::hash<PageSlotId>()(slot.id) + 0x9e3779b9 + (seed << 6) +
+            (seed >> 2);
+    seed ^= std::hash<uint64_t>()(slot.offset) + 0x9e3779b9 + (seed << 6) +
+            (seed >> 2);
+    seed ^= std::hash<uint64_t>()(slot.size) + 0x9e3779b9 + (seed << 6) +
+            (seed >> 2);
+  }
+
+  return seed;
 }
 
 uint64_t Page::Header::tail() {
@@ -96,77 +100,86 @@ void Page::Header::freeSlot(Slot *slot) {
   }
 }
 
-void Page::Header::load(ByteBuffer &input) {
-  // Load JSON from UBJSON
-  try {
-    json data = json::from_ubjson(input, false);
-    data.at("pageId").get_to(pageId);
-    data.at("nextPageId").get_to(nextPageId);
-    data.at("prevPageId").get_to(prevPageId);
-    data.at("pageSize").get_to(pageSize);
-    json slotsData = data.at("slots");
-    slots.clear();
-    for (auto &slotData : slotsData) {
-      Page::Header::Slot slot;
-      slotData.at("id").get_to(slot.id);
-      slotData.at("offset").get_to(slot.offset);
-      slotData.at("size").get_to(slot.size);
-      slots.push_back(slot);
-    }
-  } catch (json::parse_error &err) {
-    throw PageParseError(err.what());
+void Page::Header::load(Span input) {
+  if (input.size < fixedSize) {
+    throw PageParseError();
+  }
+  slots.clear(); //<- clears slots in case they are loaded
+
+  // Load bytes
+  Byte *pos = input.start;
+  std::memcpy((void *)&pageId, (const void *)pos, sizeof(PageId));
+  pos += sizeof(PageId);
+  std::memcpy((void *)&nextPageId, (const void *)pos, sizeof(PageId));
+  pos += sizeof(PageId);
+  std::memcpy((void *)&prevPageId, (const void *)pos, sizeof(PageId));
+  pos += sizeof(PageId);
+  size_t slotsCount;
+  std::memcpy((void *)&slotsCount, (const void *)pos, sizeof(size_t));
+  // Check if slots count value is valid
+  size_t maxSlotsCount = (input.size - fixedSize) / sizeof(Slot);
+  if (slotsCount > maxSlotsCount) {
+    throw PageCorruptError();
+  }
+  pos += sizeof(size_t);
+  while (slotsCount > 0) {
+    Slot slot;
+    std::memcpy((void *)&slot, (const void *)pos, sizeof(Slot));
+    slots.push_back(slot);
+    pos += sizeof(Slot);
+    --slotsCount;
+  }
+  std::memcpy((void *)&checksum, (const void *)pos, sizeof(Checksum));
+
+  // Check for corruption by matching checksum
+  if (_checksum() != checksum) {
+    throw PageCorruptError();
   }
 }
 
-ByteBuffer &Page::Header::dump() {
-  // Create JSON object from header
-  try {
-    json data;
-    data["pageId"] = pageId;
-    data["nextPageId"] = nextPageId;
-    data["prevPageId"] = prevPageId;
-    data["pageSize"] = pageSize;
-    data["slots"] = json::array();
-    for (auto &slot : slots) {
-      json slotData;
-      slotData["id"] = slot.id;
-      slotData["offset"] = slot.offset;
-      slotData["size"] = slot.size;
-      data["slots"].push_back(slotData);
-    }
-    // Convert JSON to UBJSON
-    buffer = json::to_ubjson(data);
-  } catch (json::parse_error &err) {
-    throw PageParseError(err.what());
+void Page::Header::dump(Span output) {
+  if (output.size < size()) {
+    throw PageParseError();
   }
 
-  return buffer;
+  // Compute and set checksum
+  checksum = _checksum();
+
+  // Dump bytes
+  Byte *pos = output.start;
+  std::memcpy((void *)pos, (const void *)&pageId, sizeof(PageId));
+  pos += sizeof(PageId);
+  std::memcpy((void *)pos, (const void *)&nextPageId, sizeof(PageId));
+  pos += sizeof(PageId);
+  std::memcpy((void *)pos, (const void *)&prevPageId, sizeof(PageId));
+  pos += sizeof(PageId);
+  size_t slotsCount = slots.size();
+  std::memcpy((void *)pos, (const void *)&slotsCount, sizeof(size_t));
+  pos += sizeof(size_t);
+  for (Slot &slot : slots) {
+    std::memcpy((void *)pos, (const void *)&slot, sizeof(Slot));
+    pos += sizeof(Slot);
+  }
+  std::memcpy((void *)pos, (const void *)&checksum, sizeof(Checksum));
 }
 
 /************************
  * Page
  ***********************/
 
-Page::Page() {
-  // Resize internal buffer to specified block size
-  buffer.resize(DEFAULT_PAGE_SIZE);
-}
-
-Page::Page(PageId pageId) : header(pageId) {
-  // Resize internal buffer to specified block size
-  buffer.resize(DEFAULT_PAGE_SIZE);
-}
-
 Page::Page(PageId pageId, uint64_t pageSize) : header(pageId, pageSize) {
   // Check block size greater than minimum size
   if (pageSize < MINIMUM_PAGE_SIZE) {
     throw PageSizeError(pageSize);
   }
-  // Resize internal buffer to specified block size
-  buffer.resize(pageSize);
 }
 
-uint64_t Page::freeSpace() { return header.tail() - header.size(); }
+uint64_t Page::freeSpace(bool exclude) {
+  if (exclude) {
+    return header.tail() - header.size() - sizeof(Header::Slot);
+  }
+  return header.tail() - header.size();
+}
 
 RecordBlock &Page::getRecordBlock(PageSlotId slotId) {
   // Check if slot exists
@@ -199,38 +212,45 @@ void Page::removeRecordBlock(PageSlotId slotId) {
   recordBlocks.erase(it);
 }
 
-void Page::load(ByteBuffer &input) {
+void Page::load(Span input) {
+  if (input.size < header.pageSize) {
+    throw PageParseError();
+  }
+  recordBlocks.clear(); //<- clears record blocks in case they are loaded
+
   // Load Page header
   header.load(input);
   // Load record blocks
-  // TODO: Use spans to avoid vector constructions
-  recordBlocks.clear();
-  for (Header::Slots::iterator it = header.slots.begin();
-       it != header.slots.end(); it++) {
-    ByteBuffer::iterator start = input.begin() + it->offset;
-    ByteBuffer::iterator end = start + it->size;
-    ByteBuffer _input(start, end);
+  for (auto slot : header.slots) {
+    Span span;
+    span.start = input.start + slot.offset;
+    span.size = slot.size;
     RecordBlock recordBlock;
-    recordBlock.load(_input);
-    recordBlocks.insert({it->id, {recordBlock, &(*it)}});
+    recordBlock.load(span);
+    recordBlocks.insert({slot.id, {recordBlock, &slot}});
   }
 }
 
-ByteBuffer &Page::dump() {
-  // Dump record blocks
-  std::vector<uint8_t> _output;
-  for (auto &element : recordBlocks) {
-    ByteBuffer &recordBlockBuffer = element.second.first.dump();
-    uint64_t offset = element.second.second->offset;
-    write(buffer, recordBlockBuffer, offset);
+void Page::dump(Span output) {
+  if (output.size < header.pageSize) {
+    throw PageParseError();
   }
-  // Add header to buffer
-  ByteBuffer &head = header.dump();
-  write(buffer, head, 0);
-  // Dump free space
-  write(buffer, 0, head.size(), freeSpace());
 
-  return buffer;
+  Span span;
+  // Dump header
+  span.start = output.start;
+  span.size = header.size();
+  header.dump(span);
+  // Dump free space
+  span.start += span.size;
+  span.size = freeSpace();
+  std::memset((void *)span.start, 0, span.size);
+  // Dump record blocks
+  for (auto &element : recordBlocks) {
+    span.start += span.size;
+    span.size = element.second.first.size();
+    element.second.first.dump(span);
+  }
 }
 
 } // namespace persist

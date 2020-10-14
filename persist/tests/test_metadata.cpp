@@ -30,8 +30,8 @@
 
 #include <list>
 #include <memory>
-#include <vector>
 
+#include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
 #include <persist/core/metadata.hpp>
 
@@ -39,7 +39,7 @@ using namespace persist;
 
 class MetaDataTestFixture : public ::testing::Test {
 protected:
-  std::vector<uint8_t> input;
+  ByteBuffer input;
   std::unique_ptr<MetaData> metadata;
   const uint64_t pageSize = 1024;
   const uint64_t numPages = 10;
@@ -50,16 +50,16 @@ protected:
     metadata->pageSize = pageSize;
     metadata->numPages = numPages;
     metadata->freePages = freeBlocks;
-    input = {123, 105, 9,   102, 114, 101, 101, 80,  97,  103, 101, 115,
-             91,  105, 0,   105, 1,   105, 2,   105, 3,   93,  105, 8,
-             110, 117, 109, 80,  97,  103, 101, 115, 105, 10,  105, 8,
-             112, 97,  103, 101, 83,  105, 122, 101, 73,  4,   0,   125};
+    input = {0, 4, 0, 0, 0, 0, 0, 0, 10,  0,  0,   0,   0,  0,  0,   0,
+             4, 0, 0, 0, 0, 0, 0, 0, 0,   0,  0,   0,   0,  0,  0,   0,
+             1, 0, 0, 0, 0, 0, 0, 0, 2,   0,  0,   0,   0,  0,  0,   0,
+             3, 0, 0, 0, 0, 0, 0, 0, 156, 15, 190, 216, 63, 88, 125, 94};
   }
 };
 
 TEST_F(MetaDataTestFixture, TestLoad) {
   MetaData _metadata;
-  _metadata.load(input);
+  _metadata.load(Span({input.data(), input.size()}));
 
   ASSERT_EQ(_metadata.pageSize, metadata->pageSize);
   ASSERT_EQ(_metadata.numPages, metadata->numPages);
@@ -68,9 +68,9 @@ TEST_F(MetaDataTestFixture, TestLoad) {
 
 TEST_F(MetaDataTestFixture, TestLoadError) {
   try {
-    std::vector<uint8_t> _input;
+    ByteBuffer _input;
     MetaData _metadata;
-    _metadata.load(_input);
+    _metadata.load(Span({_input.data(), _input.size()}));
     FAIL() << "Expected MetaDataParseError Exception.";
   } catch (MetaDataParseError &err) {
     SUCCEED();
@@ -79,8 +79,37 @@ TEST_F(MetaDataTestFixture, TestLoadError) {
   }
 }
 
+TEST_F(MetaDataTestFixture, TestLoadCorruptErrorInvalidChecksum) {
+  try {
+    ByteBuffer _input = input;
+    _input.back() = 0;
+    MetaData _metadata;
+    _metadata.load(Span({_input.data(), _input.size()}));
+    FAIL() << "Expected MetaDataCorruptError Exception.";
+  } catch (MetaDataCorruptError &err) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected MetaDataCorruptError Exception.";
+  }
+}
+
+TEST_F(MetaDataTestFixture, TestLoadCorruptErrorInvalidFreePagesCount) {
+  try {
+    ByteBuffer _input = input;
+    _input[16] = 9; //<- sets the free pages count located at 16th byte to 9
+    MetaData _metadata;
+    _metadata.load(Span({_input.data(), _input.size()}));
+    FAIL() << "Expected MetaDataCorruptError Exception.";
+  } catch (MetaDataCorruptError &err) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected MetaDataCorruptError Exception.";
+  }
+}
+
 TEST_F(MetaDataTestFixture, TestDump) {
-  ByteBuffer &output = metadata->dump();
+  ByteBuffer output(metadata->size());
+  metadata->dump(Span({output.data(), output.size()}));
 
   ASSERT_EQ(input, output);
 }
@@ -174,21 +203,22 @@ TEST_F(MetaDataDeltaTestFixture, TestLoad) {
 
 TEST_F(MetaDataDeltaTestFixture, TestLoadError) {
   try {
-    std::vector<uint8_t> _input;
-    MetaData _metadata;
-    _metadata.load(_input);
-    FAIL() << "Expected MetaDataParseError Exception.";
-  } catch (MetaDataParseError &err) {
+    ByteBuffer _input;
+    MetaDataDelta _delta;
+    _delta.load(_input);
+    FAIL() << "Expected MetaDataDeltaParseError Exception.";
+  } catch (MetaDataDeltaParseError &err) {
     SUCCEED();
   } catch (...) {
-    FAIL() << "Expected MetaDataParseError Exception.";
+    FAIL() << "Expected MetaDataDeltaParseError Exception.";
   }
 }
 
 TEST_F(MetaDataDeltaTestFixture, TestDump) {
   delta->numPagesUp();
   delta->removeFreePage(3);
-  ByteBuffer &output = delta->dump();
+  ByteBuffer output;
+  delta->dump(output);
 
   ASSERT_EQ(input, output);
 }

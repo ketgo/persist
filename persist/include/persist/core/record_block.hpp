@@ -28,14 +28,7 @@
 #include <cstdint>
 #include <string>
 
-#include <persist/core/common.hpp>
-
-/**
- * @brief Size of record block header in bytes
- *
- * TODO: This should be removed once binary serialization is implemented
- */
-#define RECORD_BLOCK_HEADER_SIZE 150
+#include <persist/core/defs.hpp>
 
 namespace persist {
 
@@ -46,7 +39,7 @@ namespace persist {
  * storage. A data record can consist of one or more RecordBlock objects
  * with same identifier.
  */
-class RecordBlock : public Serializable {
+class RecordBlock {
 public:
   /**
    * Record Block Location Class
@@ -83,7 +76,7 @@ public:
    * facilitating read write operations of records. Since a record is stored as
    * linked list of record blocks, the header contains this linking information.
    */
-  class Header : public Serializable {
+  class Header {
   public:
     /**
      * @brief Next RecordBlock location
@@ -95,32 +88,46 @@ public:
     Location prevLocation;
 
     /**
+     * @brief Checksum to detect record block corruption
+     */
+    Checksum checksum;
+
+    /**
      * Constructors
      */
-    Header() {}
+    Header() : checksum(0) {}
 
     /**
      * Get storage size of header.
      */
-    uint64_t size();
+    uint64_t size() { return sizeof(Header); }
 
     /**
      * Load record block header from byte string.
      *
-     * @param input input buffer to load
+     * @param input input buffer span to load
      */
-    void load(ByteBuffer &input) override;
+    void load(Span input);
 
     /**
      * Dump record block header as byte string.
      *
-     * @returns reference to the buffer with results
+     * @param output output buffer span to dump
      */
-    ByteBuffer &dump() override;
+    void dump(Span output);
   };
 
-private:
-  Header header; //<- record block header
+  PERSIST_PRIVATE
+  /**
+   * @brief Record block header
+   *
+   */
+  Header header;
+
+  /**
+   * @brief Computes checksum for record block.
+   */
+  Checksum _checksum();
 
 public:
   ByteBuffer data; //<- data contained in the record block
@@ -129,12 +136,12 @@ public:
    * Constructors
    */
   RecordBlock() {}
-  RecordBlock(RecordBlock::Header &header);
+  RecordBlock(RecordBlock::Header &header) : header(header) {}
 
   /**
    * Get storage size of record block.
    */
-  uint64_t size();
+  uint64_t size() { return header.size() + sizeof(Byte) * data.size(); }
 
   /**
    * @brief Get the next RecordBlock location object
@@ -167,16 +174,16 @@ public:
   /**
    * Load RecordBlock object from byte string.
    *
-   * @param input input buffer to load
+   * @param input input buffer span to load
    */
-  void load(ByteBuffer &input) override;
+  void load(Span input);
 
   /**
    * Dump RecordBlock object as byte string.
    *
-   * @returns reference to the buffer with results
+   * @param output output buffer span to dump
    */
-  ByteBuffer &dump() override;
+  void dump(Span output);
 };
 
 } // namespace persist

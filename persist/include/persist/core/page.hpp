@@ -29,7 +29,7 @@
 #include <list>
 #include <unordered_map>
 
-#include <persist/core/common.hpp>
+#include <persist/core/defs.hpp>
 #include <persist/core/record_block.hpp>
 
 #define MINIMUM_PAGE_SIZE 512
@@ -46,7 +46,7 @@ namespace persist {
  * in case the page is linked. It also contains entries of offset values
  * indicating where each record-block in the page is located.
  */
-class Page : public Serializable {
+class Page {
 public:
   /**
    * Page Header Class
@@ -56,7 +56,13 @@ public:
    * entries of offset values indicating where each record-block in the page is
    * located.
    */
-  class Header : public Serializable {
+  class Header {
+    PERSIST_PRIVATE
+    /**
+     * @brief Computes checksum for record block.
+     */
+    Checksum _checksum();
+
   public:
     /**
      * @brief Page unique identifer
@@ -95,16 +101,47 @@ public:
     Slots slots;
 
     /**
-     * Constructors
+     * @brief Checksum to detect page corruption
      */
-    Header();
-    Header(PageId pageId);
-    Header(PageId pageId, uint64_t pageSize);
+    Checksum checksum;
 
     /**
-     * Get storage size of header.
+     * @brief Total size in bytes of fixed length data members of the header.
+     * This variable is used for size calculation. The value includes:
+     * - sizeof(pageId)
+     * - sizeof(nextPageId)
+     * - sizeof(prevPageId)
+     * - sizeof(slots.size())
+     * - sizeof(Checksome)
      */
-    uint64_t size();
+    static const size_t fixedSize =
+        3 * sizeof(PageId) + sizeof(size_t) + sizeof(Checksum);
+
+    /**
+     * Constructors
+     */
+    Header()
+        : pageId(0), nextPageId(0), prevPageId(0), pageSize(DEFAULT_PAGE_SIZE),
+          checksum(0) {}
+    Header(PageId pageId)
+        : pageId(pageId), nextPageId(0), prevPageId(0),
+          pageSize(DEFAULT_PAGE_SIZE), checksum(0) {}
+    Header(PageId pageId, uint64_t pageSize)
+        : pageId(pageId), nextPageId(0), prevPageId(0), pageSize(pageSize),
+          checksum(0) {}
+
+    /**
+     * Get storage size of header. The size comprises of:
+     * - sizeof(pageId)
+     * - sizeof(nextPageId)
+     * - sizeof(prevPageId)
+     * - sizeof(slots.size())
+     * - slots.size() * sizeof(Slot)
+     * - sizeof(Checksome)
+     *
+     * NOTE: Page size is not stored as its part of the metadata.
+     */
+    uint64_t size() { return fixedSize + sizeof(Slot) * slots.size(); }
 
     /**
      * Ending offset of the free space in the block.
@@ -132,37 +169,37 @@ public:
     /**
      * Load object from byte string
      *
-     * @param input input buffer to load
+     * @param input input buffer span to load
      */
-    void load(ByteBuffer &input) override;
+    void load(Span input);
 
     /**
      * Dump object as byte string
      *
-     * @returns reference to the buffer with results
+     * @param output output buffer span to dump
      */
-    ByteBuffer &dump() override;
+    void dump(Span output);
   };
 
-private:
+  PERSIST_PRIVATE
   /**
    * @brief Page header
    */
   Header header;
 
-  typedef std::unordered_map<PageSlotId, std::pair<RecordBlock, Header::Slot *>>
-      RecordBlockMap;
   /**
    * @brief Collection of record blocks mapped to their slots in page header
    */
+  typedef std::unordered_map<PageSlotId, std::pair<RecordBlock, Header::Slot *>>
+      RecordBlockMap;
   RecordBlockMap recordBlocks;
 
 public:
   /**
    * Constructors
    */
-  Page();
-  Page(PageId pageId);
+  Page() {}
+  Page(PageId pageId) : header(pageId) {}
   Page(PageId pageId, uint64_t pageSize);
 
   /**
@@ -207,9 +244,12 @@ public:
   /**
    * Get free space in bytes available in the block.
    *
+   * @param exclude exclude size of slot in header occupied if a new record
+   * block is inserted. By default this is set to `false` returning the true
+   * free space in the page.
    * @returns free space available in data block
    */
-  uint64_t freeSpace();
+  uint64_t freeSpace(bool exclude = false);
 
   /**
    * Get RecordBlock object at a given slot.
@@ -237,16 +277,16 @@ public:
   /**
    * Load Block object from byte string.
    *
-   * @param input input buffer to load
+   * @param input input buffer span to load
    */
-  void load(ByteBuffer &input) override;
+  void load(Span input);
 
   /**
    * Dump Block object as byte string.
    *
-   * @returns reference to the buffer with results
+   * @param output output buffer span to dump
    */
-  ByteBuffer &dump() override;
+  void dump(Span output);
 };
 
 } // namespace persist
