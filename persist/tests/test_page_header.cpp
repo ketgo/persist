@@ -29,17 +29,17 @@
 #include <gtest/gtest.h>
 
 #include <memory>
-#include <vector>
 
+#include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
 #include <persist/core/page.hpp>
 
 using namespace persist;
 
-class DataBlockHeaderTestFixture : public ::testing::Test {
+class PageHeaderTestFixture : public ::testing::Test {
 protected:
-  std::vector<uint8_t> input;
-  std::vector<uint8_t> extra;
+  ByteBuffer input;
+  ByteBuffer extra;
   const PageId pageId = 12;
   const PageId nextPageId = 15;
   const PageId prevPageId = 1;
@@ -54,27 +54,23 @@ protected:
     header->slots.push_back({2, DEFAULT_PAGE_SIZE - 15, 5});
     header->slots.push_back({3, DEFAULT_PAGE_SIZE - 18, 3});
 
-    input = {123, 105, 10,  110, 101, 120, 116, 80,  97,  103, 101, 73,  100,
-             105, 15,  105, 6,   112, 97,  103, 101, 73,  100, 105, 12,  105,
-             8,   112, 97,  103, 101, 83,  105, 122, 101, 73,  4,   0,   105,
-             10,  112, 114, 101, 118, 80,  97,  103, 101, 73,  100, 105, 1,
-             105, 5,   115, 108, 111, 116, 115, 91,  123, 105, 2,   105, 100,
-             105, 1,   105, 6,   111, 102, 102, 115, 101, 116, 73,  3,   246,
-             105, 4,   115, 105, 122, 101, 105, 10,  125, 123, 105, 2,   105,
-             100, 105, 2,   105, 6,   111, 102, 102, 115, 101, 116, 73,  3,
-             241, 105, 4,   115, 105, 122, 101, 105, 5,   125, 123, 105, 2,
-             105, 100, 105, 3,   105, 6,   111, 102, 102, 115, 101, 116, 73,
-             3,   238, 105, 4,   115, 105, 122, 101, 105, 3,   125, 93,  125};
+    input = {12,  0, 0, 0, 0, 0, 0, 0, 15,  0,   0,   0,  0,  0,   0,  0,
+             1,   0, 0, 0, 0, 0, 0, 0, 3,   0,   0,   0,  0,  0,   0,  0,
+             1,   0, 0, 0, 0, 0, 0, 0, 246, 3,   0,   0,  0,  0,   0,  0,
+             10,  0, 0, 0, 0, 0, 0, 0, 2,   0,   0,   0,  0,  0,   0,  0,
+             241, 3, 0, 0, 0, 0, 0, 0, 5,   0,   0,   0,  0,  0,   0,  0,
+             3,   0, 0, 0, 0, 0, 0, 0, 238, 3,   0,   0,  0,  0,   0,  0,
+             3,   0, 0, 0, 0, 0, 0, 0, 142, 141, 188, 43, 11, 216, 12, 107};
     extra = {42, 0, 0, 0, 21, 48, 4};
   }
 };
 
-TEST_F(DataBlockHeaderTestFixture, TestLoad) {
+TEST_F(PageHeaderTestFixture, TestLoad) {
   Page::Header _header;
-  std::vector<uint8_t> _input;
+  ByteBuffer _input;
   _input.insert(_input.end(), input.begin(), input.end());
   _input.insert(_input.end(), extra.begin(), extra.end());
-  _header.load(_input);
+  _header.load(Span({_input.data(), _input.size()}));
 
   ASSERT_EQ(_header.pageId, header->pageId);
   ASSERT_EQ(_header.slots.size(), header->slots.size());
@@ -89,11 +85,11 @@ TEST_F(DataBlockHeaderTestFixture, TestLoad) {
   }
 }
 
-TEST_F(DataBlockHeaderTestFixture, TestLoadError) {
+TEST_F(PageHeaderTestFixture, TestLoadError) {
   try {
-    std::vector<uint8_t> _input;
+    ByteBuffer _input;
     Page::Header _header;
-    _header.load(_input);
+    _header.load(Span({_input.data(), _input.size()}));
     FAIL() << "Expected PageParseError Exception.";
   } catch (PageParseError &err) {
     SUCCEED();
@@ -102,17 +98,46 @@ TEST_F(DataBlockHeaderTestFixture, TestLoadError) {
   }
 }
 
-TEST_F(DataBlockHeaderTestFixture, TestDump) {
-  ByteBuffer &output = header->dump();
+TEST_F(PageHeaderTestFixture, TestLoadCorruptErrorInvalidChecksum) {
+  try {
+    ByteBuffer _input = input;
+    _input.back() = 0;
+    Page::Header _header;
+    _header.load(Span({_input.data(), _input.size()}));
+    FAIL() << "Expected PageCorruptError Exception.";
+  } catch (PageCorruptError &err) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected PageCorruptError Exception.";
+  }
+}
+
+TEST_F(PageHeaderTestFixture, TestLoadCorruptErrorInvalidSlotsCount) {
+  try {
+    ByteBuffer _input = input;
+    _input[24] = 9; //<- sets the slot count located at 24th byte to 9
+    Page::Header _header;
+    _header.load(Span({_input.data(), _input.size()}));
+    FAIL() << "Expected PageCorruptError Exception.";
+  } catch (PageCorruptError &err) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected PageCorruptError Exception.";
+  }
+}
+
+TEST_F(PageHeaderTestFixture, TestDump) {
+  ByteBuffer output(header->size());
+  header->dump(Span({output.data(), output.size()}));
 
   ASSERT_EQ(input, output);
 }
 
-TEST_F(DataBlockHeaderTestFixture, TestSize) {
+TEST_F(PageHeaderTestFixture, TestSize) {
   ASSERT_EQ(header->size(), input.size());
 }
 
-TEST_F(DataBlockHeaderTestFixture, TestCreateSlot) {
+TEST_F(PageHeaderTestFixture, TestCreateSlot) {
   uint64_t size = 100;
   uint64_t tail = header->tail();
   Page::Header::Slot *slot = header->createSlot(size);
@@ -122,7 +147,7 @@ TEST_F(DataBlockHeaderTestFixture, TestCreateSlot) {
   ASSERT_EQ(slot->size, size);
 }
 
-TEST_F(DataBlockHeaderTestFixture, TestFreeSlot) {
+TEST_F(PageHeaderTestFixture, TestFreeSlot) {
   uint64_t tail = header->tail();
   Page::Header::Slots::iterator it = header->slots.begin();
   ++it;

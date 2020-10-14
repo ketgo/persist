@@ -26,83 +26,96 @@
  * Record Block Implementation
  */
 
-#include <nlohmann/json.hpp>
-
 #include <persist/core/exceptions.hpp>
 #include <persist/core/record_block.hpp>
 
-using json = nlohmann::json;
-
 namespace persist {
+
+// ----------------------------------------------------------------------------
+// TODO:
+//  - Little and Big Eddien mismatch during serialization. Maybe this is not
+//  even needed.
+// ----------------------------------------------------------------------------
 
 /************************
  * Record Block Header
  ***********************/
 
-void RecordBlock::Header::load(ByteBuffer &input) {
-  // Load JSON from UBJSON
-  try {
-    json data = json::from_ubjson(input, false);
-    data.at("next").at("pageId").get_to(nextLocation.pageId);
-    data.at("next").at("slotId").get_to(nextLocation.slotId);
-    data.at("prev").at("pageId").get_to(prevLocation.pageId);
-    data.at("prev").at("slotId").get_to(prevLocation.slotId);
-  } catch (json::parse_error &err) {
-    throw RecordBlockParseError(err.what());
-  }
-}
-
-ByteBuffer &RecordBlock::Header::dump() {
-  // Create JSON object from header
-  try {
-    json data;
-    data["next"] = json::object();
-    data["next"]["pageId"] = nextLocation.pageId;
-    data["next"]["slotId"] = nextLocation.slotId;
-    data["prev"] = json::object();
-    data["prev"]["pageId"] = prevLocation.pageId;
-    data["prev"]["slotId"] = prevLocation.slotId;
-    // Convert JSON to UBJSON
-    buffer = json::to_ubjson(data);
-    // Added pading to fix size of header
-    buffer.resize(RECORD_BLOCK_HEADER_SIZE);
-  } catch (json::parse_error &err) {
-    throw PageParseError(err.what());
+void RecordBlock::Header::load(Span input) {
+  if (input.size < size()) {
+    throw RecordBlockParseError();
   }
 
-  return buffer;
+  // Load bytes
+  std::memcpy((void *)this, (const void *)input.start, size());
 }
 
-uint64_t RecordBlock::Header::size() {
-  // TODO: Use fixed size header serialization so that the size can be
-  // calculated using sizeof operation
-  return RECORD_BLOCK_HEADER_SIZE;
+void RecordBlock::Header::dump(Span output) {
+  if (output.size < size()) {
+    throw RecordBlockParseError();
+  }
+  // Dump bytes
+  std::memcpy((void *)output.start, (const void *)this, size());
 }
 
 /************************
  * Record Block
  ***********************/
 
-RecordBlock::RecordBlock(RecordBlock::Header &header) : header(header) {}
+Checksum RecordBlock::_checksum() {
 
-void RecordBlock::load(ByteBuffer &input) {
-  header.load(input);
-  data.insert(data.begin(), input.begin() + header.size(), input.end());
-}
+  // Implemented hash function based on comment in
+  // https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
 
-ByteBuffer &RecordBlock::dump() {
-  // Check if internal buffer is empty
-  if (!buffer.empty()) {
-    buffer.clear();
+  Checksum seed = size();
+
+  seed = std::hash<PageId>()(header.nextLocation.pageId) + 0x9e3779b9 +
+         (seed << 6) + (seed >> 2);
+  seed ^= std::hash<PageSlotId>()(header.nextLocation.slotId) + 0x9e3779b9 +
+          (seed << 6) + (seed >> 2);
+  seed ^= std::hash<PageId>()(header.prevLocation.slotId) + 0x9e3779b9 +
+          (seed << 6) + (seed >> 2);
+  seed ^= std::hash<PageSlotId>()(header.prevLocation.slotId) + 0x9e3779b9 +
+          (seed << 6) + (seed >> 2);
+  for (auto &i : data) {
+    seed ^= i + 0x9e3779b9 + (seed << 6) + (seed >> 2);
   }
-  ByteBuffer &head = header.dump();
-  buffer.insert(buffer.end(), head.begin(), head.end());
-  buffer.insert(buffer.end(), data.begin(), data.end());
 
-  return buffer;
+  return seed;
 }
 
-uint64_t RecordBlock::size() { return header.size() + data.size(); }
+void RecordBlock::load(Span input) {
+  if (input.size < size()) {
+    throw RecordBlockParseError();
+  }
+  // Load header
+  header.load(input);
+  // Load data
+  size_t dataSize = input.size - header.size();
+  data.resize(dataSize);
+  std::memcpy((void *)data.data(), (const void *)(input.start + header.size()),
+              dataSize);
+
+  // Check for corruption by matching checksum
+  if (_checksum() != header.checksum) {
+    throw RecordBlockCorruptError();
+  }
+}
+
+void RecordBlock::dump(Span output) {
+  if (output.size < size()) {
+    throw RecordBlockParseError();
+  }
+
+  // Compute and set checksum
+  header.checksum = _checksum();
+
+  // Dump header
+  header.dump(output);
+  // Dump data
+  std::memcpy((void *)(output.start + header.size()), (const void *)data.data(),
+              data.size());
+}
 
 RecordBlock::Location &RecordBlock::getNextLocation() {
   return header.nextLocation;

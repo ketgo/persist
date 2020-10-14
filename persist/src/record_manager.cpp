@@ -22,8 +22,6 @@
  * SOFTWARE.
  */
 
-#include "utility.hpp"
-
 #include <persist/core/exceptions.hpp>
 #include <persist/core/record_manager.hpp>
 
@@ -89,11 +87,11 @@ RecordBlock::Location RecordManager::insert(ByteBuffer &buffer) {
     uint64_t writeSpace = page.freeSpace() - recordBlock.size();
     if (writeSpace > contentSize) {
       recordBlock.data.resize(contentSize);
-      write(recordBlock.data, buffer, 0);
+      // write(recordBlock.data, buffer, 0);
       contentSize = 0;
     } else {
       recordBlock.data.resize(writeSpace);
-      write(recordBlock.data, buffer, 0);
+      // write(recordBlock.data, buffer, 0);
       contentSize -= writeSpace;
     }
   }

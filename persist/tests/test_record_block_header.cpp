@@ -29,8 +29,9 @@
 #include <gtest/gtest.h>
 
 #include <memory>
-#include <vector>
+#include <type_traits>
 
+#include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
 #include <persist/core/record_block.hpp>
 
@@ -43,8 +44,8 @@ TEST(RecordBlockLocationTest, RecordBlockLocationNullTest) {
 
 class RecordBlockHeaderTestFixture : public ::testing::Test {
 protected:
-  std::vector<uint8_t> input;
-  std::vector<uint8_t> extra;
+  ByteBuffer input;
+  ByteBuffer extra;
   const PageId nextPageId = 10, prevPageId = 1;
   const PageSlotId nextSlotId = 100, prevSlotId = 10;
   std::unique_ptr<RecordBlock::Header> header;
@@ -56,28 +57,18 @@ protected:
     header->prevLocation.pageId = prevPageId;
     header->prevLocation.slotId = prevSlotId;
 
-    input = {123, 105, 4,   110, 101, 120, 116, 123, 105, 6,   112, 97,  103,
-             101, 73,  100, 105, 10,  105, 6,   115, 108, 111, 116, 73,  100,
-             105, 100, 125, 105, 4,   112, 114, 101, 118, 123, 105, 6,   112,
-             97,  103, 101, 73,  100, 105, 1,   105, 6,   115, 108, 111, 116,
-             73,  100, 105, 10,  125, 125, 0,   0,   0,   0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   0};
+    input = {10, 0, 0, 0, 0,  0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+             0,  0, 0, 0, 10, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     extra = {41, 0, 6, 0, 21, 48, 4};
   }
 };
 
 TEST_F(RecordBlockHeaderTestFixture, TestLoad) {
   RecordBlock::Header _header;
-  std::vector<uint8_t> _input;
+  ByteBuffer _input;
   _input.insert(_input.end(), input.begin(), input.end());
   _input.insert(_input.end(), extra.begin(), extra.end());
-  _header.load(_input);
+  _header.load(Span({_input.data(), _input.size()}));
 
   ASSERT_EQ(_header.nextLocation.pageId, header->nextLocation.pageId);
   ASSERT_EQ(_header.nextLocation.slotId, header->nextLocation.slotId);
@@ -87,9 +78,9 @@ TEST_F(RecordBlockHeaderTestFixture, TestLoad) {
 
 TEST_F(RecordBlockHeaderTestFixture, TestLoadError) {
   try {
-    std::vector<uint8_t> _input;
+    ByteBuffer _input;
     RecordBlock::Header _header;
-    _header.load(_input);
+    _header.load(Span({_input.data(), _input.size()}));
     FAIL() << "Expected RecordBlockParseError Exception.";
   } catch (RecordBlockParseError &err) {
     SUCCEED();
@@ -99,11 +90,12 @@ TEST_F(RecordBlockHeaderTestFixture, TestLoadError) {
 }
 
 TEST_F(RecordBlockHeaderTestFixture, TestDump) {
-  ByteBuffer &output = header->dump();
+  ByteBuffer output(sizeof(RecordBlock::Header));
+  header->dump(Span({output.data(), output.size()}));
 
   ASSERT_EQ(input, output);
 }
 
 TEST_F(RecordBlockHeaderTestFixture, TestSize) {
-  ASSERT_EQ(header->size(), input.size());
+  ASSERT_EQ(header->size(), sizeof(RecordBlock::Header));
 }

@@ -28,10 +28,10 @@
 
 #include <fstream>
 
-#include "utility.hpp"
-
+#include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
 #include <persist/core/storage/file_storage.hpp>
+#include <persist/core/utility.hpp>
 
 namespace persist {
 
@@ -73,8 +73,9 @@ std::unique_ptr<MetaData> FileStorage::read() {
   std::fstream metadataFile;
   std::string metadataPath = path + ".metadata";
   std::unique_ptr<MetaData> metadataPtr = std::make_unique<MetaData>();
-  // Set block size value in metadata. This gets updated once the content of
-  // the saved metadata is loaded
+  // Set page size value in metadata. This gets updated once the content of
+  // the saved metadata is loaded. If not saved metadata is found then this
+  // value is used.
   metadataPtr->pageSize = pageSize;
 
   metadataFile = file::open(metadataPath, std::ios::in | std::ios::binary);
@@ -97,7 +98,7 @@ std::unique_ptr<MetaData> FileStorage::read() {
   file::read(metadataFile, buffer, 0);
 
   // Load MetaData object
-  metadataPtr->load(buffer);
+  metadataPtr->load(Span({buffer.data(), buffer.size()}));
   pageSize = metadataPtr->pageSize;
 
   // Close metadata file
@@ -106,38 +107,9 @@ std::unique_ptr<MetaData> FileStorage::read() {
   return metadataPtr;
 }
 
-std::unique_ptr<Page> FileStorage::read(PageId blockId) {
-  // The block ID and blockSize is used to compute the offset of the block in
-  // the file.
-  uint64_t offset = pageSize * (blockId - 1);
-
-  // If offset is negative that means blockId is 0 so return null pointer.
-  // This is because blockId of 0 is considered NULL.
-  if (offset < 0) {
-    return nullptr;
-  }
-
-  ByteBuffer buffer;
-  buffer.resize(pageSize);
-  std::unique_ptr<Page> dataBlockPtr =
-      std::make_unique<Page>(blockId, pageSize);
-
-  // Load data block from file
-  file::read(file, buffer, offset);
-
-  // TODO: Needs more selective exception handling. The page not found error
-  // should be thrown only if the offset exceeds EOF
-  try {
-    dataBlockPtr->load(buffer);
-  } catch (...) {
-    throw PageNotFoundError(blockId);
-  }
-
-  return dataBlockPtr;
-}
-
 void FileStorage::write(MetaData &metadata) {
-  ByteBuffer &buffer = metadata.dump();
+  ByteBuffer buffer(metadata.size());
+  metadata.dump(Span({buffer.data(), buffer.size()}));
 
   // Open metadata file
   std::fstream metadataFile;
@@ -151,10 +123,39 @@ void FileStorage::write(MetaData &metadata) {
   metadataFile.close();
 }
 
-void FileStorage::write(Page &block) {
+std::unique_ptr<Page> FileStorage::read(PageId pageId) {
+  // The block ID and blockSize is used to compute the offset of the block in
+  // the file.
+  uint64_t offset = pageSize * (pageId - 1);
+
+  // If offset is negative that means blockId is 0 so return null pointer.
+  // This is because blockId of 0 is considered NULL.
+  if (offset < 0) {
+    return nullptr;
+  }
+
+  ByteBuffer buffer;
+  buffer.resize(pageSize);
+  std::unique_ptr<Page> dataBlockPtr = std::make_unique<Page>(pageId, pageSize);
+
+  // Load data block from file
+  file::read(file, buffer, offset);
+
+  // TODO: Needs more selective exception handling. The page not found error
+  // should be thrown only if the offset exceeds EOF
+  try {
+    dataBlockPtr->load(Span({buffer.data(), buffer.size()}));
+  } catch (...) {
+    throw PageNotFoundError(pageId);
+  }
+
+  return dataBlockPtr;
+}
+
+void FileStorage::write(Page &page) {
   // The block ID and blockSize is used to compute the offset of the block
   // in the file.
-  uint64_t offset = pageSize * (block.getId() - 1);
+  uint64_t offset = pageSize * (page.getId() - 1);
 
   // If offset is negative that means blockId is 0 so return. This is because
   // blockId of 0 is considered NULL.
@@ -162,7 +163,8 @@ void FileStorage::write(Page &block) {
     return;
   }
 
-  ByteBuffer &buffer = block.dump();
+  ByteBuffer buffer(pageSize);
+  page.dump(Span({buffer.data(), buffer.size()}));
   file::write(file, buffer, offset);
 }
 

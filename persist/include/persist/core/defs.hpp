@@ -1,5 +1,5 @@
 /**
- * common.hpp - Persist
+ * defs.hpp - Persist
  *
  * Copyright 2020 Ketan Goyal
  *
@@ -23,13 +23,32 @@
  */
 
 /**
- * This header file contains common classes and methods used in the package.
+ * The file contains common defines using throughout the core components of the
+ * package.
  */
 
-#ifndef COMMON_HPP
-#define COMMON_HPP
+#ifndef CORE_DEFS_HPP
+#define CORE_DEFS_HPP
 
 #include <vector>
+
+/**
+ * Used for intrusive testing
+ *
+ */
+#ifdef PERSIST_TESTING
+#define PERSIST_PRIVATE public
+#else
+#define PERSIST_PRIVATE private:
+#endif
+
+/**
+ * Global Constants
+ */
+// Minimum allowed page size
+#define MINIMUM_PAGE_SIZE 512
+// Default page size
+#define DEFAULT_AGE_SIZE 1024
 
 namespace persist {
 
@@ -46,38 +65,20 @@ typedef uint64_t PageId;
 typedef uint64_t PageSlotId;
 
 /**
- * @brief Byte buffer type
+ * Checksum type
  */
-typedef std::vector<uint8_t> ByteBuffer;
+typedef uint64_t Checksum;
 
 /**
- * Abstract Base Serializable class
+ * @brief Byte buffer type
  */
-class Serializable {
-protected:
-  /**
-   * @brief Internal buffer to store serialization result
-   */
-  ByteBuffer buffer;
-
-public:
-  virtual ~Serializable() {} //<- Virtual Destructor
-
-  /**
-   * Load object from byte string
-   *
-   * @param input input buffer to load
-   */
-  virtual void load(ByteBuffer &input) = 0;
-
-  /**
-   * Dump object as byte string
-   *
-   * @returns reference to the buffer with results
-   */
-  virtual ByteBuffer &dump() = 0;
-};
+typedef uint8_t Byte;
+typedef struct {
+  Byte *start;
+  size_t size;
+} Span;
+typedef std::vector<Byte> ByteBuffer;
 
 } // namespace persist
 
-#endif /* COMMON_HPP */
+#endif /* CORE_DEFS_HPP */

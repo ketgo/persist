@@ -24,22 +24,9 @@
 
 #include <fstream>
 
-#include "utility.hpp"
+#include <persist/core/utility.hpp>
 
 namespace persist {
-
-void write(ByteBuffer &buffer_1, ByteBuffer &buffer_2, size_t offset) {
-  for (size_t i = 0; i < buffer_2.size(); ++i) {
-    buffer_1[i + offset] = buffer_2[i];
-  }
-}
-
-void write(ByteBuffer &buffer, uint8_t value, size_t offset, size_t limit) {
-  for (size_t i = offset; i < offset + limit; ++i) {
-    buffer[i] = value;
-  }
-}
-
 namespace file {
 
 std::fstream open(std::string path, std::ios_base::openmode mode) {

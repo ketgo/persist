@@ -29,8 +29,8 @@
 #include <gtest/gtest.h>
 
 #include <memory>
-#include <vector>
 
+#include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
 #include <persist/core/record_block.hpp>
 
@@ -38,7 +38,7 @@ using namespace persist;
 
 class RecordBlockTestFixture : public ::testing::Test {
 protected:
-  std::vector<uint8_t> input;
+  ByteBuffer input;
   const PageId nextPageId = 10, prevPageId = 1;
   const PageSlotId nextSlotId = 100, prevSlotId = 10;
   const ByteBuffer data = {'t', 'e', 's', 't', 'i', 'n', 'g'};
@@ -53,34 +53,25 @@ protected:
     block = std::make_unique<RecordBlock>(header);
     block->data = data;
 
-    input = {123, 105, 4,   110, 101, 120, 116, 123, 105, 6,   112, 97,  103,
-             101, 73,  100, 105, 10,  105, 6,   115, 108, 111, 116, 73,  100,
-             105, 100, 125, 105, 4,   112, 114, 101, 118, 123, 105, 6,   112,
-             97,  103, 101, 73,  100, 105, 1,   105, 6,   115, 108, 111, 116,
-             73,  100, 105, 10,  125, 125, 0,   0,   0,   0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   0,   116, 101, 115, 116, 105, 110,
-             103};
+    input = {10,  0,  0,   0,   0,   0,   0,   0,   100, 0,   0,   0,
+             0,   0,  0,   0,   1,   0,   0,   0,   0,   0,   0,   0,
+             10,  0,  0,   0,   0,   0,   0,   0,   152, 195, 193, 182,
+             152, 23, 192, 140, 116, 101, 115, 116, 105, 110, 103};
   }
 };
 
 TEST_F(RecordBlockTestFixture, TestLoad) {
   RecordBlock _block;
-  _block.load(input);
+  _block.load(Span({input.data(), input.size()}));
 
   ASSERT_EQ(_block.data, block->data);
 }
 
-TEST_F(RecordBlockTestFixture, TestLoadError) {
+TEST_F(RecordBlockTestFixture, TestLoadParseError) {
   try {
-    std::vector<uint8_t> _input;
+    ByteBuffer _input;
     RecordBlock _block;
-    _block.load(_input);
+    _block.load(Span({_input.data(), _input.size()}));
     FAIL() << "Expected RecordBlockParseError Exception.";
   } catch (RecordBlockParseError &err) {
     SUCCEED();
@@ -89,16 +80,30 @@ TEST_F(RecordBlockTestFixture, TestLoadError) {
   }
 }
 
+TEST_F(RecordBlockTestFixture, TestLoadCorruptError) {
+  try {
+    ByteBuffer _input = input;
+    _input.back() = 0;
+    RecordBlock _block;
+    _block.load(Span({_input.data(), _input.size()}));
+    FAIL() << "Expected RecordBlockCorruptError Exception.";
+  } catch (RecordBlockCorruptError &err) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected RecordBlockCorruptError Exception.";
+  }
+}
+
 TEST_F(RecordBlockTestFixture, TestDump) {
-  ByteBuffer &output = block->dump();
+  ByteBuffer output(data.size() + sizeof(RecordBlock::Header));
+
+  block->dump(Span({output.data(), output.size()}));
 
   ASSERT_EQ(input, output);
 }
 
 TEST_F(RecordBlockTestFixture, TestSize) {
-  ByteBuffer &output = block->dump();
-
-  ASSERT_EQ(block->size(), output.size());
+  ASSERT_EQ(block->size(), data.size() + sizeof(RecordBlock::Header));
 }
 
 TEST_F(RecordBlockTestFixture, TestGetNextLocation) {

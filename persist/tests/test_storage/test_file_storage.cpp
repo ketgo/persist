@@ -28,16 +28,13 @@
 
 #include <gtest/gtest.h>
 
-#include <fstream>
 #include <memory>
 #include <string>
-#include <vector>
-
-#include <utility.hpp>
 
 #include <persist/core/exceptions.hpp>
 #include <persist/core/page.hpp>
 #include <persist/core/storage/file_storage.hpp>
+#include <persist/core/utility.hpp>
 
 using namespace persist;
 
@@ -89,11 +86,12 @@ TEST_F(NewFileStorageTestFixture, TestWriteBlock) {
   std::fstream file = file::open(writePath, std::ios::in | std::ios::binary);
   ByteBuffer buffer(pageSize);
   file::read(file, buffer, 0);
-  Page _dataBlock;
-  _dataBlock.load(buffer);
+  Page _page(0, pageSize); //<- page ID does not match expected. It should get
+                           // overritten after loading from buffer.
+  _page.load(Span({buffer.data(), buffer.size()}));
   RecordBlock &_recordBlock = page.getRecordBlock(slotId);
 
-  ASSERT_EQ(page.getId(), _dataBlock.getId());
+  ASSERT_EQ(page.getId(), _page.getId());
   ASSERT_EQ(recordBlock.data, _recordBlock.data);
 }
 
@@ -116,12 +114,12 @@ TEST_F(NewFileStorageTestFixture, TestWriteMetaData) {
   std::fstream file = file::open(writePath + ".metadata",
                                  std::fstream::in | std::fstream::binary);
   uint64_t fileSize = file::size(file);
-  std::vector<uint8_t> buffer;
+  ByteBuffer buffer;
   buffer.resize(fileSize);
   file::read(file, buffer, 0);
 
   MetaData _metadata;
-  _metadata.load(buffer);
+  _metadata.load(Span({buffer.data(), buffer.size()}));
 
   ASSERT_EQ(metadata.freePages, _metadata.freePages);
   ASSERT_EQ(metadata.numPages, _metadata.numPages);
@@ -171,11 +169,12 @@ TEST_F(ExistingFileStorageTestFixture, TestWriteBlock) {
   std::fstream file = file::open(writePath, std::ios::in | std::ios::binary);
   ByteBuffer buffer(pageSize);
   file::read(file, buffer, 0);
-  Page _dataBlock;
-  _dataBlock.load(buffer);
+  Page _page(0, pageSize); //<- page ID does not match expected. It should get
+                           // overritten after loading from buffer.
+  _page.load(Span({buffer.data(), buffer.size()}));
   RecordBlock &_recordBlock = page.getRecordBlock(slotId);
 
-  ASSERT_EQ(page.getId(), _dataBlock.getId());
+  ASSERT_EQ(page.getId(), _page.getId());
   ASSERT_EQ(recordBlock.data, _recordBlock.data);
 }
 
@@ -203,12 +202,12 @@ TEST_F(ExistingFileStorageTestFixture, TestWriteMetaData) {
   std::fstream file = file::open(writePath + ".metadata",
                                  std::fstream::in | std::fstream::binary);
   uint64_t fileSize = file::size(file);
-  std::vector<uint8_t> buffer;
+  ByteBuffer buffer;
   buffer.resize(fileSize);
   file::read(file, buffer, 0);
 
   MetaData _metadata;
-  _metadata.load(buffer);
+  _metadata.load(Span({buffer.data(), buffer.size()}));
 
   ASSERT_EQ(metadata.freePages, _metadata.freePages);
   ASSERT_EQ(metadata.numPages, _metadata.numPages);

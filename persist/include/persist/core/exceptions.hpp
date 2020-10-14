@@ -32,7 +32,7 @@
 #include <exception>
 #include <string>
 
-#include <persist/core/page.hpp>
+#include <persist/core/defs.hpp>
 
 namespace persist {
 
@@ -42,6 +42,13 @@ namespace persist {
  * Use this to capture all package excpetions.
  */
 class PersistException : public std::exception {};
+
+/**
+ * @brief Data Corruption Base Exception Class
+ *
+ * Use this to capture all corruption exceptions.
+ */
+class CorruptException : public PersistException {};
 
 /**
  * Record Not Found Error
@@ -93,6 +100,21 @@ public:
 };
 
 /**
+ * Record Block Corrupt Error
+ *
+ * This error is thrown if the loaded record block is corrupt.
+ */
+class RecordBlockCorruptError : public CorruptException {
+private:
+  std::string msg;
+
+public:
+  RecordBlockCorruptError() : msg("Record block corrupt error.") {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
  * Record Block Not Found Error
  *
  * This error is thrown when a record block does not exists inside
@@ -120,9 +142,24 @@ private:
   std::string msg;
 
 public:
-  PageParseError() : msg("Data block parsing error.") {}
+  PageParseError() : msg("Page parsing error.") {}
   PageParseError(const char *msg) : msg(msg) {}
   PageParseError(std::string &msg) : msg(msg) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
+ * Page Corrupt Error
+ *
+ * This error is thrown if the loaded page is corrupt.
+ */
+class PageCorruptError : public CorruptException {
+private:
+  std::string msg;
+
+public:
+  PageCorruptError() : msg("Page corrupt error.") {}
 
   const char *what() const throw() { return msg.c_str(); }
 };
@@ -175,6 +212,21 @@ public:
   MetaDataParseError() : msg("MetaData parsing error.") {}
   MetaDataParseError(const char *msg) : msg(msg) {}
   MetaDataParseError(std::string &msg) : msg(msg) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
+ * MetaData Corrupt Error
+ *
+ * This error is thrown if the loaded metadata is corrupt.
+ */
+class MetaDataCorruptError : public CorruptException {
+private:
+  std::string msg;
+
+public:
+  MetaDataCorruptError() : msg("Metadata corrupt error.") {}
 
   const char *what() const throw() { return msg.c_str(); }
 };

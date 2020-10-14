@@ -29,8 +29,8 @@
 #include <gtest/gtest.h>
 
 #include <memory>
-#include <vector>
 
+#include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
 #include <persist/core/page_table.hpp>
 #include <persist/core/storage/memory_storage.hpp>
@@ -101,7 +101,8 @@ TEST_F(PageTableTestFixture, TestGetLRUPersist) {
   // Getting the first page and modifying it
   Page &_page_1 = table->get(1);
   RecordBlock block;
-  block.data = ByteBuffer(_page_1.freeSpace() - RECORD_BLOCK_HEADER_SIZE, 'A');
+  block.data =
+      ByteBuffer(_page_1.freeSpace(true) - sizeof(RecordBlock::Header), 'A');
   PageSlotId slotId = _page_1.addRecordBlock(block);
   session.stage(1);
 
@@ -159,7 +160,8 @@ TEST_F(PageTableTestFixture, TestGetFreeNew) {
   for (int i = 1; i <= 3; i++) {
     Page &_page = table->get(i);
     RecordBlock block;
-    block.data = ByteBuffer(_page.freeSpace() - RECORD_BLOCK_HEADER_SIZE + 1, 'A');
+    block.data =
+        ByteBuffer(_page.freeSpace(true) - sizeof(RecordBlock::Header), 'A');
     PageSlotId slotId = _page.addRecordBlock(block);
     session.stage(i);
   }
@@ -176,7 +178,8 @@ TEST_F(PageTableTestFixture, TestSessionCommit) {
   // Getting the first page and modifying it
   Page &_page_1 = table->get(1);
   RecordBlock block;
-  block.data = ByteBuffer(_page_1.freeSpace() - RECORD_BLOCK_HEADER_SIZE + 1, 'A');
+  block.data =
+      ByteBuffer(_page_1.freeSpace(true) - sizeof(RecordBlock::Header), 'A');
   PageSlotId slotId = _page_1.addRecordBlock(block);
   session.stage(1);
 
