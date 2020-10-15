@@ -22,6 +22,8 @@
  * SOFTWARE.
  */
 
+#include <iostream>
+
 #include <persist/core/exceptions.hpp>
 #include <persist/core/record_manager.hpp>
 
@@ -55,20 +57,31 @@ void RecordManager::get(ByteBuffer &buffer, RecordBlock::Location location) {
   if (!started) {
     throw RecordManagerNotStartedError();
   }
+  // Check if provided location is null
   if (location.is_null()) {
     throw RecordNotFoundError("Invalid location provided.");
   }
 
-  RecordBlock::Location readLocation = location;
-  while (!readLocation.is_null()) {
-    // Get record block
-    Page &page = pageTable.get(readLocation.pageId);
-    RecordBlock &recordBlock = page.getRecordBlock(readLocation.slotId);
-    for (auto x : recordBlock.data) {
-      buffer.push_back(x);
+  try {
+    // Start page table session
+    PageTable::Session session = pageTable.createSession();
+
+    RecordBlock::Location readLocation = location;
+    while (!readLocation.is_null()) {
+      // Get record block
+      Page &page = pageTable.get(readLocation.pageId);
+      RecordBlock &recordBlock = page.getRecordBlock(readLocation.slotId);
+      for (auto x : recordBlock.data) {
+        buffer.push_back(x);
+      }
+      // Update read location to next block
+      readLocation = recordBlock.nextLocation();
+
+      // Commit staged pages
+      session.commit();
     }
-    // Update read location to next block
-    readLocation = recordBlock.nextLocation();
+  } catch (NotFoundException &err) {
+    throw RecordNotFoundError(err.what());
   }
 }
 
@@ -77,6 +90,9 @@ RecordBlock::Location RecordManager::insert(ByteBuffer &buffer) {
   if (!started) {
     throw RecordManagerNotStartedError();
   }
+
+  // Start page table session
+  PageTable::Session session = pageTable.createSession();
 
   // Null record block containing the starting location of the inserted data
   RecordBlock nullRecordBlock;
@@ -106,20 +122,18 @@ RecordBlock::Location RecordManager::insert(ByteBuffer &buffer) {
 
     // Compute availble space to write data in page
     uint64_t writeSpace = page.freeSpace(true) - sizeof(RecordBlock::Header);
+    // Iterator to one past element already written
+    ByteBuffer::iterator it = buffer.begin() + writtenSize;
     // Check if available space is greater than the content to write
     if (toWriteSize <= writeSpace) {
       // Enough space available so write the all the left over data
-      recordBlock.data.insert(recordBlock.data.end(),
-                              buffer.begin() + writtenSize,
-                              buffer.begin() + toWriteSize);
+      recordBlock.data.insert(recordBlock.data.end(), it, it + toWriteSize);
       prevRecordBlock->nextLocation().slotId = page.addRecordBlock(recordBlock);
       writtenSize += toWriteSize;
       toWriteSize = 0;
     } else {
       // Not enough space available so write partial data
-      recordBlock.data.insert(recordBlock.data.end(),
-                              buffer.begin() + writtenSize,
-                              buffer.begin() + writeSpace);
+      recordBlock.data.insert(recordBlock.data.end(), it, it + writeSpace);
       PageSlotId slotId = page.addRecordBlock(recordBlock);
       prevRecordBlock->nextLocation().slotId = slotId;
       writtenSize += writeSpace;
@@ -129,7 +143,12 @@ RecordBlock::Location RecordManager::insert(ByteBuffer &buffer) {
       prevLocation = &prevRecordBlock->nextLocation();
       prevRecordBlock = &page.getRecordBlock(slotId);
     }
+    // Stage page for commit
+    session.stage(page.getId());
   }
+
+  // Commit staged pages
+  session.commit();
 
   return nullRecordBlock.nextLocation();
 }

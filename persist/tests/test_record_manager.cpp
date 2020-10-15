@@ -45,18 +45,72 @@ class RecordManagerTestFixture : public ::testing::Test {
 protected:
   const uint64_t pageSize = DEFAULT_PAGE_SIZE;
   const uint64_t maxSize = 2;
+  const ByteBuffer records[2] = {{'t', 'e', 's', 't', 'i', 'n', 'g', '_', '1'},
+                                 {'t', 'e', 's', 't', 'i', 'n', 'g', '_', '2'}};
+  RecordBlock::Location locations[2];
   std::unique_ptr<RecordManager> manager;
 
   void SetUp() override {
     // TODO: Add page size to query when supported
     manager = std::make_unique<RecordManager>("memory://", maxSize);
     manager->start();
+
+    // Setup storage for tests
+    MetaData metadata;
+    metadata.pageSize = pageSize;
+    metadata.numPages = 2;
+    for (int i = 0; i < metadata.numPages; i++) {
+      PageId pageId = i + 1;
+      Page page(pageId, pageSize);
+      RecordBlock recordBlock;
+      recordBlock.data = records[i];
+      locations[i].pageId = pageId;
+      locations[i].slotId = page.addRecordBlock(recordBlock);
+      metadata.freePages.insert(pageId);
+      manager->storage->write(page);
+    }
+    manager->storage->write(metadata);
   }
 
   void TearDown() override { manager->stop(); }
 };
 
-TEST_F(RecordManagerTestFixture, TestGet) {}
+TEST_F(RecordManagerTestFixture, TestGet) {
+  ByteBuffer record;
+
+  manager->get(record, locations[0]);
+  ASSERT_EQ(record, records[0]);
+  record.clear();
+
+  manager->get(record, locations[1]);
+  ASSERT_EQ(record, records[1]);
+}
+
+TEST_F(RecordManagerTestFixture, TestGetErrorNullLocation) {
+  try {
+    ByteBuffer record;
+    RecordBlock::Location location;
+    manager->get(record, location);
+    FAIL() << "Expected RecordNotFoundError Exception.";
+  } catch (RecordNotFoundError &err) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected RecordNotFoundError Exception.";
+  }
+}
+TEST_F(RecordManagerTestFixture, TestGetErrorNonExistingLocation) {
+  try {
+    ByteBuffer record;
+    RecordBlock::Location location;
+    location.pageId = 10;
+    manager->get(record, location);
+    FAIL() << "Expected RecordNotFoundError Exception.";
+  } catch (RecordNotFoundError &err) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected RecordNotFoundError Exception.";
+  }
+}
 
 TEST_F(RecordManagerTestFixture, TestInsert) {
   ByteBuffer input(2 * pageSize + 100, 'A');

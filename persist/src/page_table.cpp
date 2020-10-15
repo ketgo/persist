@@ -40,6 +40,11 @@ PageTable::PageTable(Storage &storage)
 
 PageTable::PageTable(Storage &storage, uint64_t maxSize)
     : storage(storage), maxSize(maxSize) {
+  // Check buffer size value
+  if (maxSize != 0 && maxSize < MINIMUM_MAX_BUFFER_SIZE) {
+    throw PageTableError("Invalid value for max buffer size. The max size can "
+                         "be 0 or greater than 2.");
+  }
   // Read metadata
   metadata = storage.read();
 }
@@ -48,7 +53,7 @@ PageTable::PageTable(Storage &storage, uint64_t maxSize)
 
 void PageTable::put(std::unique_ptr<Page> &page) {
   // If buffer is full then remove the LRU page
-  if (buffer.size() == maxSize) {
+  if (maxSize != 0 && buffer.size() == maxSize) {
     // Get last page in buffer
     PageSlot &lruPageSlot = buffer.back();
     PageId lruPageId = lruPageSlot.page->getId();
@@ -87,8 +92,11 @@ void PageTable::mark(PageId pageId) {
 }
 
 void PageTable::flush(PageId pageId) {
-  // Save page if modified
-  if (map.at(pageId)->modified) {
+  // Find page
+  PageSlotMap::iterator it = map.find(pageId);
+  // Save page if found and modified
+  if (it != map.end() && it->second->modified) {
+
     // NOTE: System failure can lead to invalid state of the storage. That is,
     // the metadata gets updated but the page insert fails. Need failure
     // recovery via operation logs and commit checkpoints.

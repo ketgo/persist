@@ -185,7 +185,7 @@ RecordBlock &Page::getRecordBlock(PageSlotId slotId) {
   // Check if slot exists
   RecordBlockMap::iterator it = recordBlocks.find(slotId);
   if (it == recordBlocks.end()) {
-    throw RecordBlockNotFoundError(slotId);
+    throw RecordBlockNotFoundError(header.pageId, slotId);
   }
   return it->second.first;
 }
@@ -204,7 +204,7 @@ void Page::removeRecordBlock(PageSlotId slotId) {
   // Check if slot exists in the Page
   RecordBlockMap::iterator it = recordBlocks.find(slotId);
   if (it == recordBlocks.end()) {
-    throw RecordBlockNotFoundError(slotId);
+    throw RecordBlockNotFoundError(header.pageId, slotId);
   }
   // Adjusting header
   header.freeSlot(it->second.second);

@@ -36,26 +36,43 @@
 
 namespace persist {
 
+// --------------------------------------------------
+// Base Excpetion Classes
+// --------------------------------------------------
+
 /**
- * @brief Persist Package Base Exception Class
+ * @brief Persist package base exception class
  *
  * Use this to capture all package excpetions.
  */
 class PersistException : public std::exception {};
 
 /**
- * @brief Data Corruption Base Exception Class
+ * @brief Data corruption base exception class
  *
  * Use this to capture all corruption exceptions.
  */
 class CorruptException : public PersistException {};
 
 /**
+ * @brief Not found error base excpetion class.
+ *
+ * Use this to capture all not found exceptions.
+ */
+class NotFoundException : public PersistException {};
+
+// --------------------------------------------------
+
+// --------------------------------------------------
+// Derived Exception Classes
+// --------------------------------------------------
+
+/**
  * Record Not Found Error
  *
  * This error is thrown if a record is not found.
  */
-class RecordNotFoundError : public PersistException {
+class RecordNotFoundError : public NotFoundException {
 private:
   std::string msg;
 
@@ -78,6 +95,22 @@ private:
 
 public:
   RecordManagerNotStartedError() : msg("Record manager not started.") {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
+ * Page Table Error
+ *
+ * This error is thrown by the page table.
+ */
+class PageTableError : public PersistException {
+private:
+  std::string msg;
+
+public:
+  PageTableError(const char *msg) : msg(msg) {}
+  PageTableError(std::string &msg) : msg(msg) {}
 
   const char *what() const throw() { return msg.c_str(); }
 };
@@ -120,14 +153,15 @@ public:
  * This error is thrown when a record block does not exists inside
  * a page.
  */
-class RecordBlockNotFoundError : public PersistException {
+class RecordBlockNotFoundError : public NotFoundException {
 private:
   std::string msg;
 
 public:
-  RecordBlockNotFoundError(persist::PageSlotId &slotId)
-      : msg(std::string("Record Block not found at slot '") +
-            std::to_string(slotId) + std::string("'.")) {}
+  RecordBlockNotFoundError(persist::PageId pageId, persist::PageSlotId &slotId)
+      : msg(std::string("Record Block at slot '") + std::to_string(slotId) +
+            std::string("' in page with ID '") + std::to_string(pageId) +
+            std::string("' not found.")) {}
 
   const char *what() const throw() { return msg.c_str(); }
 };
@@ -169,13 +203,13 @@ public:
  *
  * This error is thrown if page is not found.
  */
-class PageNotFoundError : public PersistException {
+class PageNotFoundError : public NotFoundException {
 private:
   std::string msg;
 
 public:
   PageNotFoundError(persist::PageId &pageId)
-      : msg(std::string("Data Block '") + std::to_string(pageId) +
+      : msg(std::string("Page with ID '") + std::to_string(pageId) +
             std::string("' not found.")) {}
 
   const char *what() const throw() { return msg.c_str(); }
@@ -264,6 +298,8 @@ public:
 
   const char *what() const throw() { return msg.c_str(); }
 };
+
+// --------------------------------------------------
 
 } // namespace persist
 

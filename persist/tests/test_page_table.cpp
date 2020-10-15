@@ -74,6 +74,17 @@ protected:
   void TearDown() override { storage->close(); }
 };
 
+TEST_F(PageTableTestFixture, TestPageTableError) {
+  try {
+    PageTable table(*storage, 1); //<- invalid max size value
+    FAIL() << "Expected PageTableError Exception.";
+  } catch (PageTableError &err) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected PageTableError Exception.";
+  }
+}
+
 TEST_F(PageTableTestFixture, TestGet) {
   PageId pageId = page_1->getId();
   Page page = table->get(pageId);

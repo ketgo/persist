@@ -39,6 +39,8 @@
 #include <persist/core/storage/base.hpp>
 
 #define DEFAULT_MAX_BUFFER_SIZE 10000
+// At the minimum 2 pages are needed in memory by record manager.
+#define MINIMUM_MAX_BUFFER_SIZE 2
 
 namespace persist {
 
@@ -108,8 +110,8 @@ private:
   uint64_t maxSize;                   //<- maximum size of buffer
 
   std::list<PageSlot> buffer; //<- buffer of page slots
-  std::unordered_map<PageId, std::list<PageSlot>::iterator>
-      map; //<- stores mapped references to pages in the buffer
+  typedef std::unordered_map<PageId, std::list<PageSlot>::iterator> PageSlotMap;
+  PageSlotMap map; //<- stores mapped references to page slots in the buffer
 
   /**
    * Add page to buffer.
@@ -140,7 +142,12 @@ public:
    *
    * @param storage reference to backend storage. Note that the storage should
    * be opened before calling any member methods.
-   * @param maxSize maximum buffer size
+   * @param maxSize maximum buffer size. If set to 0 then no maximum limit is
+   * set.
+   *
+   * TODO:
+   *  - pinning slots with pages in use
+   *  - multi-threaded and multi-process access control
    */
   PageTable(Storage &storage);
   PageTable(Storage &storage, uint64_t maxSize);
