@@ -148,28 +148,14 @@ public:
    *
    * @return Location reference to the next record block
    */
-  Location &getNextLocation();
-
-  /**
-   * @brief Set the next RecordBlock location object
-   *
-   * @param location reference to the next record block value to set
-   */
-  void setNextLocation(Location &location);
+  Location &nextLocation();
 
   /**
    * @brief Get the previous RecordBlock location object
    *
    * @return Location reference to the previous record block
    */
-  Location &getPrevLocation();
-
-  /**
-   * @brief Set the previous RecordBlock location object
-   *
-   * @param location reference to the previous record block value to set
-   */
-  void setPrevLocation(Location &location);
+  Location &prevLocation();
 
   /**
    * Load RecordBlock object from byte string.

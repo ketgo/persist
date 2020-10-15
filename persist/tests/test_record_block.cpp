@@ -107,27 +107,29 @@ TEST_F(RecordBlockTestFixture, TestSize) {
 }
 
 TEST_F(RecordBlockTestFixture, TestGetNextLocation) {
-  ASSERT_EQ(block->getNextLocation().pageId, nextPageId);
-  ASSERT_EQ(block->getNextLocation().slotId, nextSlotId);
+  ASSERT_EQ(block->nextLocation().pageId, nextPageId);
+  ASSERT_EQ(block->nextLocation().slotId, nextSlotId);
 }
 
 TEST_F(RecordBlockTestFixture, TestSetNextLocation) {
   RecordBlock::Location location(15, 5);
-  block->setNextLocation(location);
+  block->nextLocation().pageId = location.pageId;
+  block->nextLocation().slotId = location.slotId;
 
-  ASSERT_EQ(block->getNextLocation().pageId, location.pageId);
-  ASSERT_EQ(block->getNextLocation().slotId, location.slotId);
+  ASSERT_EQ(block->nextLocation().pageId, location.pageId);
+  ASSERT_EQ(block->nextLocation().slotId, location.slotId);
 }
 
 TEST_F(RecordBlockTestFixture, TestGetPrevLocation) {
-  ASSERT_EQ(block->getPrevLocation().pageId, prevPageId);
-  ASSERT_EQ(block->getPrevLocation().slotId, prevSlotId);
+  ASSERT_EQ(block->prevLocation().pageId, prevPageId);
+  ASSERT_EQ(block->prevLocation().slotId, prevSlotId);
 }
 
 TEST_F(RecordBlockTestFixture, TestSetPrevLocation) {
   RecordBlock::Location location(15, 5);
-  block->setPrevLocation(location);
+  block->prevLocation().pageId = location.pageId;
+  block->prevLocation().slotId = location.slotId;
 
-  ASSERT_EQ(block->getPrevLocation().pageId, location.pageId);
-  ASSERT_EQ(block->getPrevLocation().slotId, location.slotId);
+  ASSERT_EQ(block->prevLocation().pageId, location.pageId);
+  ASSERT_EQ(block->prevLocation().slotId, location.slotId);
 }

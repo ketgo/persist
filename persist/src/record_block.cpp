@@ -117,22 +117,12 @@ void RecordBlock::dump(Span output) {
               data.size());
 }
 
-RecordBlock::Location &RecordBlock::getNextLocation() {
+RecordBlock::Location &RecordBlock::nextLocation() {
   return header.nextLocation;
 }
 
-void RecordBlock::setNextLocation(Location &location) {
-  header.nextLocation.pageId = location.pageId;
-  header.nextLocation.slotId = location.slotId;
-}
-
-RecordBlock::Location &RecordBlock::getPrevLocation() {
+RecordBlock::Location &RecordBlock::prevLocation() {
   return header.prevLocation;
-}
-
-void RecordBlock::setPrevLocation(Location &location) {
-  header.prevLocation.pageId = location.pageId;
-  header.prevLocation.slotId = location.slotId;
 }
 
 } // namespace persist

@@ -200,8 +200,8 @@ TEST_F(PageTestFixture, TestGetRecordBlock) {
   RecordBlock _recordBlock = block->getRecordBlock(slotId_1);
 
   ASSERT_EQ(_recordBlock.data, recordBlockData_1);
-  ASSERT_TRUE(_recordBlock.getNextLocation().is_null());
-  ASSERT_TRUE(_recordBlock.getPrevLocation().is_null());
+  ASSERT_TRUE(_recordBlock.nextLocation().is_null());
+  ASSERT_TRUE(_recordBlock.prevLocation().is_null());
 }
 
 TEST_F(PageTestFixture, TestGetRecordBlockError) {
@@ -270,13 +270,13 @@ TEST_F(PageTestFixture, TestLoad) {
 
   RecordBlock &_recordBlock_1 = _block.getRecordBlock(slotId_1);
   ASSERT_EQ(_recordBlock_1.data, recordBlockData_1);
-  ASSERT_TRUE(_recordBlock_1.getNextLocation().is_null());
-  ASSERT_TRUE(_recordBlock_1.getPrevLocation().is_null());
+  ASSERT_TRUE(_recordBlock_1.nextLocation().is_null());
+  ASSERT_TRUE(_recordBlock_1.prevLocation().is_null());
 
   RecordBlock &_recordBlock_2 = _block.getRecordBlock(slotId_2);
   ASSERT_EQ(_recordBlock_2.data, recordBlockData_2);
-  ASSERT_TRUE(_recordBlock_2.getNextLocation().is_null());
-  ASSERT_TRUE(_recordBlock_2.getPrevLocation().is_null());
+  ASSERT_TRUE(_recordBlock_2.nextLocation().is_null());
+  ASSERT_TRUE(_recordBlock_2.prevLocation().is_null());
 }
 
 TEST_F(PageTestFixture, TestLoadError) {

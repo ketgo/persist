@@ -28,7 +28,7 @@
 namespace persist {
 
 static uint64_t cachesizeToBufferCount(uint64_t cacheSize) {
-  // TODO: Calculate page table max size from given cache size
+  // TODO: Calculate page table max size from given cache size in bytes
   return cacheSize;
 }
 
@@ -68,7 +68,7 @@ void RecordManager::get(ByteBuffer &buffer, RecordBlock::Location location) {
       buffer.push_back(x);
     }
     // Update read location to next block
-    readLocation = recordBlock.getNextLocation();
+    readLocation = recordBlock.nextLocation();
   }
 }
 
@@ -76,27 +76,60 @@ RecordBlock::Location RecordManager::insert(ByteBuffer &buffer) {
   if (!started) {
     throw RecordManagerNotStartedError();
   }
-  // Starting record block location returned by the method
-  RecordBlock::Location rvalue;
+  // Null record block containing the starting location of the inserted data
+  RecordBlock nullRecordBlock;
+  // Null location representing the location of the null record block
+  RecordBlock::Location nullLocation;
 
-  uint64_t contentSize = buffer.size();
-  while (contentSize > 0) {
-    // Get free page
+  // Bookkeeping variables
+  uint64_t toWriteSize = buffer.size(), writtenSize = 0;
+  // Pointer to previous record block in linked list. Begins with pointing to
+  // the null record block.
+  RecordBlock *prevRecordBlock = &nullRecordBlock;
+  // Pointer to previous record block location. Begins with pointing to the
+  // location of the null record block.
+  RecordBlock::Location *prevLocation = &nullLocation;
+  // Start loop to write content in linked record blocks
+  while (toWriteSize > 0) {
+    // Get a free page
     Page &page = pageTable.getFree();
+    prevRecordBlock->nextLocation().pageId = page.getId();
+
+    // Create record block to add to page
     RecordBlock recordBlock;
-    uint64_t writeSpace = page.freeSpace() - recordBlock.size();
-    if (writeSpace > contentSize) {
-      recordBlock.data.resize(contentSize);
-      // write(recordBlock.data, buffer, 0);
-      contentSize = 0;
+
+    // Set previous record block location
+    recordBlock.prevLocation().pageId = prevLocation->pageId;
+    recordBlock.prevLocation().slotId = prevLocation->slotId;
+
+    // Compute availble space to write data in page
+    uint64_t writeSpace = page.freeSpace(true) - sizeof(RecordBlock::Header);
+    // Check if available space is greater than the content to write
+    if (toWriteSize <= writeSpace) {
+      // Enough space available so write the all the left over data
+      recordBlock.data.insert(recordBlock.data.end(),
+                              buffer.begin() + writtenSize,
+                              buffer.begin() + toWriteSize);
+      prevRecordBlock->nextLocation().slotId = page.addRecordBlock(recordBlock);
+      writtenSize += toWriteSize;
+      toWriteSize = 0;
     } else {
-      recordBlock.data.resize(writeSpace);
-      // write(recordBlock.data, buffer, 0);
-      contentSize -= writeSpace;
+      // Not enough space available so write partial data
+      recordBlock.data.insert(recordBlock.data.end(),
+                              buffer.begin() + writtenSize,
+                              buffer.begin() + writeSpace);
+      PageSlotId slotId = page.addRecordBlock(recordBlock);
+      prevRecordBlock->nextLocation().slotId = slotId;
+      writtenSize += writeSpace;
+      toWriteSize -= writeSpace;
+
+      // Update previous record block and location pointers
+      prevLocation = &prevRecordBlock->nextLocation();
+      prevRecordBlock = &page.getRecordBlock(slotId);
     }
   }
 
-  return rvalue;
+  return nullRecordBlock.nextLocation();
 }
 
 void RecordManager::update(ByteBuffer &buffer, RecordBlock::Location location) {
