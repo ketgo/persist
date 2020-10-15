@@ -23,7 +23,7 @@
  */
 
 /**
- * Block Manager Cache Unit Tests
+ * Page Table Unit Tests
  */
 
 #include <gtest/gtest.h>

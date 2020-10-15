@@ -1,5 +1,5 @@
 /**
- * defs.hpp - Persist
+ * test_record_manager.cpp - Persist
  *
  * Copyright 2020 Ketan Goyal
  *
@@ -23,62 +23,48 @@
  */
 
 /**
- * The file contains common defines using throughout the core components of the
- * package.
+ * @brief Record Manager Unit Tests
  */
 
-#ifndef CORE_DEFS_HPP
-#define CORE_DEFS_HPP
+#include <gtest/gtest.h>
 
-#include <vector>
+#include <memory>
 
 /**
- * Used for intrusive testing
- *
+ * Enabled intrusive testing
  */
-#ifdef PERSIST_TESTING
-#define PERSIST_PRIVATE public:
-#else
-#define PERSIST_PRIVATE private:
-#endif
+#define PERSIST_TESTING
 
-/**
- * Global Constants
- */
-// Minimum allowed page size
-#define MINIMUM_PAGE_SIZE 512
-// Default page size
-#define DEFAULT_AGE_SIZE 1024
+#include <persist/core/defs.hpp>
+#include <persist/core/exceptions.hpp>
+#include <persist/core/record_manager.hpp>
 
-namespace persist {
+using namespace persist;
 
-/**
- * Page identifier type
- *
- * NOTE: An ID with value 0 is considered NULL
- */
-typedef uint64_t PageId;
+class RecordManagerTestFixture : public ::testing::Test {
+protected:
+  const uint64_t pageSize = DEFAULT_PAGE_SIZE;
+  const uint64_t maxSize = 2;
+  std::unique_ptr<RecordManager> manager;
 
-/**
- * Page slot identifier type
- */
-typedef uint64_t PageSlotId;
+  void SetUp() override {
+    // TODO: Add page size to query when supported
+    manager = std::make_unique<RecordManager>("memory://", maxSize);
+    manager->start();
+  }
 
-/**
- * Checksum type
- */
-typedef uint64_t Checksum;
+  void TearDown() override { manager->stop(); }
+};
 
-/**
- * @brief Byte buffer type
- */
-typedef uint8_t Byte;
-typedef struct {
-  Byte *start;
-  size_t size;
-} Span;
-typedef std::vector<Byte> ByteBuffer;
+TEST_F(RecordManagerTestFixture, TestGet) {}
 
-} // namespace persist
+TEST_F(RecordManagerTestFixture, TestInsert) {
+  ByteBuffer input(2 * pageSize + 100, 'A');
+  RecordBlock::Location location = manager->insert(input);
 
-#endif /* CORE_DEFS_HPP */
+  ByteBuffer output;
+  manager->get(output, location);
+
+  ASSERT_EQ(output.size(), input.size());
+  ASSERT_EQ(output, input);
+}

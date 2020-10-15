@@ -37,14 +37,14 @@ RecordManager::RecordManager(std::string storageURL, uint64_t cacheSize)
       pageTable(*storage, cachesizeToBufferCount(cacheSize)), started(false) {}
 
 void RecordManager::start() {
-  if (!storage->is_open()) {
+  if (!started) {
     storage->open();
     started = true;
   }
 }
 
 void RecordManager::stop() {
-  if (storage->is_open()) {
+  if (started) {
     storage->close();
     started = false;
   }
@@ -73,9 +73,11 @@ void RecordManager::get(ByteBuffer &buffer, RecordBlock::Location location) {
 }
 
 RecordBlock::Location RecordManager::insert(ByteBuffer &buffer) {
+  // Check if record manager has started
   if (!started) {
     throw RecordManagerNotStartedError();
   }
+
   // Null record block containing the starting location of the inserted data
   RecordBlock nullRecordBlock;
   // Null location representing the location of the null record block

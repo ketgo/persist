@@ -56,19 +56,30 @@ const std::unordered_map<std::string, StorageType> StorageTypeMap = {
  * - val_1..n [optional]: values of associated with the additional arguments
  *
  * NOTE: Currently simple parser is implemented which just detects the `type`.
+ *
+ * TODO: Prase arguments like `pageSize`.
  */
-struct ConnectionString {
+class ConnectionString {
+  PERSIST_PRIVATE
+  /**
+   * Storage type seperator in connection string
+   */
+  static const std::string storageTypeSep;
+
+public:
   std::string raw;
   std::string type;
   std::string path;
 
   // Constructor
   ConnectionString(std::string connectionString) : raw(connectionString) {
-    std::string::size_type loc = raw.find("://");
+    std::string::size_type loc = raw.find(storageTypeSep);
     type = raw.substr(0, loc);
-    path = raw.substr(loc + 3);
+    path = raw.substr(loc + storageTypeSep.size());
   }
 };
+
+const std::string ConnectionString::storageTypeSep = "://";
 
 std::unique_ptr<Storage> Storage::create(std::string connectionString) {
   ConnectionString _connectionString(connectionString);

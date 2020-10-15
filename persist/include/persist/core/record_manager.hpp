@@ -40,9 +40,18 @@ namespace persist {
  * DELETE records.
  */
 class RecordManager {
-private:
+  PERSIST_PRIVATE
+  /**
+   * @brief Pointer to backend storage
+   */
   std::unique_ptr<Storage> storage;
+  /**
+   * @brief Page table
+   */
   PageTable pageTable;
+  /**
+   * @brief Flag indicating record manager started
+   */
   bool started;
 
 public:
