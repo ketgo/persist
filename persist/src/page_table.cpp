@@ -33,20 +33,15 @@ namespace persist {
  *******************/
 
 PageTable::PageTable(Storage &storage)
-    : storage(storage), maxSize(DEFAULT_MAX_BUFFER_SIZE) {
-  // Read metadata
-  metadata = storage.read();
-}
+    : storage(storage), maxSize(DEFAULT_MAX_BUFFER_SIZE), opened(false) {}
 
 PageTable::PageTable(Storage &storage, uint64_t maxSize)
-    : storage(storage), maxSize(maxSize) {
+    : storage(storage), maxSize(maxSize), opened(false) {
   // Check buffer size value
   if (maxSize != 0 && maxSize < MINIMUM_MAX_BUFFER_SIZE) {
     throw PageTableError("Invalid value for max buffer size. The max size can "
                          "be 0 or greater than 2.");
   }
-  // Read metadata
-  metadata = storage.read();
 }
 
 // Private Methods
@@ -116,7 +111,33 @@ void PageTable::flush(PageId pageId) {
 
 // Public Methods
 
+void PageTable::open() {
+  if (!opened) {
+    // Open backend storage
+    storage.open();
+    // Read metadata
+    metadata = storage.read();
+    opened = true;
+  }
+}
+
+void PageTable::close() {
+  if (opened) {
+    // Clear cache
+    map.clear();
+    buffer.clear();
+    // Close backend storage
+    storage.close();
+    opened = false;
+  }
+}
+
 Page &PageTable::getNew() {
+  // Check if table is open
+  if (!opened) {
+    throw PageTableError("Page table not opened.");
+  }
+
   // Create new page and load it on buffer
   PageId pageId = metadata->numPages + 1;
   std::unique_ptr<Page> page =
@@ -134,6 +155,11 @@ Page &PageTable::getNew() {
 }
 
 Page &PageTable::getFree() {
+  // Check if table is open
+  if (!opened) {
+    throw PageTableError("Page table not opened.");
+  }
+
   // Create new page if no free space page is available
   if (metadata->freePages.empty()) {
     return getNew();
@@ -146,6 +172,11 @@ Page &PageTable::getFree() {
 }
 
 Page &PageTable::get(PageId pageId) {
+  // Check if table is open
+  if (!opened) {
+    throw PageTableError("Page table not opened.");
+  }
+
   // Check if page not present in buffer
   if (map.find(pageId) == map.end()) {
     // Load page from storage
@@ -157,6 +188,15 @@ Page &PageTable::get(PageId pageId) {
   buffer.splice(buffer.begin(), buffer, map.at(pageId));
 
   return *(map.at(pageId)->page);
+}
+
+PageTable::Session PageTable::createSession() {
+  // Check if table is open
+  if (!opened) {
+    throw PageTableError("Page table not opened.");
+  }
+
+  return Session(*this);
 }
 
 /*******************

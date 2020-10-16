@@ -98,7 +98,7 @@ std::unique_ptr<MetaData> FileStorage::read() {
   file::read(metadataFile, buffer, 0);
 
   // Load MetaData object
-  metadataPtr->load(Span({buffer.data(), buffer.size()}));
+  metadataPtr->load(Span(buffer));
   pageSize = metadataPtr->pageSize;
 
   // Close metadata file
@@ -109,7 +109,7 @@ std::unique_ptr<MetaData> FileStorage::read() {
 
 void FileStorage::write(MetaData &metadata) {
   ByteBuffer buffer(metadata.size());
-  metadata.dump(Span({buffer.data(), buffer.size()}));
+  metadata.dump(Span(buffer));
 
   // Open metadata file
   std::fstream metadataFile;
@@ -144,7 +144,7 @@ std::unique_ptr<Page> FileStorage::read(PageId pageId) {
   // TODO: Needs more selective exception handling. The page not found error
   // should be thrown only if the offset exceeds EOF
   try {
-    dataBlockPtr->load(Span({buffer.data(), buffer.size()}));
+    dataBlockPtr->load(Span(buffer));
   } catch (...) {
     throw PageNotFoundError(pageId);
   }
@@ -164,7 +164,7 @@ void FileStorage::write(Page &page) {
   }
 
   ByteBuffer buffer(pageSize);
-  page.dump(Span({buffer.data(), buffer.size()}));
+  page.dump(Span(buffer));
   file::write(file, buffer, offset);
 }
 

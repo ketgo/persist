@@ -67,11 +67,13 @@ protected:
     storage->write(*page_2);
     storage->write(*page_3);
     storage->write(*metadata);
+    storage->close();
 
     table = std::make_unique<PageTable>(*storage, maxSize);
+    table->open();
   }
 
-  void TearDown() override { storage->close(); }
+  void TearDown() override { table->close(); }
 };
 
 TEST_F(PageTableTestFixture, TestPageTableError) {

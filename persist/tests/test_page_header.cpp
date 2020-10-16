@@ -50,9 +50,9 @@ protected:
     // setup valid header
     header->nextPageId = nextPageId;
     header->prevPageId = prevPageId;
-    header->slots.push_back({1, DEFAULT_PAGE_SIZE - 10, 10});
-    header->slots.push_back({2, DEFAULT_PAGE_SIZE - 15, 5});
-    header->slots.push_back({3, DEFAULT_PAGE_SIZE - 18, 3});
+    header->slots[1] = Page::Header::Slot({1, DEFAULT_PAGE_SIZE - 10, 10});
+    header->slots[2] = Page::Header::Slot({2, DEFAULT_PAGE_SIZE - 15, 5});
+    header->slots[3] = Page::Header::Slot({3, DEFAULT_PAGE_SIZE - 18, 3});
 
     input = {12,  0, 0, 0, 0, 0, 0, 0, 15,  0,   0,   0,  0,  0,   0,  0,
              1,   0, 0, 0, 0, 0, 0, 0, 3,   0,   0,   0,  0,  0,   0,  0,
@@ -77,12 +77,13 @@ TEST_F(PageHeaderTestFixture, TestLoad) {
   Page::Header::Slots::iterator _it = _header.slots.begin();
   Page::Header::Slots::iterator it = header->slots.begin();
   while (_it != _header.slots.end() && it != header->slots.end()) {
-    ASSERT_EQ(_it->id, it->id);
-    ASSERT_EQ(_it->offset, it->offset);
-    ASSERT_EQ(_it->size, it->size);
+    ASSERT_EQ(_it->second.id, it->second.id);
+    ASSERT_EQ(_it->second.offset, it->second.offset);
+    ASSERT_EQ(_it->second.size, it->second.size);
     ++_it;
     ++it;
   }
+  // ASSERT_EQ(_header->slots, header->slots);
 }
 
 TEST_F(PageHeaderTestFixture, TestLoadError) {
@@ -140,19 +141,20 @@ TEST_F(PageHeaderTestFixture, TestSize) {
 TEST_F(PageHeaderTestFixture, TestCreateSlot) {
   uint64_t size = 100;
   uint64_t tail = header->tail();
-  Page::Header::Slot *slot = header->createSlot(size);
+  PageSlotId slotId = header->createSlot(size);
   ASSERT_EQ(header->tail(), tail - size);
-  ASSERT_EQ(slot->id, 4);
-  ASSERT_EQ(slot->offset, DEFAULT_PAGE_SIZE - 118);
-  ASSERT_EQ(slot->size, size);
+  ASSERT_EQ(slotId, 4);
+  ASSERT_EQ(header->slots.rbegin()->second.id, slotId);
+  ASSERT_EQ(header->slots.rbegin()->second.offset, DEFAULT_PAGE_SIZE - 118);
+  ASSERT_EQ(header->slots.rbegin()->second.size, size);
 }
 
 TEST_F(PageHeaderTestFixture, TestFreeSlot) {
   uint64_t tail = header->tail();
   Page::Header::Slots::iterator it = header->slots.begin();
   ++it;
-  uint64_t entrySize = it->size;
+  uint64_t entrySize = it->second.size;
 
-  header->freeSlot(&(*it));
+  header->freeSlot(it->second.id);
   ASSERT_EQ(header->tail(), tail + entrySize);
 }

@@ -53,7 +53,6 @@ protected:
   void SetUp() override {
     // TODO: Add page size to query when supported
     manager = std::make_unique<RecordManager>("memory://", maxSize);
-    manager->start();
 
     // Setup storage for tests
     MetaData metadata;
@@ -70,12 +69,13 @@ protected:
       manager->storage->write(page);
     }
     manager->storage->write(metadata);
+    manager->start();
   }
 
   void TearDown() override { manager->stop(); }
 };
 
-TEST_F(RecordManagerTestFixture, TestGet) {
+TEST_F(RecordManagerTestFixture, TestGetSingleRecordBlock) {
   ByteBuffer record;
 
   manager->get(record, locations[0]);
@@ -112,25 +112,14 @@ TEST_F(RecordManagerTestFixture, TestGetErrorNonExistingLocation) {
   }
 }
 
-TEST_F(RecordManagerTestFixture, TestInsert) {
-  ByteBuffer input(2 * pageSize + 100, 'A');
-  RecordBlock::Location location = manager->insert(input);
-
-  ByteBuffer output;
-  manager->get(output, location);
-
-  ASSERT_EQ(output.size(), input.size());
-  ASSERT_EQ(output, input);
-}
-
-TEST_F(RecordManagerTestFixture, TestRemove) {
+TEST_F(RecordManagerTestFixture, TestRemoveSingleRecordBlock) {
   ByteBuffer record;
 
   // Testing first record deleted
   manager->remove(locations[0]);
   ASSERT_THROW(manager->get(record, locations[0]), RecordNotFoundError);
 
-  // Testing Second record not touched
+  // Testing second record not touched
   record.clear();
   manager->get(record, locations[1]);
   ASSERT_EQ(record, records[1]);
@@ -158,4 +147,34 @@ TEST_F(RecordManagerTestFixture, TestRemoveErrorNonExistingLocation) {
   } catch (...) {
     FAIL() << "Expected RecordNotFoundError Exception.";
   }
+}
+
+TEST_F(RecordManagerTestFixture, TestInsertAndGetMultiRecordBlock) {
+  ByteBuffer input(2 * pageSize + 100, 'A');
+  RecordBlock::Location location = manager->insert(input);
+
+  ByteBuffer output;
+  manager->get(output, location);
+
+  ASSERT_EQ(output, input);
+}
+
+TEST_F(RecordManagerTestFixture, TestInsertAndRemoveMultiRecordBlock) {
+  ByteBuffer input(2 * pageSize + 100, 'A');
+  RecordBlock::Location location = manager->insert(input);
+  ByteBuffer record;
+
+  // Testing record deleted
+  manager->remove(location);
+  ASSERT_THROW(manager->get(record, location), RecordNotFoundError);
+
+  // Testing first record not touched
+  record.clear();
+  manager->get(record, locations[0]);
+  ASSERT_EQ(record, records[0]);
+
+  // Testing second record not touched
+  record.clear();
+  manager->get(record, locations[1]);
+  ASSERT_EQ(record, records[1]);
 }

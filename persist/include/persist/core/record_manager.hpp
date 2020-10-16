@@ -55,19 +55,28 @@ class RecordManager {
   bool started;
 
   /**
-   * @brief Inserts doubly linked record blocks in storage. This method is used
-   * for inserting and in-place updating records stored in backend storage.
+   * @brief Insert doubly linked record blocks in storage. This method is used
+   * for inserting and in-place updating of records stored in backend storage.
    *
    * @param session reference to the started page table session
-   * @param span span pointing to the record to store
+   * @param span span pointing to the record buffer to store
    * @param location previous record block location. By default this is set to
    * the NULL location
-   * @param returns the starting record block location of the record pointed by
-   * span
+   * @returns starting record block location of the record pointed by span
    */
   RecordBlock::Location
   insert(PageTable::Session &session, Span span,
          RecordBlock::Location location = RecordBlock::Location());
+
+  /**
+   * @brief Remove doubly linked record blocks in srorage. This method is used
+   * for removing and in-place updating of records stored in backend storage.
+   *
+   * @param session reference to the started page table session
+   * @param location location of the starting doubly linked record block to
+   * remove
+   */
+  void remove(PageTable::Session &session, RecordBlock::Location location);
 
 public:
   /**

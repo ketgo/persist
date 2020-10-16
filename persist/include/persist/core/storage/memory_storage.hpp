@@ -41,7 +41,7 @@ class MemoryStorage : public Storage {
 private:
   uint64_t pageSize;                     //<- page block size
   MetaData metadata;                     //<- storage metadata
-  std::unordered_map<PageId, Page> data; //<- pages stored as map
+  std::unordered_map<PageId, ByteBuffer> data; //<- pages stored as map
 
 public:
   /**

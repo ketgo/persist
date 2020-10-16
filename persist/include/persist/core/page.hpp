@@ -26,7 +26,7 @@
 #define PAGE_HPP
 
 #include <cstdint>
-#include <list>
+#include <map>
 #include <unordered_map>
 
 #include <persist/core/defs.hpp>
@@ -94,7 +94,7 @@ public:
       uint64_t offset; //<- location offset from end of block
       uint64_t size;   //<- size of stored data
     };
-    typedef std::list<Slot> Slots;
+    typedef std::map<PageSlotId, Slot> Slots;
     /**
      * @brief Page slots
      */
@@ -155,16 +155,16 @@ public:
      * Page. This operation allocates storage slot.
      *
      * @param size amount of space in bytes to occupy
-     * @returns pointer to the new slot
+     * @returns ID of the new slot
      */
-    Slot *createSlot(uint64_t size);
+    PageSlotId createSlot(uint64_t size);
 
     /**
-     * Free up used chunk of space occupied by given slot.
+     * Free up used chunk of space occupied by slot of given ID.
      *
-     * @param slot poiter to slot to free
+     * @param slotId identifier of slot to free
      */
-    void freeSlot(Slot *slot);
+    void freeSlot(PageSlotId slotId);
 
     /**
      * Load object from byte string
@@ -190,8 +190,7 @@ public:
   /**
    * @brief Collection of record blocks mapped to their slots in page header
    */
-  typedef std::unordered_map<PageSlotId, std::pair<RecordBlock, Header::Slot *>>
-      RecordBlockMap;
+  typedef std::unordered_map<PageSlotId, RecordBlock> RecordBlockMap;
   RecordBlockMap recordBlocks;
 
 public:

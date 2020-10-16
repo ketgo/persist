@@ -113,6 +113,8 @@ private:
   typedef std::unordered_map<PageId, std::list<PageSlot>::iterator> PageSlotMap;
   PageSlotMap map; //<- stores mapped references to page slots in the buffer
 
+  bool opened; //<- flag indicating page table is opened
+
   /**
    * Add page to buffer.
    *
@@ -140,8 +142,7 @@ public:
   /**
    * Construct a new Page Table object
    *
-   * @param storage reference to backend storage. Note that the storage should
-   * be opened before calling any member methods.
+   * @param storage reference to backend storage.
    * @param maxSize maximum buffer size. If set to 0 then no maximum limit is
    * set.
    *
@@ -151,6 +152,18 @@ public:
    */
   PageTable(Storage &storage);
   PageTable(Storage &storage, uint64_t maxSize);
+
+  /**
+   * @brief Open page table. The method opens the backend storage and sets up
+   * the table metadata.
+   */
+  void open();
+
+  /**
+   * @brief Close page table. The method clears the internal cache and closes
+   * the backend storage.
+   */
+  void close();
 
   /**
    * Get a new page. The method creates a new page and loads it into buffer. The
@@ -183,7 +196,7 @@ public:
    *
    * @return Session new session object
    */
-  Session createSession() { return Session(*this); }
+  Session createSession();
 };
 
 } // namespace persist

@@ -55,7 +55,8 @@ Checksum Page::Header::_checksum() {
       std::hash<PageId>()(prevPageId) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
   seed ^= std::hash<size_t>()(slots.size()) + 0x9e3779b9 + (seed << 6) +
           (seed >> 2);
-  for (auto &slot : slots) {
+  for (auto element : slots) {
+    Slot &slot = element.second;
     seed ^= std::hash<PageSlotId>()(slot.id) + 0x9e3779b9 + (seed << 6) +
             (seed >> 2);
     seed ^= std::hash<uint64_t>()(slot.offset) + 0x9e3779b9 + (seed << 6) +
@@ -71,33 +72,34 @@ uint64_t Page::Header::tail() {
   if (slots.empty()) {
     return pageSize;
   }
-  return slots.back().offset;
+  return slots.rbegin()->second.offset;
 }
 
-Page::Header::Slot *Page::Header::createSlot(uint64_t size) {
+PageSlotId Page::Header::createSlot(uint64_t size) {
   // Get ID of the last slot
-  PageSlotId lastId;
+  PageSlotId lastId, newId;
   if (slots.empty()) {
     lastId = 0;
   } else {
-    lastId = slots.back().id;
+    lastId = slots.rbegin()->second.id;
   }
   // Create slot and add it to the list of slots
-  slots.push_back({lastId + 1, tail() - size, size});
-  return &slots.back();
+  newId = lastId + 1;
+  slots[newId] = Slot({newId, tail() - size, size});
+
+  return newId;
 }
 
-void Page::Header::freeSlot(Slot *slot) {
+void Page::Header::freeSlot(PageSlotId slotId) {
   // Adjust slot offsets
-  Slots::iterator it = std::prev(slots.end());
-  while (it->offset < slot->offset) {
-    it->offset += slot->size;
-    --it;
+  uint64_t size = slots.at(slotId).size;
+  Slots::iterator it = std::next(slots.find(slotId));
+  while (it != slots.end()) {
+    it->second.offset += size;
+    ++it;
   }
   // Remove slot from the list of slots
-  if (it->offset == slot->offset) {
-    slots.erase(it);
-  }
+  slots.erase(slotId);
 }
 
 void Page::Header::load(Span input) {
@@ -125,7 +127,7 @@ void Page::Header::load(Span input) {
   while (slotsCount > 0) {
     Slot slot;
     std::memcpy((void *)&slot, (const void *)pos, sizeof(Slot));
-    slots.push_back(slot);
+    slots[slot.id] = slot;
     pos += sizeof(Slot);
     --slotsCount;
   }
@@ -156,7 +158,8 @@ void Page::Header::dump(Span output) {
   size_t slotsCount = slots.size();
   std::memcpy((void *)pos, (const void *)&slotsCount, sizeof(size_t));
   pos += sizeof(size_t);
-  for (Slot &slot : slots) {
+  for (auto element : slots) {
+    Slot &slot = element.second;
     std::memcpy((void *)pos, (const void *)&slot, sizeof(Slot));
     pos += sizeof(Slot);
   }
@@ -187,17 +190,16 @@ RecordBlock &Page::getRecordBlock(PageSlotId slotId) {
   if (it == recordBlocks.end()) {
     throw RecordBlockNotFoundError(header.pageId, slotId);
   }
-  return it->second.first;
+  return it->second;
 }
 
 PageSlotId Page::addRecordBlock(RecordBlock &recordBlock) {
   // Create slot for record block
-  Header::Slot *slot = header.createSlot(recordBlock.size());
+  PageSlotId slotId = header.createSlot(recordBlock.size());
   // Insert record block at slot
-  // TODO: Use move simantic instead of copy
-  recordBlocks.insert({slot->id, {recordBlock, slot}});
+  recordBlocks[slotId] = recordBlock;
 
-  return slot->id;
+  return slotId;
 }
 
 void Page::removeRecordBlock(PageSlotId slotId) {
@@ -207,7 +209,7 @@ void Page::removeRecordBlock(PageSlotId slotId) {
     throw RecordBlockNotFoundError(header.pageId, slotId);
   }
   // Adjusting header
-  header.freeSlot(it->second.second);
+  header.freeSlot(slotId);
   // Removing record block from cache
   recordBlocks.erase(it);
 }
@@ -221,13 +223,12 @@ void Page::load(Span input) {
   // Load Page header
   header.load(input);
   // Load record blocks
-  for (auto slot : header.slots) {
-    Span span;
-    span.start = input.start + slot.offset;
-    span.size = slot.size;
+  for (auto element : header.slots) {
+    Header::Slot &slot = element.second;
+    Span span(input.start + slot.offset, slot.size);
     RecordBlock recordBlock;
     recordBlock.load(span);
-    recordBlocks.insert({slot.id, {recordBlock, &slot}});
+    recordBlocks[slot.id] = recordBlock;
   }
 }
 
@@ -236,20 +237,19 @@ void Page::dump(Span output) {
     throw PageParseError();
   }
 
-  Span span;
+  Span span(output.start, header.size());
   // Dump header
-  span.start = output.start;
-  span.size = header.size();
   header.dump(span);
   // Dump free space
   span.start += span.size;
   span.size = freeSpace();
   std::memset((void *)span.start, 0, span.size);
   // Dump record blocks
-  for (auto &element : recordBlocks) {
+  for (auto element : recordBlocks) {
+    RecordBlock &recordBlock = element.second;
     span.start += span.size;
-    span.size = element.second.first.size();
-    element.second.first.dump(span);
+    span.size = recordBlock.size();
+    recordBlock.dump(span);
   }
 }
 

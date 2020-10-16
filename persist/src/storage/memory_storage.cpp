@@ -53,10 +53,16 @@ std::unique_ptr<Page> MemoryStorage::read(PageId pageId) {
   if (data.find(pageId) == data.end()) {
     throw PageNotFoundError(pageId);
   }
+  std::unique_ptr<Page> page = std::make_unique<Page>(0, pageSize);
+  page->load(Span(data.at(pageId)));
 
-  return std::make_unique<Page>(data.at(pageId));
+  return page;
 }
 
-void MemoryStorage::write(Page &page) { data[page.getId()] = page; }
+void MemoryStorage::write(Page &page) {
+  PageId pageId = page.getId();
+  data[pageId] = ByteBuffer(pageSize);
+  page.dump(Span(data.at(pageId)));
+}
 
 } // namespace persist
