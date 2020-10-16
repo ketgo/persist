@@ -54,6 +54,21 @@ class RecordManager {
    */
   bool started;
 
+  /**
+   * @brief Inserts doubly linked record blocks in storage. This method is used
+   * for inserting and in-place updating records stored in backend storage.
+   *
+   * @param session reference to the started page table session
+   * @param span span pointing to the record to store
+   * @param location previous record block location. By default this is set to
+   * the NULL location
+   * @param returns the starting record block location of the record pointed by
+   * span
+   */
+  RecordBlock::Location
+  insert(PageTable::Session &session, Span span,
+         RecordBlock::Location location = RecordBlock::Location());
+
 public:
   /**
    * @brief Construct a new Record Manager object.

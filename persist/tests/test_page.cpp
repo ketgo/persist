@@ -200,8 +200,8 @@ TEST_F(PageTestFixture, TestGetRecordBlock) {
   RecordBlock _recordBlock = block->getRecordBlock(slotId_1);
 
   ASSERT_EQ(_recordBlock.data, recordBlockData_1);
-  ASSERT_TRUE(_recordBlock.nextLocation().is_null());
-  ASSERT_TRUE(_recordBlock.prevLocation().is_null());
+  ASSERT_TRUE(_recordBlock.nextLocation().isNull());
+  ASSERT_TRUE(_recordBlock.prevLocation().isNull());
 }
 
 TEST_F(PageTestFixture, TestGetRecordBlockError) {
@@ -264,26 +264,26 @@ TEST_F(PageTestFixture, TestRemoveRecordBlockError) {
 
 TEST_F(PageTestFixture, TestLoad) {
   Page _block;
-  _block.load(Span({input.data(), input.size()}));
+  _block.load(Span(input));
 
   ASSERT_EQ(_block.getId(), block->getId());
 
   RecordBlock &_recordBlock_1 = _block.getRecordBlock(slotId_1);
   ASSERT_EQ(_recordBlock_1.data, recordBlockData_1);
-  ASSERT_TRUE(_recordBlock_1.nextLocation().is_null());
-  ASSERT_TRUE(_recordBlock_1.prevLocation().is_null());
+  ASSERT_TRUE(_recordBlock_1.nextLocation().isNull());
+  ASSERT_TRUE(_recordBlock_1.prevLocation().isNull());
 
   RecordBlock &_recordBlock_2 = _block.getRecordBlock(slotId_2);
   ASSERT_EQ(_recordBlock_2.data, recordBlockData_2);
-  ASSERT_TRUE(_recordBlock_2.nextLocation().is_null());
-  ASSERT_TRUE(_recordBlock_2.prevLocation().is_null());
+  ASSERT_TRUE(_recordBlock_2.nextLocation().isNull());
+  ASSERT_TRUE(_recordBlock_2.prevLocation().isNull());
 }
 
 TEST_F(PageTestFixture, TestLoadError) {
   try {
     ByteBuffer _input;
     RecordBlock _block;
-    _block.load(Span({_input.data(), _input.size()}));
+    _block.load(Span(_input));
     FAIL() << "Expected RecordBlockParseError Exception.";
   } catch (RecordBlockParseError &err) {
     SUCCEED();
@@ -294,7 +294,7 @@ TEST_F(PageTestFixture, TestLoadError) {
 
 TEST_F(PageTestFixture, TestDump) {
   ByteBuffer output(pageSize);
-  block->dump(Span({output.data(), output.size()}));
+  block->dump(Span(output));
 
   ASSERT_EQ(input, output);
 }

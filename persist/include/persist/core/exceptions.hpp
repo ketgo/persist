@@ -85,6 +85,21 @@ public:
 };
 
 /**
+ * Record Corrupt Error
+ *
+ * This error is thrown if the loaded record is corrupt.
+ */
+class RecordCorruptError : public CorruptException {
+private:
+  std::string msg;
+
+public:
+  RecordCorruptError() : msg("Record corrupt error.") {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
  * Record Manager Not Started Error
  *
  * This error is thrown if the record manager is not started.

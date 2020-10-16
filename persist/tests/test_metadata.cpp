@@ -59,7 +59,7 @@ protected:
 
 TEST_F(MetaDataTestFixture, TestLoad) {
   MetaData _metadata;
-  _metadata.load(Span({input.data(), input.size()}));
+  _metadata.load(Span(input));
 
   ASSERT_EQ(_metadata.pageSize, metadata->pageSize);
   ASSERT_EQ(_metadata.numPages, metadata->numPages);
@@ -70,7 +70,7 @@ TEST_F(MetaDataTestFixture, TestLoadError) {
   try {
     ByteBuffer _input;
     MetaData _metadata;
-    _metadata.load(Span({_input.data(), _input.size()}));
+    _metadata.load(Span(_input));
     FAIL() << "Expected MetaDataParseError Exception.";
   } catch (MetaDataParseError &err) {
     SUCCEED();
@@ -84,7 +84,7 @@ TEST_F(MetaDataTestFixture, TestLoadCorruptErrorInvalidChecksum) {
     ByteBuffer _input = input;
     _input.back() = 0;
     MetaData _metadata;
-    _metadata.load(Span({_input.data(), _input.size()}));
+    _metadata.load(Span(_input));
     FAIL() << "Expected MetaDataCorruptError Exception.";
   } catch (MetaDataCorruptError &err) {
     SUCCEED();
@@ -98,7 +98,7 @@ TEST_F(MetaDataTestFixture, TestLoadCorruptErrorInvalidFreePagesCount) {
     ByteBuffer _input = input;
     _input[16] = 9; //<- sets the free pages count located at 16th byte to 9
     MetaData _metadata;
-    _metadata.load(Span({_input.data(), _input.size()}));
+    _metadata.load(Span(_input));
     FAIL() << "Expected MetaDataCorruptError Exception.";
   } catch (MetaDataCorruptError &err) {
     SUCCEED();
@@ -109,7 +109,7 @@ TEST_F(MetaDataTestFixture, TestLoadCorruptErrorInvalidFreePagesCount) {
 
 TEST_F(MetaDataTestFixture, TestDump) {
   ByteBuffer output(metadata->size());
-  metadata->dump(Span({output.data(), output.size()}));
+  metadata->dump(Span(output));
 
   ASSERT_EQ(input, output);
 }

@@ -122,3 +122,40 @@ TEST_F(RecordManagerTestFixture, TestInsert) {
   ASSERT_EQ(output.size(), input.size());
   ASSERT_EQ(output, input);
 }
+
+TEST_F(RecordManagerTestFixture, TestRemove) {
+  ByteBuffer record;
+
+  // Testing first record deleted
+  manager->remove(locations[0]);
+  ASSERT_THROW(manager->get(record, locations[0]), RecordNotFoundError);
+
+  // Testing Second record not touched
+  record.clear();
+  manager->get(record, locations[1]);
+  ASSERT_EQ(record, records[1]);
+}
+
+TEST_F(RecordManagerTestFixture, TestRemoveErrorNullLocation) {
+  try {
+    RecordBlock::Location location;
+    manager->remove(location);
+    FAIL() << "Expected RecordNotFoundError Exception.";
+  } catch (RecordNotFoundError &err) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected RecordNotFoundError Exception.";
+  }
+}
+TEST_F(RecordManagerTestFixture, TestRemoveErrorNonExistingLocation) {
+  try {
+    RecordBlock::Location location;
+    location.pageId = 10;
+    manager->remove(location);
+    FAIL() << "Expected RecordNotFoundError Exception.";
+  } catch (RecordNotFoundError &err) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected RecordNotFoundError Exception.";
+  }
+}

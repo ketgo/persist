@@ -57,17 +57,19 @@ void RecordManager::get(ByteBuffer &buffer, RecordBlock::Location location) {
   if (!started) {
     throw RecordManagerNotStartedError();
   }
+
   // Check if provided location is null
-  if (location.is_null()) {
+  if (location.isNull()) {
     throw RecordNotFoundError("Invalid location provided.");
   }
 
-  try {
-    // Start page table session
-    PageTable::Session session = pageTable.createSession();
+  // Start page table session
+  PageTable::Session session = pageTable.createSession();
 
-    RecordBlock::Location readLocation = location;
-    while (!readLocation.is_null()) {
+  // Start reading record blocks
+  RecordBlock::Location readLocation = location;
+  try {
+    while (!readLocation.isNull()) {
       // Get record block
       Page &page = pageTable.get(readLocation.pageId);
       RecordBlock &recordBlock = page.getRecordBlock(readLocation.slotId);
@@ -76,37 +78,35 @@ void RecordManager::get(ByteBuffer &buffer, RecordBlock::Location location) {
       }
       // Update read location to next block
       readLocation = recordBlock.nextLocation();
-
-      // Commit staged pages
-      session.commit();
     }
   } catch (NotFoundException &err) {
-    throw RecordNotFoundError(err.what());
+    // If a not found exception is thrown for the starting record block then
+    // throw `RecordNotFoundError` exception else throw `RecordCorruptError`
+    // excpetion.
+    if (readLocation == location) {
+      throw RecordNotFoundError(err.what());
+    } else {
+      throw RecordCorruptError();
+    }
   }
+
+  // Commit staged pages
+  session.commit();
 }
 
-RecordBlock::Location RecordManager::insert(ByteBuffer &buffer) {
-  // Check if record manager has started
-  if (!started) {
-    throw RecordManagerNotStartedError();
-  }
-
-  // Start page table session
-  PageTable::Session session = pageTable.createSession();
-
-  // Null record block containing the starting location of the inserted data
+RecordBlock::Location RecordManager::insert(PageTable::Session &session,
+                                            Span span,
+                                            RecordBlock::Location location) {
+  // Null record block representing the previous from first record block
   RecordBlock nullRecordBlock;
-  // Null location representing the location of the null record block
-  RecordBlock::Location nullLocation;
 
   // Bookkeeping variables
-  uint64_t toWriteSize = buffer.size(), writtenSize = 0;
-  // Pointer to previous record block in linked list. Begins with pointing to
-  // the null record block.
+  uint64_t toWriteSize = span.size, writtenSize = 0;
+  // Pointer to previous record block in the doubly linked list. Begins with
+  // pointing to the null record block.
   RecordBlock *prevRecordBlock = &nullRecordBlock;
-  // Pointer to previous record block location. Begins with pointing to the
-  // location of the null record block.
-  RecordBlock::Location *prevLocation = &nullLocation;
+  // Pointer to previous record block location.
+  RecordBlock::Location *prevLocation = &location;
   // Start loop to write content in linked record blocks
   while (toWriteSize > 0) {
     // Get a free page
@@ -122,18 +122,22 @@ RecordBlock::Location RecordManager::insert(ByteBuffer &buffer) {
 
     // Compute availble space to write data in page
     uint64_t writeSpace = page.freeSpace(true) - sizeof(RecordBlock::Header);
-    // Iterator to one past element already written
-    ByteBuffer::iterator it = buffer.begin() + writtenSize;
+    // Pointer to one past element already written
+    Byte *pos = span.start + writtenSize;
     // Check if available space is greater than the content to write
     if (toWriteSize <= writeSpace) {
-      // Enough space available so write the all the left over data
-      recordBlock.data.insert(recordBlock.data.end(), it, it + toWriteSize);
+      // Enough space available so write all the left over data
+      for (int i = 0; i < toWriteSize; i++) {
+        recordBlock.data.push_back(*(pos + i));
+      }
       prevRecordBlock->nextLocation().slotId = page.addRecordBlock(recordBlock);
       writtenSize += toWriteSize;
       toWriteSize = 0;
     } else {
       // Not enough space available so write partial data
-      recordBlock.data.insert(recordBlock.data.end(), it, it + writeSpace);
+      for (int i = 0; i < writeSpace; i++) {
+        recordBlock.data.push_back(*(pos + i));
+      }
       PageSlotId slotId = page.addRecordBlock(recordBlock);
       prevRecordBlock->nextLocation().slotId = slotId;
       writtenSize += writeSpace;
@@ -147,22 +151,102 @@ RecordBlock::Location RecordManager::insert(ByteBuffer &buffer) {
     session.stage(page.getId());
   }
 
-  // Commit staged pages
-  session.commit();
-
   return nullRecordBlock.nextLocation();
 }
 
-void RecordManager::update(ByteBuffer &buffer, RecordBlock::Location location) {
+RecordBlock::Location RecordManager::insert(ByteBuffer &buffer) {
+  // Check if record manager has started
   if (!started) {
     throw RecordManagerNotStartedError();
   }
+
+  // Start page table session
+  PageTable::Session session = pageTable.createSession();
+  // Insert data from buffer
+  RecordBlock::Location location = insert(session, Span(buffer));
+  // Commit staged pages in session
+  session.commit();
+
+  return location;
+}
+
+void RecordManager::update(ByteBuffer &buffer, RecordBlock::Location location) {
+  // Check if record manager has started
+  if (!started) {
+    throw RecordManagerNotStartedError();
+  }
+
+  // Check if provided location is null
+  if (location.isNull()) {
+    throw RecordNotFoundError("Invalid location provided.");
+  }
+
+  // Start page table session
+  PageTable::Session session = pageTable.createSession();
+
+  try {
+    RecordBlock::Location readLocation = location;
+    while (!readLocation.isNull()) {
+      // Get record block
+      Page &page = pageTable.get(readLocation.pageId);
+      RecordBlock &recordBlock = page.getRecordBlock(readLocation.slotId);
+
+      // TODO: Update data of record block
+
+      // Update read location to next block
+      readLocation = recordBlock.nextLocation();
+    }
+
+  } catch (NotFoundException &err) {
+    throw RecordNotFoundError(err.what());
+  }
+
+  // Commit staged pages
+  session.commit();
 }
 
 void RecordManager::remove(RecordBlock::Location location) {
+  // Check if record manager has started
   if (!started) {
     throw RecordManagerNotStartedError();
   }
+
+  // Check if provided location is null
+  if (location.isNull()) {
+    throw RecordNotFoundError("Invalid location provided.");
+  }
+
+  // Start page table session
+  PageTable::Session session = pageTable.createSession();
+
+  // Start removing record blocks
+  RecordBlock::Location removeLocation = location;
+  try {
+    while (!removeLocation.isNull()) {
+      PageId pageId = removeLocation.pageId;
+      PageSlotId slotId = removeLocation.slotId;
+      // Get record block
+      Page &page = pageTable.get(pageId);
+      RecordBlock &recordBlock = page.getRecordBlock(slotId);
+      // Set next remove location
+      removeLocation = recordBlock.nextLocation();
+      // Remove record block
+      page.removeRecordBlock(slotId);
+      session.stage(pageId);
+    }
+  } catch (NotFoundException &err) {
+    // If a not found exception is thrown for the starting record block then
+    // throw `RecordNotFoundError` exception else throw `RecordCorruptError`
+    // excpetion.
+    if (removeLocation == location) {
+      throw RecordNotFoundError(err.what());
+    } else {
+      throw RecordCorruptError();
+    }
+  }
+
+  // Commit staged pages
+  session.commit();
 }
 
 } // namespace persist

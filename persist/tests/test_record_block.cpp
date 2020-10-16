@@ -62,7 +62,7 @@ protected:
 
 TEST_F(RecordBlockTestFixture, TestLoad) {
   RecordBlock _block;
-  _block.load(Span({input.data(), input.size()}));
+  _block.load(Span(input));
 
   ASSERT_EQ(_block.data, block->data);
 }
@@ -71,7 +71,7 @@ TEST_F(RecordBlockTestFixture, TestLoadParseError) {
   try {
     ByteBuffer _input;
     RecordBlock _block;
-    _block.load(Span({_input.data(), _input.size()}));
+    _block.load(Span(_input));
     FAIL() << "Expected RecordBlockParseError Exception.";
   } catch (RecordBlockParseError &err) {
     SUCCEED();
@@ -85,7 +85,7 @@ TEST_F(RecordBlockTestFixture, TestLoadCorruptError) {
     ByteBuffer _input = input;
     _input.back() = 0;
     RecordBlock _block;
-    _block.load(Span({_input.data(), _input.size()}));
+    _block.load(Span(_input));
     FAIL() << "Expected RecordBlockCorruptError Exception.";
   } catch (RecordBlockCorruptError &err) {
     SUCCEED();
@@ -97,7 +97,7 @@ TEST_F(RecordBlockTestFixture, TestLoadCorruptError) {
 TEST_F(RecordBlockTestFixture, TestDump) {
   ByteBuffer output(data.size() + sizeof(RecordBlock::Header));
 
-  block->dump(Span({output.data(), output.size()}));
+  block->dump(Span(output));
 
   ASSERT_EQ(input, output);
 }

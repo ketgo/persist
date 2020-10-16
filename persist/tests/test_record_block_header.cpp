@@ -39,7 +39,7 @@ using namespace persist;
 
 TEST(RecordBlockLocationTest, RecordBlockLocationNullTest) {
   RecordBlock::Location location;
-  ASSERT_TRUE(location.is_null());
+  ASSERT_TRUE(location.isNull());
 }
 
 class RecordBlockHeaderTestFixture : public ::testing::Test {
@@ -68,7 +68,7 @@ TEST_F(RecordBlockHeaderTestFixture, TestLoad) {
   ByteBuffer _input;
   _input.insert(_input.end(), input.begin(), input.end());
   _input.insert(_input.end(), extra.begin(), extra.end());
-  _header.load(Span({_input.data(), _input.size()}));
+  _header.load(Span(_input));
 
   ASSERT_EQ(_header.nextLocation.pageId, header->nextLocation.pageId);
   ASSERT_EQ(_header.nextLocation.slotId, header->nextLocation.slotId);
@@ -80,7 +80,7 @@ TEST_F(RecordBlockHeaderTestFixture, TestLoadError) {
   try {
     ByteBuffer _input;
     RecordBlock::Header _header;
-    _header.load(Span({_input.data(), _input.size()}));
+    _header.load(Span(_input));
     FAIL() << "Expected RecordBlockParseError Exception.";
   } catch (RecordBlockParseError &err) {
     SUCCEED();
@@ -91,7 +91,7 @@ TEST_F(RecordBlockHeaderTestFixture, TestLoadError) {
 
 TEST_F(RecordBlockHeaderTestFixture, TestDump) {
   ByteBuffer output(sizeof(RecordBlock::Header));
-  header->dump(Span({output.data(), output.size()}));
+  header->dump(Span(output));
 
   ASSERT_EQ(input, output);
 }

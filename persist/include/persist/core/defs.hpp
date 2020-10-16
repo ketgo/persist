@@ -73,11 +73,15 @@ typedef uint64_t Checksum;
  * @brief Byte buffer type
  */
 typedef uint8_t Byte;
-typedef struct {
+typedef std::vector<Byte> ByteBuffer;
+typedef struct Span {
   Byte *start;
   size_t size;
+
+  Span() {}
+  Span(Byte *start, size_t size) : start(start), size(size) {}
+  Span(ByteBuffer &buffer) : start(buffer.data()), size(buffer.size()) {}
 } Span;
-typedef std::vector<Byte> ByteBuffer;
 
 } // namespace persist
 

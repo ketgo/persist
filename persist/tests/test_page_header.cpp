@@ -70,7 +70,7 @@ TEST_F(PageHeaderTestFixture, TestLoad) {
   ByteBuffer _input;
   _input.insert(_input.end(), input.begin(), input.end());
   _input.insert(_input.end(), extra.begin(), extra.end());
-  _header.load(Span({_input.data(), _input.size()}));
+  _header.load(Span(_input));
 
   ASSERT_EQ(_header.pageId, header->pageId);
   ASSERT_EQ(_header.slots.size(), header->slots.size());
@@ -89,7 +89,7 @@ TEST_F(PageHeaderTestFixture, TestLoadError) {
   try {
     ByteBuffer _input;
     Page::Header _header;
-    _header.load(Span({_input.data(), _input.size()}));
+    _header.load(Span(_input));
     FAIL() << "Expected PageParseError Exception.";
   } catch (PageParseError &err) {
     SUCCEED();
@@ -103,7 +103,7 @@ TEST_F(PageHeaderTestFixture, TestLoadCorruptErrorInvalidChecksum) {
     ByteBuffer _input = input;
     _input.back() = 0;
     Page::Header _header;
-    _header.load(Span({_input.data(), _input.size()}));
+    _header.load(Span(_input));
     FAIL() << "Expected PageCorruptError Exception.";
   } catch (PageCorruptError &err) {
     SUCCEED();
@@ -117,7 +117,7 @@ TEST_F(PageHeaderTestFixture, TestLoadCorruptErrorInvalidSlotsCount) {
     ByteBuffer _input = input;
     _input[24] = 9; //<- sets the slot count located at 24th byte to 9
     Page::Header _header;
-    _header.load(Span({_input.data(), _input.size()}));
+    _header.load(Span(_input));
     FAIL() << "Expected PageCorruptError Exception.";
   } catch (PageCorruptError &err) {
     SUCCEED();
@@ -128,7 +128,7 @@ TEST_F(PageHeaderTestFixture, TestLoadCorruptErrorInvalidSlotsCount) {
 
 TEST_F(PageHeaderTestFixture, TestDump) {
   ByteBuffer output(header->size());
-  header->dump(Span({output.data(), output.size()}));
+  header->dump(Span(output));
 
   ASSERT_EQ(input, output);
 }

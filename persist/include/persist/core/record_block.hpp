@@ -66,7 +66,22 @@ public:
     /**
      * @brief Check if location is NULL
      */
-    bool is_null() { return pageId == 0; }
+    bool isNull() { return pageId == 0; }
+
+    /**
+     * @brief Set the location to NULL
+     */
+    void setNull() {
+      pageId = 0;
+      slotId = 0;
+    }
+
+    /**
+     * @brief Comparision operator
+     */
+    bool operator==(const Location &other) const {
+      return pageId == other.pageId && slotId == other.slotId;
+    }
   };
 
   /**
