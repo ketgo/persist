@@ -160,6 +160,14 @@ public:
     PageSlotId createSlot(uint64_t size);
 
     /**
+     * Update size of used chunk of space occupied by slot of given ID.
+     *
+     * @param slotId identifier of slot to update
+     * @param size new size of the slot
+     */
+    void updateSlot(PageSlotId slotId, uint64_t size);
+
+    /**
      * Free up used chunk of space occupied by slot of given ID.
      *
      * @param slotId identifier of slot to free
@@ -261,10 +269,18 @@ public:
   /**
    * Add RecordBlock object to the page.
    *
-   * @param recordBlock recRecordBlock object to be added
+   * @param recordBlock RecordBlock object to be added
    * @returns page slot ID where record block is stored
    */
   PageSlotId addRecordBlock(RecordBlock &recordBlock);
+
+  /**
+   * Update record block in the page.
+   *
+   * @param slotId slot ID of the record being updated
+   * @param recordBlock updated record block
+   */
+  void updateRecordBlock(PageSlotId slotId, RecordBlock &recordBlock);
 
   /**
    * Remove RecordBlock object at given slot.

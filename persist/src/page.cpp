@@ -90,6 +90,19 @@ PageSlotId Page::Header::createSlot(uint64_t size) {
   return newId;
 }
 
+void Page::Header::updateSlot(PageSlotId slotId, uint64_t size) {
+  // Change in size
+  int64_t delta = slots.at(slotId).size - size;
+  // Update targeted slot size
+  slots.at(slotId).size = size;
+  // Adjsut offsets of rest of the slots
+  Slots::iterator it = slots.find(slotId);
+  while (it != slots.end()) {
+    it->second.offset += delta;
+    ++it;
+  }
+}
+
 void Page::Header::freeSlot(PageSlotId slotId) {
   // Adjust slot offsets
   uint64_t size = slots.at(slotId).size;
@@ -200,6 +213,13 @@ PageSlotId Page::addRecordBlock(RecordBlock &recordBlock) {
   recordBlocks[slotId] = recordBlock;
 
   return slotId;
+}
+
+void Page::updateRecordBlock(PageSlotId slotId, RecordBlock &recordBlock) {
+  // Update slot for record block
+  header.updateSlot(slotId, recordBlock.size());
+  // Update record block at slot
+  recordBlocks.at(slotId) = recordBlock;
 }
 
 void Page::removeRecordBlock(PageSlotId slotId) {

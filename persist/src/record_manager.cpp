@@ -36,19 +36,7 @@ RecordManager::RecordManager(std::string storageURL, uint64_t cacheSize)
     : storage(Storage::create(storageURL)),
       pageTable(*storage, cachesizeToBufferCount(cacheSize)), started(false) {}
 
-void RecordManager::start() {
-  if (!started) {
-    pageTable.open();
-    started = true;
-  }
-}
-
-void RecordManager::stop() {
-  if (started) {
-    pageTable.close();
-    started = false;
-  }
-}
+// Private Methods
 
 RecordBlock::Location RecordManager::insert(PageTable::Session &session,
                                             Span span,
@@ -137,6 +125,22 @@ void RecordManager::remove(PageTable::Session &session,
     } else {
       throw RecordCorruptError();
     }
+  }
+}
+
+// Public Methods
+
+void RecordManager::start() {
+  if (!started) {
+    pageTable.open();
+    started = true;
+  }
+}
+
+void RecordManager::stop() {
+  if (started) {
+    pageTable.close();
+    started = false;
   }
 }
 

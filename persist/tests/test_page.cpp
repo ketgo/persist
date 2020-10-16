@@ -30,6 +30,11 @@
 
 #include <memory>
 
+/**
+ * Enabled intrusive testing
+ */
+#define PERSIST_TESTING
+
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
 #include <persist/core/page.hpp>
@@ -55,7 +60,6 @@ protected:
   const PageId prevPageId = 1;
   const uint64_t pageSize = DEFAULT_PAGE_SIZE;
   std::unique_ptr<Page> page;
-  std::unique_ptr<Page::Header> pageHeader;
   PageSlotId slotId_1, slotId_2;
   std::unique_ptr<RecordBlock> recordBlock_1, recordBlock_2;
   const ByteBuffer recordBlockData_1 = {'t', 'e', 's', 't', 'i',
@@ -64,11 +68,6 @@ protected:
                                         'n', 'g', '_', '2'};
 
   void SetUp() override {
-    // Setup valid test header
-    pageHeader = std::make_unique<Page::Header>(pageId, pageSize);
-    pageHeader->nextPageId = nextPageId;
-    pageHeader->prevPageId = prevPageId;
-
     // Setup valid page
     page = std::make_unique<Page>(pageId, pageSize);
     page->setNextPageId(nextPageId);
@@ -77,11 +76,9 @@ protected:
     recordBlock_1 = std::make_unique<RecordBlock>();
     recordBlock_1->data = recordBlockData_1;
     slotId_1 = page->addRecordBlock(*recordBlock_1);
-    pageHeader->createSlot(recordBlock_1->size());
     recordBlock_2 = std::make_unique<RecordBlock>();
     recordBlock_2->data = recordBlockData_2;
     slotId_2 = page->addRecordBlock(*recordBlock_2);
-    pageHeader->createSlot(recordBlock_2->size());
 
     input = {
         12,  0,   0,   0,   0,   0,   0,   0,   15,  0,   0,   0,   0,   0,
@@ -216,39 +213,36 @@ TEST_F(PageTestFixture, TestGetRecordBlockError) {
 }
 
 TEST_F(PageTestFixture, TestAddRecordBlock) {
-  RecordBlock recordBlock_1;
-  recordBlock_1.data = {'t', 'e', 's', 't', 'i', 'n', 'g', '_', '1'};
-  RecordBlock recordBlock_2;
-  recordBlock_2.data = {'t', 'e', 's', 't', 'i', 'n', 'g', '_', '2'};
+  RecordBlock recordBlock;
+  recordBlock.data = {'t', 'e', 's', 't', 'i', 'n', 'g', '_', '3'};
 
   // Current free space in block
-  uint64_t oldDataSize = pageSize - page->freeSpace() - pageHeader->size();
-  page->addRecordBlock(recordBlock_1);
-  pageHeader->createSlot(recordBlock_1.size());
-  uint64_t newDataSize = pageSize - page->freeSpace() - pageHeader->size();
-  ASSERT_TRUE(newDataSize - oldDataSize == recordBlock_1.size());
+  uint64_t oldFreeSpace = page->freeSpace(true);
+  page->addRecordBlock(recordBlock);
+  uint64_t newFreeSize = page->freeSpace();
+  ASSERT_EQ(oldFreeSpace - newFreeSize, recordBlock.size());
+}
 
-  oldDataSize = pageSize - page->freeSpace() - pageHeader->size();
-  page->addRecordBlock(recordBlock_2);
-  pageHeader->createSlot(recordBlock_2.size());
-  newDataSize = pageSize - page->freeSpace() - pageHeader->size();
-  ASSERT_TRUE(newDataSize - oldDataSize == recordBlock_2.size());
+TEST_F(PageTestFixture, TestUpdateRecordBlock) {
+  RecordBlock recordBlock;
+  recordBlock.data = {'t', 'e', 's', 't', 'i', 'n', 'g', '_',
+                      '1', '-', 'u', 'p', 'd', 'a', 't', 'e'};
+
+  // Current free space in block
+  uint64_t oldFreeSpace = page->freeSpace();
+  page->updateRecordBlock(slotId_1, recordBlock);
+  uint64_t newFreeSize = page->freeSpace();
+  ASSERT_EQ(oldFreeSpace - newFreeSize,
+            recordBlock.size() - recordBlock_1->size());
 }
 
 TEST_F(PageTestFixture, TestRemoveRecordBlock) {
-  uint64_t oldDataSize = pageSize - page->freeSpace() - pageHeader->size();
+  uint64_t oldFreeSpace = page->freeSpace();
   page->removeRecordBlock(slotId_2);
-  pageHeader->slots.erase(std::prev(pageHeader->slots.end()));
-  uint64_t newDataSize = pageSize - page->freeSpace() - pageHeader->size();
+  uint64_t newFreeSize = page->freeSpace();
   ASSERT_THROW(page->getRecordBlock(slotId_2), RecordBlockNotFoundError);
-  ASSERT_TRUE(oldDataSize - newDataSize == recordBlock_2->size());
-
-  oldDataSize = pageSize - page->freeSpace() - pageHeader->size();
-  page->removeRecordBlock(slotId_1);
-  pageHeader->slots.erase(std::prev(pageHeader->slots.end()));
-  newDataSize = pageSize - page->freeSpace() - pageHeader->size();
-  ASSERT_THROW(page->getRecordBlock(slotId_1), RecordBlockNotFoundError);
-  ASSERT_TRUE(oldDataSize - newDataSize == recordBlock_1->size());
+  ASSERT_EQ(newFreeSize - oldFreeSpace,
+            recordBlock_2->size() + sizeof(Page::Header::Slot));
 }
 
 TEST_F(PageTestFixture, TestRemoveRecordBlockError) {

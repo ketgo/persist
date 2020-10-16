@@ -149,6 +149,32 @@ TEST_F(PageHeaderTestFixture, TestCreateSlot) {
   ASSERT_EQ(header->slots.rbegin()->second.size, size);
 }
 
+TEST_F(PageHeaderTestFixture, TestUpdateSlot) {
+  uint64_t oldSize = header->slots.at(2).size;
+  uint64_t newSize = 100;
+  uint64_t tail = header->tail();
+
+  header->updateSlot(2, newSize);
+
+  // Test update in tail
+  ASSERT_EQ(header->tail(), tail + (oldSize - newSize));
+
+  // Test no change in first slot
+  ASSERT_EQ(header->slots.at(1).id, 1);
+  ASSERT_EQ(header->slots.at(1).offset, DEFAULT_PAGE_SIZE - 10);
+  ASSERT_EQ(header->slots.at(1).size, 10);
+
+  // Test change in 2nd slot
+  ASSERT_EQ(header->slots.at(2).id, 2);
+  ASSERT_EQ(header->slots.at(2).offset, DEFAULT_PAGE_SIZE - 110);
+  ASSERT_EQ(header->slots.at(2).size, newSize);
+
+  // Test change in 3rd slot
+  ASSERT_EQ(header->slots.at(3).id, 3);
+  ASSERT_EQ(header->slots.at(3).offset, DEFAULT_PAGE_SIZE - 113);
+  ASSERT_EQ(header->slots.at(3).size, 3);
+}
+
 TEST_F(PageHeaderTestFixture, TestFreeSlot) {
   uint64_t tail = header->tail();
   Page::Header::Slots::iterator it = header->slots.begin();
