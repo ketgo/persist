@@ -30,6 +30,8 @@
 #include <persist/core/storage/file_storage.hpp>
 #include <persist/core/storage/memory_storage.hpp>
 
+#include <regex>
+
 namespace persist {
 
 /**
@@ -62,27 +64,29 @@ const std::unordered_map<std::string, StorageType> StorageTypeMap = {
 class ConnectionString {
   PERSIST_PRIVATE
   /**
-   * Storage type seperator in connection string
-   */
-  static const std::string storageTypeSep;
+   * Regex used for parsing the connection type
+   */  
+  static constexpr std::regex test_rx("(\\w+)(?:\\:\\/{2})([\\/A-z=0-9\\.]+)(?:\\?)([&A-z=0-9]+)+"); 
+  std::smatch sm{};  
 
-public:
-  std::string raw;
+public:  
   std::string type;
   std::string path;
+  std::string args;
 
   // Constructor
   ConnectionString(std::string connectionString) : raw(connectionString) {
-    std::string::size_type loc = raw.find(storageTypeSep);
-    type = raw.substr(0, loc);
-    path = raw.substr(loc + storageTypeSep.size());
+  
+    std::regex_match(connectionString, test_rx, sm);
+    type = sm.str(1);
+    path = sm.str(2) };
+    args = sm.str(3) };
   }
 };
 
-const std::string ConnectionString::storageTypeSep = "://";
-
 std::unique_ptr<Storage> Storage::create(std::string connectionString) {
   ConnectionString _connectionString(connectionString);
+  
 
   switch (StorageTypeMap.at(_connectionString.type)) {
   case StorageType::FILE:
