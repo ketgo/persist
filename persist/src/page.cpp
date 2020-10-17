@@ -26,6 +26,8 @@
  * Page Implementation
  */
 
+#include <iostream>
+
 #include <cstring>
 
 #include <persist/core/exceptions.hpp>
@@ -87,7 +89,9 @@ PageSlotId Page::Header::createSlot(uint64_t size) {
   }
   // Create slot and add it to the list of slots
   newId = lastId + 1;
-  slots[newId] = Slot({newId, tail() - size, size});
+
+  slots.insert(
+      std::pair<PageSlotId, Slot>(newId, {newId, tail() - size, size}));
 
   return newId;
 }
@@ -212,7 +216,7 @@ PageSlotId Page::addRecordBlock(RecordBlock &recordBlock) {
   // Create slot for record block
   PageSlotId slotId = header.createSlot(recordBlock.size());
   // Insert record block at slot
-  recordBlocks[slotId] = recordBlock;
+  recordBlocks.insert(std::pair<PageSlotId, RecordBlock>(slotId, recordBlock));
 
   return slotId;
 }
@@ -250,7 +254,8 @@ void Page::load(Span input) {
     Span span(input.start + slot.offset, slot.size);
     RecordBlock recordBlock;
     recordBlock.load(span);
-    recordBlocks[slot.id] = recordBlock;
+    recordBlocks.insert(
+        std::pair<PageSlotId, RecordBlock>(slot.id, recordBlock));
   }
 }
 
