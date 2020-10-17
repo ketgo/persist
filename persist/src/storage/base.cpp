@@ -62,12 +62,7 @@ const std::unordered_map<std::string, StorageType> StorageTypeMap = {
  * TODO: Prase arguments like `pageSize`.
  */
 class ConnectionString {
-  PERSIST_PRIVATE
-  /**
-   * Regex used for parsing the connection type
-   */  
-  static constexpr std::regex test_rx("(\\w+)(?:\\:\\/{2})([\\/A-z=0-9\\.]+)(?:\\?)([&A-z=0-9]+)+"); 
-  std::smatch sm{};  
+  PERSIST_PRIVATE 
 
 public:  
   std::string type;
@@ -75,12 +70,15 @@ public:
   std::string args;
 
   // Constructor
-  ConnectionString(std::string connectionString) : raw(connectionString) {
+  ConnectionString(std::string connectionString) 
+  : type{}, path{}, args{} {
   
-    std::regex_match(connectionString, test_rx, sm);
+    std::regex test_rx{"(\\w+)(?:\\:\\/{2})([\\/A-z=0-9\\.]+)(?:\\?)([&A-z=0-9]+)+"};
+    std::smatch sm{}; 
+    std::regex_match(connectionString, sm, test_rx);
     type = sm.str(1);
-    path = sm.str(2) };
-    args = sm.str(3) };
+    path = sm.str(2);
+    args = sm.str(3);
   }
 };
 
