@@ -239,6 +239,7 @@ void RecordManager::update(ByteBuffer &buffer, RecordBlock::Location location) {
   uint64_t toWriteSize = buffer.size(), writtenSize = 0;
   // Start update
   RecordBlock::Location updateLocation = location;
+  RecordBlock *prevRecordBlock;
   try {
     while (!updateLocation.isNull() && toWriteSize > 0) {
       // Get record block
