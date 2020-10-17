@@ -29,8 +29,6 @@
 #include <persist/core/exceptions.hpp>
 #include <persist/core/page.hpp>
 
-#include <cstring>
-
 // ----------------------------------------------------------------------------
 // TODO:
 //  - Little and Big Eddien mismatch during serialization. Maybe this is not
