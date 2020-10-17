@@ -78,6 +78,10 @@ public:
     std::regex_match(connectionString, sm, test_rx);
     type = sm.str(1);
     path = sm.str(2);
+    /**
+    * TODO: args is currently in the form <arg_1=val_1&arg_2=val_2>.  Another 
+    * regex will be needed to split them into arg value pairs.
+    */
     args = sm.str(3);
   }
 };
