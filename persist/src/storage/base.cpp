@@ -30,6 +30,8 @@
 #include <persist/core/storage/file_storage.hpp>
 #include <persist/core/storage/memory_storage.hpp>
 
+#include <regex>
+
 namespace persist {
 
 /**
@@ -60,29 +62,33 @@ const std::unordered_map<std::string, StorageType> StorageTypeMap = {
  * TODO: Prase arguments like `pageSize`.
  */
 class ConnectionString {
-  PERSIST_PRIVATE
-  /**
-   * Storage type seperator in connection string
-   */
-  static const std::string storageTypeSep;
+  PERSIST_PRIVATE 
 
-public:
-  std::string raw;
+public:  
   std::string type;
   std::string path;
+  std::string args;
 
   // Constructor
-  ConnectionString(std::string connectionString) : raw(connectionString) {
-    std::string::size_type loc = raw.find(storageTypeSep);
-    type = raw.substr(0, loc);
-    path = raw.substr(loc + storageTypeSep.size());
+  ConnectionString(std::string connectionString) 
+  : type{}, path{}, args{} {
+  
+    std::regex test_rx{"(\\w+)(?:\\:\\/{2})([\\/A-z=0-9\\.]+)(?:\\?)([&A-z=0-9]+)+"};
+    std::smatch sm{}; 
+    std::regex_match(connectionString, sm, test_rx);
+    type = sm.str(1);
+    path = sm.str(2);
+    /**
+    * TODO: args is currently in the form <arg_1=val_1&arg_2=val_2>.  Another 
+    * regex will be needed to split them into arg value pairs.
+    */
+    args = sm.str(3);
   }
 };
 
-const std::string ConnectionString::storageTypeSep = "://";
-
 std::unique_ptr<Storage> Storage::create(std::string connectionString) {
   ConnectionString _connectionString(connectionString);
+  
 
   switch (StorageTypeMap.at(_connectionString.type)) {
   case StorageType::FILE:

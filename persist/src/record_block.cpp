@@ -29,6 +29,8 @@
 #include <persist/core/exceptions.hpp>
 #include <persist/core/record_block.hpp>
 
+#include <cstring>
+
 namespace persist {
 
 // ----------------------------------------------------------------------------
