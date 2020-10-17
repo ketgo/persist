@@ -26,9 +26,9 @@ if (COVERAGE)
     append_coverage_compiler_flags()
     setup_target_for_coverage_lcov(
         NAME ${PROJECT_NAME}_cov 
-        EXECUTABLE ${PROJECT_NAME}_test 
-        DEPENDENCIES ${PROJECT_NAME} ${PROJECT_NAME}_test
-        BASE_DIRECTORY coverage)
+        EXECUTABLE ${TEST_BINARY} 
+        DEPENDENCIES ${LIB} ${TEST_BINARY}
+        EXCLUDE "third_party/*" "/*usr/*")
     setup_target_for_coverage_clean(
         NAME scrub
     )
