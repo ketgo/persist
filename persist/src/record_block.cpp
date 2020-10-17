@@ -26,6 +26,8 @@
  * Record Block Implementation
  */
 
+#include <cstring>
+
 #include <persist/core/exceptions.hpp>
 #include <persist/core/record_block.hpp>
 
