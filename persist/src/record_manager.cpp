@@ -55,44 +55,38 @@ RecordBlock::Location RecordManager::insert(PageTable::Session &session,
   while (toWriteSize > 0) {
     // Get a free page
     Page &page = pageTable.getFree();
-    prevRecordBlock->nextLocation().pageId = page.getId();
 
     // Create record block to add to page
     RecordBlock recordBlock;
+    // Compute availble space to write data in page
+    uint64_t writeSpace = page.freeSpace(true) - sizeof(RecordBlock::Header);
+    if (toWriteSize < writeSpace) {
+      writeSpace = toWriteSize;
+    }
+    // Pointer to one past element already written
+    Byte *pos = span.start + writtenSize;
+    // Write data to record block and add to page
+    for (int i = 0; i < writeSpace; i++) {
+      recordBlock.data.push_back(*(pos + i));
+    }
+    PageSlotId slotId = page.addRecordBlock(recordBlock);
 
-    // Set previous record block location
+    // Create double linkage between record blocks
+    prevRecordBlock->nextLocation().pageId = page.getId();
+    prevRecordBlock->nextLocation().slotId = slotId;
     recordBlock.prevLocation().pageId = prevLocation->pageId;
     recordBlock.prevLocation().slotId = prevLocation->slotId;
 
-    // Compute availble space to write data in page
-    uint64_t writeSpace = page.freeSpace(true) - sizeof(RecordBlock::Header);
-    // Pointer to one past element already written
-    Byte *pos = span.start + writtenSize;
-    // Check if available space is greater than the content to write
-    if (toWriteSize <= writeSpace) {
-      // Enough space available so write all the left over data
-      for (int i = 0; i < toWriteSize; i++) {
-        recordBlock.data.push_back(*(pos + i));
-      }
-      prevRecordBlock->nextLocation().slotId = page.addRecordBlock(recordBlock);
-      writtenSize += toWriteSize;
-      toWriteSize = 0;
-    } else {
-      // Not enough space available so write partial data
-      for (int i = 0; i < writeSpace; i++) {
-        recordBlock.data.push_back(*(pos + i));
-      }
-      PageSlotId slotId = page.addRecordBlock(recordBlock);
-      prevRecordBlock->nextLocation().slotId = slotId;
-      writtenSize += writeSpace;
-      toWriteSize -= writeSpace;
-
-      // Update previous record block and location pointers
-      prevLocation = &prevRecordBlock->nextLocation();
-      prevRecordBlock = &page.getRecordBlock(slotId);
-    }
     // Stage page for commit
     session.stage(page.getId());
+
+    // Update previous record block and location pointers
+    prevLocation = &prevRecordBlock->nextLocation();
+    prevRecordBlock = &page.getRecordBlock(slotId);
+
+    // Update counters
+    writtenSize += writeSpace;
+    toWriteSize -= writeSpace;
   }
 
   return nullRecordBlock.nextLocation();
@@ -239,26 +233,48 @@ void RecordManager::update(ByteBuffer &buffer, RecordBlock::Location location) {
   uint64_t toWriteSize = buffer.size(), writtenSize = 0;
   // Start update
   RecordBlock::Location updateLocation = location;
-  RecordBlock *prevRecordBlock;
+  RecordBlock *updateRecordBlock;
   try {
+    // In-place update record blocks
     while (!updateLocation.isNull() && toWriteSize > 0) {
       // Get record block
       Page &page = pageTable.get(updateLocation.pageId);
-      RecordBlock &recordBlock = page.getRecordBlock(updateLocation.slotId);
+      updateRecordBlock = &page.getRecordBlock(updateLocation.slotId);
 
-      // TODO: Update record block
+      // Compute availble space to write data in page
+      uint64_t writeSpace = updateRecordBlock->data.size() + page.freeSpace();
+      if (toWriteSize < writeSpace) {
+        writeSpace = toWriteSize;
+      }
+      // Update data in record block
+      updateRecordBlock->data.clear();
+      updateRecordBlock->data.insert(updateRecordBlock->data.end(),
+                                     buffer.begin() + writtenSize,
+                                     buffer.begin() + writtenSize + writeSpace);
+      // Update page
+      page.updateRecordBlock(updateLocation.slotId, *updateRecordBlock);
 
-      // Update read location to next block
-      updateLocation = recordBlock.nextLocation();
+      // Stage page for commit
+      session.stage(updateLocation.pageId);
+
+      // Update location to next block
+      updateLocation = updateRecordBlock->nextLocation();
+
+      // Update counters
+      writtenSize += writeSpace;
+      toWriteSize -= writeSpace;
     }
 
     // Insert rest of the buffer
     if (toWriteSize > 0) {
+      updateRecordBlock->nextLocation() =
+          insert(session, Span(buffer.data() + writtenSize, toWriteSize),
+                 updateLocation);
     }
 
     // Remove remaining record blocks containing old data
     if (!updateLocation.isNull()) {
-      // TODO: Set record block next location to null
+      updateRecordBlock->nextLocation().setNull();
       remove(session, updateLocation);
     }
   } catch (NotFoundException &err) {

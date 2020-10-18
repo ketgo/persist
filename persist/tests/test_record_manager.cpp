@@ -149,6 +149,22 @@ TEST_F(RecordManagerTestFixture, TestRemoveErrorNonExistingLocation) {
   }
 }
 
+TEST_F(RecordManagerTestFixture, TestUpdateSingleRecordBlock) {
+  ByteBuffer update = {'t', 'e', 's', 't', 'i', 'n', 'g', '_',
+                       '1', '-', 'u', 'p', 'd', 'a', 't', 'e'};
+  ByteBuffer record;
+
+  // Testing first record update
+  manager->update(update, locations[0]);
+  manager->get(record, locations[0]);
+  ASSERT_EQ(record, update);
+
+  // Testing second record not touched
+  record.clear();
+  manager->get(record, locations[1]);
+  ASSERT_EQ(record, records[1]);
+}
+
 TEST_F(RecordManagerTestFixture, TestInsertAndGetMultiRecordBlock) {
   ByteBuffer input(2 * pageSize + 100, 'A');
   RecordBlock::Location location = manager->insert(input);
@@ -167,6 +183,35 @@ TEST_F(RecordManagerTestFixture, TestInsertAndRemoveMultiRecordBlock) {
   // Testing record deleted
   manager->remove(location);
   ASSERT_THROW(manager->get(record, location), RecordNotFoundError);
+
+  // Testing first record not touched
+  record.clear();
+  manager->get(record, locations[0]);
+  ASSERT_EQ(record, records[0]);
+
+  // Testing second record not touched
+  record.clear();
+  manager->get(record, locations[1]);
+  ASSERT_EQ(record, records[1]);
+}
+
+TEST_F(RecordManagerTestFixture, TestInsertAndUpdateMultiRecordBlock) {
+  ByteBuffer input(2 * pageSize + 100, 'A'),
+      updateIncrease(3 * pageSize + 100, 'A'),
+      updateDecrease(1 * pageSize + 100, 'A');
+  RecordBlock::Location location = manager->insert(input);
+  ByteBuffer record;
+
+  // Testing record update with increase in data length
+  manager->update(updateIncrease, location);
+  manager->get(record, location);
+  ASSERT_EQ(record, updateIncrease);
+
+  // Testing record update with decrease in data length
+  manager->update(updateDecrease, location);
+  record.clear();
+  manager->get(record, location);
+  ASSERT_EQ(record, updateDecrease);
 
   // Testing first record not touched
   record.clear();
