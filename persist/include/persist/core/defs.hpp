@@ -38,8 +38,10 @@
  */
 #ifdef PERSIST_TESTING
 #define PERSIST_PRIVATE public:
+#define PERSIST_PROTECTED public:
 #else
 #define PERSIST_PRIVATE private:
+#define PERSIST_PROTECTED protected:
 #endif
 
 /**
@@ -48,7 +50,9 @@
 // Minimum allowed page size
 #define MINIMUM_PAGE_SIZE 512
 // Default page size
-#define DEFAULT_AGE_SIZE 1024
+#define DEFAULT_PAGE_SIZE 1024
+// Default cache size
+#define DEFAULT_CACHE_SIZE 1024
 
 namespace persist {
 

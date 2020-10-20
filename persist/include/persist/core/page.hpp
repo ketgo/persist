@@ -32,9 +32,6 @@
 #include <persist/core/defs.hpp>
 #include <persist/core/record_block.hpp>
 
-#define MINIMUM_PAGE_SIZE 512
-#define DEFAULT_PAGE_SIZE 1024
-
 namespace persist {
 
 /**

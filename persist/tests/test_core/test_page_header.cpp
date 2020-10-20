@@ -83,7 +83,6 @@ TEST_F(PageHeaderTestFixture, TestLoad) {
     ++_it;
     ++it;
   }
-  // ASSERT_EQ(_header->slots, header->slots);
 }
 
 TEST_F(PageHeaderTestFixture, TestLoadError) {
