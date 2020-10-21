@@ -27,6 +27,7 @@
 
 #include <persist/core/collection.hpp>
 #include <persist/core/defs.hpp>
+#include <persist/core/exceptions.hpp>
 
 namespace persist {
 /**
@@ -49,9 +50,20 @@ class List : public Collection {
    * The node stores the record data in bytes and the linkage between the next
    * and prior node.
    */
-  struct Node {
+  class Node {
+  public:
+    /**
+     * @brief Next linked node
+     */
     RecordLocation next;
+    /**
+     * @brief Previous linked node
+     */
     RecordLocation previous;
+
+    /**
+     * @brief Record data as byte buffer
+     */
     ByteBuffer record;
 
     /**
@@ -82,32 +94,114 @@ public:
     typedef ByteBuffer value_type;
     typedef ByteBuffer &reference;
     typedef ByteBuffer *pointer;
-    typedef std::forward_iterator_tag iterator_category;
-    typedef int difference_type;
+    typedef std::bidirectional_iterator_tag iterator_category;
+    typedef ptrdiff_t difference_type;
 
-    Iterator(pointer ptr) : ptr_(ptr) {}
-    self_type operator++() {
-      self_type i = *this;
-      ptr_++;
-      return i;
+    /**
+     * @brief Construct a new Iterator object
+     */
+    Iterator() {}
+    Iterator(List *list, RecordLocation location, Node *node)
+        : list(list), location(location), node(node) {}
+
+    /**
+     * @brief Assignment operator
+     */
+    self_type operator=(const self_type &other) {
+      list = other.list;
+      location = other.location;
+      node = other.node;
     }
-    self_type operator++(int junk) {
-      ptr_++;
+
+    /**
+     * @brief PREFIX increment operator
+     */
+    self_type &operator++() {
+      try {
+        location = node->next;
+        if (location.isNull()) {
+          node = nullptr;
+        } else {
+          ByteBuffer buffer;
+          list->manager.get(buffer, location);
+        }
+      } catch (RecordManagerNotStartedError &err) {
+        throw CollectionNotOpenError();
+      }
       return *this;
     }
-    reference operator*() { return *ptr_; }
-    pointer operator->() { return ptr_; }
-    bool operator==(const self_type &rhs) { return ptr_ == rhs.ptr_; }
-    bool operator!=(const self_type &rhs) { return ptr_ != rhs.ptr_; }
+
+    /**
+     * @brief POSTFIX increment operator
+     */
+    self_type operator++(int) {
+      self_type i = *this;
+      ++*this;
+      return i;
+    }
+
+    /**
+     * @brief PREFIX decrement operator
+     */
+    self_type &operator--() {
+      try {
+        location = node->previous;
+      } catch (RecordManagerNotStartedError &err) {
+        throw CollectionNotOpenError();
+      }
+      return *this;
+    }
+
+    /**
+     * @brief POSTFIX decrement operator
+     */
+    self_type operator--(int) {
+      self_type i = *this;
+      --*this;
+      return i;
+    }
+
+    /**
+     * @brief Dereference operator to get record value
+     */
+    const value_type &operator*() { return node->record; }
+
+    /**
+     * @brief Dereference operator to get address of record value
+     */
+    const value_type *operator->() { return &node->record; }
+
+    /**
+     * @brief Equality comparision operator
+     */
+    bool operator==(const self_type &rhs) { return location == rhs.location; }
+
+    /**
+     * @brief Non-equality comparision operator
+     */
+    bool operator!=(const self_type &rhs) { return location != rhs.location; }
+
+    /**
+     * @brief Get record location on backend storage.
+     */
+    const RecordLocation &getLocation() { return location; }
 
     PERSIST_PRIVATE
-    pointer ptr_;
-  };
+    /**
+     * @brief Pointer to the underlying collection
+     */
+    List *list;
 
-  /**
-   * Constant iterator class
-   */
-  class ConstantIterator;
+    /**
+     * @brief Record location
+     */
+    RecordLocation location;
+
+    /**
+     * @brief Pointer to the node stored at the above location.
+     */
+    Node *node;
+  };
 
   /**
    * @brief Construct a new List object
@@ -130,7 +224,7 @@ public:
    * @param record data to be inserted.
    * @returns iterator pointing to the inserted element.
    */
-  Iterator insert(ConstantIterator postion, ByteBuffer record);
+  Iterator insert(Iterator postion, ByteBuffer record);
 };
 
 } // namespace persist

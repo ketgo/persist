@@ -22,6 +22,6 @@
  SOFTWARE.
 -->
 
-# Persist Headers
+# Benchmarks
 
-The folder contains all package installation header files.
+The folder contains all micro-benchmarks for the persist package.

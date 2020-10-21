@@ -77,10 +77,17 @@ public:
     }
 
     /**
-     * @brief Comparision operator
+     * @brief Equality comparision operator.
      */
     bool operator==(const Location &other) const {
       return pageId == other.pageId && slotId == other.slotId;
+    }
+
+    /**
+     * @brief Non-equality comparision operator.
+     */
+    bool operator!=(const Location &other) const {
+      return pageId != other.pageId || slotId != other.slotId;
     }
   };
 

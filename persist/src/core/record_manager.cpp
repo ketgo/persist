@@ -159,6 +159,9 @@ void RecordManager::get(ByteBuffer &buffer, RecordBlock::Location location) {
       // Get record block
       Page &page = pageTable.get(readLocation.pageId);
       RecordBlock &recordBlock = page.getRecordBlock(readLocation.slotId);
+      // TODO: Optimize by resizing buffer to buffer.size() +
+      // recordBlock.data.size(); This way we reduce number of memory allocation
+      // calls in the buffer.
       for (auto x : recordBlock.data) {
         buffer.push_back(x);
       }

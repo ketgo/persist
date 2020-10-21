@@ -100,6 +100,21 @@ public:
 };
 
 /**
+ * Collection Not Open Error
+ *
+ * This error is thrown if the record collection is not opened.
+ */
+class CollectionNotOpenError : public PersistException {
+private:
+  std::string msg;
+
+public:
+  CollectionNotOpenError() : msg("Collection not opened.") {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
  * Record Manager Not Started Error
  *
  * This error is thrown if the record manager is not started.

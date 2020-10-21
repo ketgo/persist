@@ -19,6 +19,8 @@ include_directories(
 set(LIB ${PROJECT_NAME}_lib)
 # Set test binary name
 set(TEST_BINARY ${PROJECT_NAME}_test)
+# Set test binary name
+set(BENCHMARK_BINARY ${PROJECT_NAME}_benchmark)
 
 # Coverage
 if (COVERAGE)
@@ -38,3 +40,5 @@ endif()
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src)
 # Tests
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/tests)
+# Benchmarks
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/benchmarks)
