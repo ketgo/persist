@@ -41,6 +41,28 @@
 using namespace persist;
 
 class ListIteratorTestFixture : public ::testing::Test {
+protected:
+  const std::string connetionString = "file://test_list.storage";
+  const size_t num = 3;
+  RecordLocation start;
+  std::unique_ptr<List> list, empty_list;
+
+  void SetUp() override {
+    empty_list = std::make_unique<List>("file://test_empty_list.storage");
+    empty_list->open();
+
+    //insert();
+    list = std::make_unique<List>(connetionString, 2);
+    list->open();
+  }
+
+  void TearDown() override {
+    empty_list->manager.storage->remove();
+    empty_list->close();
+    list->manager.storage->remove();
+    list->close();
+  }
+
 private:
   /**
    * @brief Method to insert records in storage for testing.
@@ -48,23 +70,43 @@ private:
   void insert() {
     RecordManager manager(connetionString, 10);
     manager.start();
-    
+
+    List::Node prev_node, node;
+    RecordLocation prev_location, location;
+    ByteBuffer buffer;
+
+    // Insert new node
+    node.record = "testing-"_bb;
+    node.record.push_back(0);
+    buffer.clear();
+    location = manager.insert(buffer);
+    start = location;
+
+    size_t count = 1;
+    while (count < num) {
+      // Set new node as previous node
+      prev_location = location;
+      prev_node = node;
+
+      // Insert new node
+      node.record = "testing-"_bb;
+      node.record.push_back(count);
+      node.previous = prev_location;
+      buffer.clear();
+      node.dump(buffer);
+      location = manager.insert(buffer);
+
+      // Update previous node
+      prev_node.next = location;
+      buffer.clear();
+      prev_node.dump(buffer);
+      manager.update(buffer, prev_location);
+
+      ++count;
+    }
+
     manager.stop();
   }
-
-protected:
-  const std::string connetionString = "file://test_list.storage";
-  std::unique_ptr<List> list;
-
-  void SetUp() override {
-    insert();
-
-    list = std::make_unique<List>(connetionString, 2);
-
-    list->open();
-  }
-
-  void TearDown() override { list->close(); }
 };
 
 TEST_F(ListIteratorTestFixture, TestIterator) {}

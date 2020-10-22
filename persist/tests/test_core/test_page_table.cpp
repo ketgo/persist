@@ -73,7 +73,10 @@ protected:
     table->open();
   }
 
-  void TearDown() override { table->close(); }
+  void TearDown() override {
+    storage->remove();
+    table->close();
+  }
 };
 
 TEST_F(PageTableTestFixture, TestPageTableError) {

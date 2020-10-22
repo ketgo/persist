@@ -57,7 +57,9 @@ const std::unordered_map<std::string, StorageType> StorageTypeMap = {
  *
  * NOTE: Currently simple parser is implemented which just detects the `type`.
  *
- * TODO: Prase arguments like `pageSize`.
+ * TODO:
+ *  - Prase arguments like `pageSize`.
+ *  - Exception for incorrectly formated connection string.
  */
 class ConnectionString {
   PERSIST_PRIVATE

@@ -39,8 +39,8 @@ namespace persist {
  */
 class MemoryStorage : public Storage {
 private:
-  uint64_t pageSize;                     //<- page block size
-  MetaData metadata;                     //<- storage metadata
+  uint64_t pageSize;                           //<- page block size
+  MetaData metadata;                           //<- storage metadata
   std::unordered_map<PageId, ByteBuffer> data; //<- pages stored as map
 
 public:
@@ -64,6 +64,11 @@ public:
    * Close memory storage. No operation is performed.
    */
   void close() override;
+
+  /**
+   * Remove storage. Data is cleared.
+   */
+  void remove() override;
 
   /**
    * Read storage metadata information. In case no metadata information is

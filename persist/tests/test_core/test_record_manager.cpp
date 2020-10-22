@@ -71,7 +71,10 @@ protected:
     manager->start();
   }
 
-  void TearDown() override { manager->stop(); }
+  void TearDown() override {
+    manager->storage->remove();
+    manager->stop();
+  }
 };
 
 TEST_F(RecordManagerTestFixture, TestGetSingleRecordBlock) {

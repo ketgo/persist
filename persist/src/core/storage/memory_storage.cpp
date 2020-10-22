@@ -37,6 +37,12 @@ bool MemoryStorage::is_open() { return true; }
 
 void MemoryStorage::close() {}
 
+void MemoryStorage::remove() {
+  metadata.freePages.clear();
+  metadata.numPages = 0;
+  data.clear();
+}
+
 std::unique_ptr<MetaData> MemoryStorage::read() {
   std::unique_ptr<MetaData> _metadata = std::make_unique<MetaData>(metadata);
 

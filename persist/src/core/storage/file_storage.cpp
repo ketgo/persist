@@ -26,6 +26,7 @@
  * Implementation of File Storage
  */
 
+#include <cstdio>
 #include <fstream>
 
 #include <persist/core/defs.hpp>
@@ -66,6 +67,13 @@ void FileStorage::close() {
   if (file.is_open()) {
     file.close();
   }
+}
+
+void FileStorage::remove() {
+  close();
+  std::remove(path.c_str());
+  std::string metadataPath = path + ".metadata";
+  std::remove(metadataPath.c_str());
 }
 
 std::unique_ptr<MetaData> FileStorage::read() {

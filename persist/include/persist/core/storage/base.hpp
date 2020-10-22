@@ -67,6 +67,11 @@ public:
   virtual void close() = 0;
 
   /**
+   * Remove storage.
+   */
+  virtual void remove() = 0;
+
+  /**
    * Read storage metadata information. In case no metadata information is
    * available a pointer to new metadata object is returned.
    *

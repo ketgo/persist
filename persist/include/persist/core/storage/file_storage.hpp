@@ -92,6 +92,11 @@ public:
   void close() override;
 
   /**
+   * Remove storage files.
+   */
+  void remove() override;
+
+  /**
    * Read metadata information from storage file
    *
    * @return pointer to MetaData object
