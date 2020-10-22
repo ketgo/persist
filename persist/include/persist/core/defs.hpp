@@ -87,6 +87,17 @@ typedef struct Span {
   Span(ByteBuffer &buffer) : start(buffer.data()), size(buffer.size()) {}
 } Span;
 
+/**
+ * @brief ByteBuffer literal `_bb`
+ */
+inline ByteBuffer operator"" _bb(const char *string, size_t size) {
+  ByteBuffer buffer(size);
+  for (int i = 0; i < size; i++) {
+    buffer[i] = static_cast<Byte>(string[i]);
+  }
+  return buffer;
+}
+
 } // namespace persist
 
 #endif /* CORE_DEFS_HPP */

@@ -41,7 +41,7 @@ protected:
   ByteBuffer input;
   const PageId nextPageId = 10, prevPageId = 1;
   const PageSlotId nextSlotId = 100, prevSlotId = 10;
-  const ByteBuffer data = {'t', 'e', 's', 't', 'i', 'n', 'g'};
+  const ByteBuffer data = "testing"_bb;
   std::unique_ptr<RecordBlock> block;
 
   void SetUp() override {

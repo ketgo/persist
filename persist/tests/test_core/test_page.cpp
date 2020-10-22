@@ -62,10 +62,8 @@ protected:
   std::unique_ptr<Page> page;
   PageSlotId slotId_1, slotId_2;
   std::unique_ptr<RecordBlock> recordBlock_1, recordBlock_2;
-  const ByteBuffer recordBlockData_1 = {'t', 'e', 's', 't', 'i',
-                                        'n', 'g', '_', '1'},
-                   recordBlockData_2 = {'t', 'e', 's', 't', 'i',
-                                        'n', 'g', '_', '2'};
+  const ByteBuffer recordBlockData_1 = "testing_1"_bb,
+                   recordBlockData_2 = "testing_2"_bb;
 
   void SetUp() override {
     // Setup valid page
@@ -214,7 +212,7 @@ TEST_F(PageTestFixture, TestGetRecordBlockError) {
 
 TEST_F(PageTestFixture, TestAddRecordBlock) {
   RecordBlock recordBlock;
-  recordBlock.data = {'t', 'e', 's', 't', 'i', 'n', 'g', '_', '3'};
+  recordBlock.data = "testing_3"_bb;
 
   // Current free space in block
   uint64_t oldFreeSpace = page->freeSpace(true);
@@ -225,8 +223,7 @@ TEST_F(PageTestFixture, TestAddRecordBlock) {
 
 TEST_F(PageTestFixture, TestUpdateRecordBlock) {
   RecordBlock recordBlock;
-  recordBlock.data = {'t', 'e', 's', 't', 'i', 'n', 'g', '_',
-                      '1', '-', 'u', 'p', 'd', 'a', 't', 'e'};
+  recordBlock.data = "testing_1-update"_bb;
 
   // Current free space in block
   uint64_t oldFreeSpace = page->freeSpace();

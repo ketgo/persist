@@ -77,7 +77,7 @@ TEST_F(NewFileStorageTestFixture, TestReadBlock) {
 
 TEST_F(NewFileStorageTestFixture, TestWriteBlock) {
   RecordBlock recordBlock;
-  recordBlock.data = {'t', 'e', 's', 't', 'i', 'n', 'g'};
+  recordBlock.data = "testing"_bb;
 
   Page page(1, pageSize);
   PageSlotId slotId = page.addRecordBlock(recordBlock);
@@ -155,12 +155,12 @@ TEST_F(ExistingFileStorageTestFixture, TestReadBlock) {
   RecordBlock &recordBlock = page->getRecordBlock(1);
 
   ASSERT_EQ(page->getId(), 1);
-  ASSERT_EQ(recordBlock.data, ByteBuffer({'t', 'e', 's', 't', 'i', 'n', 'g'}));
+  ASSERT_EQ(recordBlock.data, ByteBuffer("testing"_bb));
 }
 
 TEST_F(ExistingFileStorageTestFixture, TestWriteBlock) {
   RecordBlock recordBlock;
-  recordBlock.data = {'t', 'e', 's', 't', 'i', 'n', 'g'};
+  recordBlock.data = "testing"_bb;
 
   Page page(1, pageSize);
   PageSlotId slotId = page.addRecordBlock(recordBlock);

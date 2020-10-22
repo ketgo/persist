@@ -26,8 +26,6 @@
  * Page Implementation
  */
 
-#include <iostream>
-
 #include <cstring>
 
 #include <persist/core/exceptions.hpp>

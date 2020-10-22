@@ -40,12 +40,26 @@
 
 using namespace persist;
 
-class ListTestFixture : public ::testing::Test {
+class ListIteratorTestFixture : public ::testing::Test {
+private:
+  /**
+   * @brief Method to insert records in storage for testing.
+   */
+  void insert() {
+    RecordManager manager(connetionString, 10);
+    manager.start();
+    
+    manager.stop();
+  }
+
 protected:
+  const std::string connetionString = "file://test_list.storage";
   std::unique_ptr<List> list;
 
   void SetUp() override {
-    list = std::make_unique<List>("file://test_list.storage", 2);
+    insert();
+
+    list = std::make_unique<List>(connetionString, 2);
 
     list->open();
   }
@@ -53,4 +67,4 @@ protected:
   void TearDown() override { list->close(); }
 };
 
-TEST_F(ListTestFixture, TestLoad) {}
+TEST_F(ListIteratorTestFixture, TestIterator) {}

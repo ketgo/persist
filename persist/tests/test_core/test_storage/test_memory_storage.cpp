@@ -64,7 +64,7 @@ TEST_F(MemoryStorageTestFixture, TestReadPageError) {
 
 TEST_F(MemoryStorageTestFixture, TestReadWritePage) {
   RecordBlock recordBlock;
-  recordBlock.data = {'t', 'e', 's', 't', 'i', 'n', 'g'};
+  recordBlock.data = "testing"_bb;
 
   Page page(1, pageSize);
   PageSlotId slotId = page.addRecordBlock(recordBlock);

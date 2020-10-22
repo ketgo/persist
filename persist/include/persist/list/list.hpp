@@ -27,7 +27,6 @@
 
 #include <persist/core/collection.hpp>
 #include <persist/core/defs.hpp>
-#include <persist/core/exceptions.hpp>
 
 namespace persist {
 /**
@@ -50,8 +49,7 @@ class List : public Collection {
    * The node stores the record data in bytes and the linkage between the next
    * and prior node.
    */
-  class Node {
-  public:
+  struct Node {
     /**
      * @brief Next linked node
      */
@@ -69,16 +67,16 @@ class List : public Collection {
     /**
      * Load Node object from byte string.
      *
-     * @param input input buffer span to load
+     * @param input input buffer to load
      */
-    void load(Span input);
+    void load(ByteBuffer &input);
 
     /**
      * Dump Node object as byte string.
      *
-     * @param output output buffer span to dump
+     * @param output output buffer to dump
      */
-    void dump(Span output);
+    void dump(ByteBuffer &output);
   };
 
 public:
@@ -101,33 +99,14 @@ public:
      * @brief Construct a new Iterator object
      */
     Iterator() {}
-    Iterator(List *list, RecordLocation location, Node *node)
-        : list(list), location(location), node(node) {}
-
-    /**
-     * @brief Assignment operator
-     */
-    self_type operator=(const self_type &other) {
-      list = other.list;
-      location = other.location;
-      node = other.node;
-    }
+    Iterator(List *list, RecordLocation location);
 
     /**
      * @brief PREFIX increment operator
      */
     self_type &operator++() {
-      try {
-        location = node->next;
-        if (location.isNull()) {
-          node = nullptr;
-        } else {
-          ByteBuffer buffer;
-          list->manager.get(buffer, location);
-        }
-      } catch (RecordManagerNotStartedError &err) {
-        throw CollectionNotOpenError();
-      }
+      location = node.next;
+      loadNode();
       return *this;
     }
 
@@ -144,11 +123,8 @@ public:
      * @brief PREFIX decrement operator
      */
     self_type &operator--() {
-      try {
-        location = node->previous;
-      } catch (RecordManagerNotStartedError &err) {
-        throw CollectionNotOpenError();
-      }
+      location = node.previous;
+      loadNode();
       return *this;
     }
 
@@ -164,12 +140,12 @@ public:
     /**
      * @brief Dereference operator to get record value
      */
-    const value_type &operator*() { return node->record; }
+    const value_type &operator*() { return node.record; }
 
     /**
      * @brief Dereference operator to get address of record value
      */
-    const value_type *operator->() { return &node->record; }
+    const value_type *operator->() { return &node.record; }
 
     /**
      * @brief Equality comparision operator
@@ -198,9 +174,14 @@ public:
     RecordLocation location;
 
     /**
-     * @brief Pointer to the node stored at the above location.
+     * @brief Node stored at the above location.
      */
-    Node *node;
+    Node node;
+
+    /**
+     * @brief The method loads the node at set location.
+     */
+    void loadNode();
   };
 
   /**

@@ -45,8 +45,7 @@ class RecordManagerTestFixture : public ::testing::Test {
 protected:
   const uint64_t pageSize = DEFAULT_PAGE_SIZE;
   const uint64_t maxSize = 2;
-  const ByteBuffer records[2] = {{'t', 'e', 's', 't', 'i', 'n', 'g', '_', '1'},
-                                 {'t', 'e', 's', 't', 'i', 'n', 'g', '_', '2'}};
+  const ByteBuffer records[2] = {"testing_1"_bb, "testing_2"_bb};
   RecordBlock::Location locations[2];
   std::unique_ptr<RecordManager> manager;
 
@@ -150,8 +149,7 @@ TEST_F(RecordManagerTestFixture, TestRemoveErrorNonExistingLocation) {
 }
 
 TEST_F(RecordManagerTestFixture, TestUpdateSingleRecordBlock) {
-  ByteBuffer update = {'t', 'e', 's', 't', 'i', 'n', 'g', '_',
-                       '1', '-', 'u', 'p', 'd', 'a', 't', 'e'};
+  ByteBuffer update = "testing_1-update"_bb;
   ByteBuffer record;
 
   // Testing first record update
