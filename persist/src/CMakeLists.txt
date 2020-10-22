@@ -20,7 +20,8 @@ target_link_libraries(
     ${LIB}
     PRIVATE 
     nlohmann_json::nlohmann_json
+    glog::glog
 )
 
 # Set compiler flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBOOST_LOG_DYN_LINK")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
