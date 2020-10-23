@@ -33,18 +33,19 @@
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
 #include <persist/core/page_table.hpp>
-#include <persist/core/storage/memory_storage.hpp>
+#include <persist/core/storage/file_storage.hpp>
 
 using namespace persist;
 
-class PageTableTestFixture : public ::testing::Test {
+class PageTableWithFileStorageTestFixture : public ::testing::Test {
 protected:
   const uint64_t pageSize = DEFAULT_PAGE_SIZE;
   const uint64_t maxSize = 2;
+  const char *file = "test_page_table.storage";
   std::unique_ptr<Page> page_1, page_2, page_3;
   std::unique_ptr<MetaData> metadata;
   std::unique_ptr<PageTable> table;
-  std::unique_ptr<MemoryStorage> storage;
+  std::unique_ptr<FileStorage> storage;
 
   void SetUp() override {
     // setting up pages
@@ -61,13 +62,8 @@ protected:
     metadata->freePages.insert(3);
 
     // setting up storage
-    storage = std::make_unique<MemoryStorage>(pageSize);
-    storage->open();
-    storage->write(*page_1);
-    storage->write(*page_2);
-    storage->write(*page_3);
-    storage->write(*metadata);
-    storage->close();
+    storage = std::make_unique<FileStorage>(file, pageSize);
+    insert();
 
     table = std::make_unique<PageTable>(*storage, maxSize);
     table->open();
@@ -77,9 +73,22 @@ protected:
     storage->remove();
     table->close();
   }
+
+private:
+  /**
+   * @brief Insert test data
+   */
+  void insert() {
+    storage->open();
+    storage->write(*page_1);
+    storage->write(*page_2);
+    storage->write(*page_3);
+    storage->write(*metadata);
+    storage->close();
+  }
 };
 
-TEST_F(PageTableTestFixture, TestPageTableError) {
+TEST_F(PageTableWithFileStorageTestFixture, TestPageTableError) {
   try {
     PageTable table(*storage, 1); //<- invalid max size value
     FAIL() << "Expected PageTableError Exception.";
@@ -90,7 +99,7 @@ TEST_F(PageTableTestFixture, TestPageTableError) {
   }
 }
 
-TEST_F(PageTableTestFixture, TestGet) {
+TEST_F(PageTableWithFileStorageTestFixture, TestGet) {
   PageId pageId = page_1->getId();
   Page page = table->get(pageId);
 
@@ -100,7 +109,7 @@ TEST_F(PageTableTestFixture, TestGet) {
   ASSERT_EQ(page.freeSpace(), page_1->freeSpace());
 }
 
-TEST_F(PageTableTestFixture, TestGetError) {
+TEST_F(PageTableWithFileStorageTestFixture, TestGetError) {
   try {
     Page page = table->get(10);
     FAIL() << "Expected PageNotFoundError Exception.";
@@ -111,7 +120,7 @@ TEST_F(PageTableTestFixture, TestGetError) {
   }
 }
 
-TEST_F(PageTableTestFixture, TestGetLRUPersist) {
+TEST_F(PageTableWithFileStorageTestFixture, TestGetLRUPersist) {
   PageTable::Session session = table->createSession();
 
   // Getting the first page and modifying it
@@ -139,7 +148,7 @@ TEST_F(PageTableTestFixture, TestGetLRUPersist) {
   ASSERT_EQ(_metadata->freePages, std::set<PageId>({2, 3}));
 }
 
-TEST_F(PageTableTestFixture, TestGetNewLRUPersist) {
+TEST_F(PageTableWithFileStorageTestFixture, TestGetNewLRUPersist) {
   PageTable::Session session = table->createSession();
 
   // Getting the new page
@@ -162,14 +171,14 @@ TEST_F(PageTableTestFixture, TestGetNewLRUPersist) {
   ASSERT_EQ(_metadata->freePages, std::set<PageId>({1, 2, 3, 4}));
 }
 
-TEST_F(PageTableTestFixture, TestGetFree) {
+TEST_F(PageTableWithFileStorageTestFixture, TestGetFree) {
   // Getting page with free space
   Page &_page = table->getFree();
 
   ASSERT_EQ(_page.getId(), 3); //<- returns the last page in free list
 }
 
-TEST_F(PageTableTestFixture, TestGetFreeNew) {
+TEST_F(PageTableWithFileStorageTestFixture, TestGetFreeNew) {
   PageTable::Session session = table->createSession();
 
   // Fill all pages
@@ -188,7 +197,7 @@ TEST_F(PageTableTestFixture, TestGetFreeNew) {
   ASSERT_EQ(_page.getId(), 4);
 }
 
-TEST_F(PageTableTestFixture, TestSessionCommit) {
+TEST_F(PageTableWithFileStorageTestFixture, TestSessionCommit) {
   PageTable::Session session = table->createSession();
 
   // Getting the first page and modifying it

@@ -20,6 +20,7 @@ target_link_libraries(
     ${LIB}
     PRIVATE 
     nlohmann_json::nlohmann_json
+    loguru::loguru
 )
 
 # Set compiler flags
