@@ -30,6 +30,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 /**
  * Enabled intrusive testing
@@ -44,8 +45,8 @@ using namespace persist;
 class ListIteratorTestFixture : public ::testing::Test {
 protected:
   const std::string connetionString = "file://test_list.storage";
-  const size_t num = 3;
-  RecordLocation start;
+  const size_t num = 50;
+  std::vector<RecordLocation> locations;
   std::unique_ptr<List> list, empty_list;
 
   void SetUp() override {
@@ -82,7 +83,7 @@ private:
     buffer.clear();
     node.dump(buffer);
     location = manager.insert(buffer);
-    start = location;
+    locations.push_back(location);
     size_t count = 1;
     while (count < num) {
       // Set new node as previous node
@@ -96,6 +97,7 @@ private:
       buffer.clear();
       node.dump(buffer);
       location = manager.insert(buffer);
+      locations.push_back(location);
 
       // Update previous node
       prev_node.next = location;
@@ -110,24 +112,106 @@ private:
   }
 };
 
-TEST_F(ListIteratorTestFixture, TestForwardTraversal) {
-  List::Iterator it(list.get(), start), end;
+TEST_F(ListIteratorTestFixture, TestForwardTraversalPrefixIncrement) {
+  List::Iterator it(list.get(), locations.front()), end;
   ByteBuffer buffer;
+  std::vector<RecordLocation> _locations(num);
   size_t count = 0;
 
+  // Inequality comparision operator test
   while (it != end) {
     buffer = "testing-"_bb;
     buffer.push_back(std::to_string(count)[0]);
 
     ASSERT_EQ(*it, buffer);
 
+    _locations[count] = it.getLocation();
+
+    // Prefix increment
     ++it;
     ++count;
   }
+
+  ASSERT_EQ(locations, _locations);
+
+  // Equality comparision operator test
+  ASSERT_TRUE(it == end);
 }
 
-TEST_F(ListIteratorTestFixture, TestBackwardTraversal) {
-  List::Iterator it(list.get(), start), end;
+TEST_F(ListIteratorTestFixture, TestForwardTraversalPostfixIncrement) {
+  List::Iterator it(list.get(), locations.front()), end;
+  ByteBuffer buffer;
+  std::vector<RecordLocation> _locations(num);
+  size_t count = 0;
 
-  // TODO
+  // Inequality comparision operator test
+  while (it != end) {
+    buffer = "testing-"_bb;
+    buffer.push_back(std::to_string(count)[0]);
+
+    ASSERT_EQ(*it, buffer);
+
+    _locations[count] = it.getLocation();
+
+    // Postfix increment
+    it++;
+    ++count;
+  }
+
+  ASSERT_EQ(locations, _locations);
+
+  // Equality comparision operator test
+  ASSERT_TRUE(it == end);
+}
+
+TEST_F(ListIteratorTestFixture, TestBackwardTraversalPrefixDecrement) {
+  List::Iterator it(list.get(), locations.back()), begin;
+  ByteBuffer buffer;
+  std::vector<RecordLocation> _locations(num);
+  size_t count = num - 1;
+
+  // Inequality comparision operator test
+  while (it != begin) {
+    buffer = "testing-"_bb;
+    buffer.push_back(std::to_string(count)[0]);
+
+    ASSERT_EQ(*it, buffer);
+
+    _locations[count] = it.getLocation();
+
+    // Pretfix decrement
+    --it;
+    --count;
+  }
+
+  ASSERT_EQ(locations, _locations);
+
+  // Equality comparision operator test
+  ASSERT_TRUE(it == begin);
+}
+
+TEST_F(ListIteratorTestFixture, TestBackwardTraversalPostfixDecrement) {
+  List::Iterator it(list.get(), locations.back()), begin;
+  ByteBuffer buffer;
+  std::vector<RecordLocation> _locations(num);
+  size_t count = num - 1;
+
+  // Inequality comparision operator test
+  while (it != begin) {
+    buffer = "testing-"_bb;
+    buffer.push_back(std::to_string(count)[0]);
+
+    ASSERT_EQ(*it, buffer);
+
+    _locations[count] = it.getLocation();
+
+    // Postfix decrement
+    it--;
+    --count;
+  }
+
+  ASSERT_EQ(locations, _locations);
+
+  // Equality comparision operator test
+  ASSERT_TRUE(it == begin);
 }
