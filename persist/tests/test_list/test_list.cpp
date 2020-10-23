@@ -45,7 +45,7 @@ using namespace persist;
 class ListIteratorTestFixture : public ::testing::Test {
 protected:
   const std::string connetionString = "file://test_list.storage";
-  const size_t num = 50;
+  const size_t num = 10;
   std::vector<RecordLocation> locations;
   std::unique_ptr<List> list, empty_list;
 
