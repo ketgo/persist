@@ -36,6 +36,8 @@ namespace persist {
  */
 typedef RecordBlock::Location RecordLocation;
 
+// TODO: Implement template based list
+
 /**
  * List Collection
  *

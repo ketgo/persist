@@ -41,6 +41,9 @@ RecordManager::RecordManager(std::string storageURL, uint64_t cacheSize)
 RecordBlock::Location RecordManager::insert(PageTable::Session &session,
                                             Span span,
                                             RecordBlock::Location location) {
+
+  // TODO: Fix issue with span of size 0 not getting stored.
+
   // Null record block representing the previous from first record block
   RecordBlock nullRecordBlock;
 

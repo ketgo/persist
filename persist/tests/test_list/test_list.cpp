@@ -29,6 +29,7 @@
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <string>
 
 /**
  * Enabled intrusive testing
@@ -51,7 +52,7 @@ protected:
     empty_list = std::make_unique<List>("file://test_empty_list.storage");
     empty_list->open();
 
-    //insert();
+    insert();
     list = std::make_unique<List>(connetionString, 2);
     list->open();
   }
@@ -77,11 +78,11 @@ private:
 
     // Insert new node
     node.record = "testing-"_bb;
-    node.record.push_back(0);
+    node.record.push_back(std::to_string(0)[0]);
     buffer.clear();
+    node.dump(buffer);
     location = manager.insert(buffer);
     start = location;
-
     size_t count = 1;
     while (count < num) {
       // Set new node as previous node
@@ -90,7 +91,7 @@ private:
 
       // Insert new node
       node.record = "testing-"_bb;
-      node.record.push_back(count);
+      node.record.push_back(std::to_string(count)[0]);
       node.previous = prev_location;
       buffer.clear();
       node.dump(buffer);
@@ -109,4 +110,24 @@ private:
   }
 };
 
-TEST_F(ListIteratorTestFixture, TestIterator) {}
+TEST_F(ListIteratorTestFixture, TestForwardTraversal) {
+  List::Iterator it(list.get(), start), end;
+  ByteBuffer buffer;
+  size_t count = 0;
+
+  while (it != end) {
+    buffer = "testing-"_bb;
+    buffer.push_back(std::to_string(count)[0]);
+
+    ASSERT_EQ(*it, buffer);
+
+    ++it;
+    ++count;
+  }
+}
+
+TEST_F(ListIteratorTestFixture, TestBackwardTraversal) {
+  List::Iterator it(list.get(), start), end;
+
+  // TODO
+}
