@@ -30,13 +30,14 @@
 #ifndef CORE_DEFS_HPP
 #define CORE_DEFS_HPP
 
+#include <ostream>
 #include <vector>
 
 /**
  * Used for intrusive testing
  *
  */
-#ifdef PERSIST_TESTING
+#ifdef PERSIST_INTRUSIVE_TESTING
 #define PERSIST_PRIVATE public:
 #define PERSIST_PROTECTED public:
 #else
@@ -96,6 +97,16 @@ inline ByteBuffer operator"" _bb(const char *string, size_t size) {
     buffer[i] = static_cast<Byte>(string[i]);
   }
   return buffer;
+}
+
+/**
+ * @brief Write byte buffer to output stream
+ */
+inline std::ostream &operator<<(std::ostream &os, const ByteBuffer &buffer) {
+  for (auto c : buffer) {
+    os << c;
+  }
+  return os;
 }
 
 } // namespace persist

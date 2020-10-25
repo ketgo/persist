@@ -33,7 +33,7 @@
 /**
  * Enabled intrusive testing
  */
-#define PERSIST_TESTING
+#define PERSIST_INTRUSIVE_TESTING
 
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
