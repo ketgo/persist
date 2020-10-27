@@ -132,11 +132,11 @@ void FileStorage::write(MetaData &metadata) {
 }
 
 std::unique_ptr<Page> FileStorage::read(PageId pageId) {
-  // The block ID and blockSize is used to compute the offset of the block in
+  // The page ID and pageSize is used to compute the offset of the page in
   // the file.
   uint64_t offset = pageSize * (pageId - 1);
 
-  // If offset is negative that means blockId is 0 so return null pointer.
+  // If offset is negative that means pageId is 0 so return null pointer.
   // This is because blockId of 0 is considered NULL.
   if (offset < 0) {
     return nullptr;
@@ -144,7 +144,7 @@ std::unique_ptr<Page> FileStorage::read(PageId pageId) {
 
   ByteBuffer buffer;
   buffer.resize(pageSize);
-  std::unique_ptr<Page> dataBlockPtr = std::make_unique<Page>(pageId, pageSize);
+  std::unique_ptr<Page> page = std::make_unique<Page>(pageId, pageSize);
 
   // Load data block from file
   file::read(file, buffer, offset);
@@ -152,12 +152,12 @@ std::unique_ptr<Page> FileStorage::read(PageId pageId) {
   // TODO: Needs more selective exception handling. The page not found error
   // should be thrown only if the offset exceeds EOF
   try {
-    dataBlockPtr->load(Span(buffer));
+    page->load(Span(buffer));
   } catch (...) {
     throw PageNotFoundError(pageId);
   }
 
-  return dataBlockPtr;
+  return page;
 }
 
 void FileStorage::write(Page &page) {
@@ -168,7 +168,7 @@ void FileStorage::write(Page &page) {
   // If offset is negative that means blockId is 0 so return. This is because
   // blockId of 0 is considered NULL.
   if (offset < 0) {
-    return;
+    throw StorageError("Can not write page with invalid ID.");
   }
 
   ByteBuffer buffer(pageSize);

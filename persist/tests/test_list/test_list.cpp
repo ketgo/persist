@@ -53,7 +53,7 @@ protected:
     empty_list = std::make_unique<List>("file://test_empty_list.storage");
     empty_list->open();
 
-    // insert();
+    insert();
     list = std::make_unique<List>(connetionString, 2);
     list->open();
   }
@@ -112,99 +112,6 @@ private:
   }
 };
 
-TEST_F(ListIteratorTestFixture, TestForwardTraversalPrefixIncrement) {
-  RecordManager manager(connetionString, 10), _manager(connetionString, 10);
-  List::Node prev_node, node, _node;
-  RecordLocation prev_location, location;
-  ByteBuffer buffer, _buffer;
-
-  manager.start();
-  _manager.start();
-
-  // Insert new node
-  std::cout << "INSERT\n";
-  node.record = "testing-"_bb;
-  node.record.push_back(std::to_string(0)[0]);
-  buffer.clear();
-  node.dump(buffer);
-  location = manager.insert(buffer);
-  locations.push_back(location);
-
-  for (auto loc : locations) {
-    _buffer.clear();
-    _manager.get(_buffer, loc);
-    _node.load(_buffer);
-    std::cout << "\t[" << loc.pageId << ", " << loc.slotId << "]: N["
-              << _node.next.pageId << ", " << _node.next.slotId << "] P["
-              << _node.previous.pageId << ", " << _node.previous.slotId
-              << "] R[" << _node.record << "]\n";
-  }
-
-  // Set new node as previous node
-  prev_location = location;
-  prev_node = node;
-
-  // Insert new node
-  std::cout << "INSERT\n";
-  node.record = "testing-"_bb;
-  node.record.push_back(std::to_string(1)[0]);
-  node.previous = prev_location;
-  buffer.clear();
-  node.dump(buffer);
-  location = manager.insert(buffer);
-  locations.push_back(location);
-  
-  // Update previous node
-  // prev_node.next = location;
-  // buffer.clear();
-  // prev_node.dump(buffer);
-  // manager.update(buffer, prev_location);
-
-  for (auto loc : locations) {
-    _buffer.clear();
-    _manager.get(_buffer, loc);
-    _node.load(_buffer);
-    std::cout << "\t[" << loc.pageId << ", " << loc.slotId << "]: N["
-              << _node.next.pageId << ", " << _node.next.slotId << "] P["
-              << _node.previous.pageId << ", " << _node.previous.slotId
-              << "] R[" << _node.record << "]\n";
-  }
-
-/*
-  // Set new node as previous node
-  prev_location = location;
-  prev_node = node;
-
-  // Insert new node
-  std::cout << "INSERT\n";
-  node.record = "testing-"_bb;
-  node.record.push_back(std::to_string(2)[0]);
-  node.previous = prev_location;
-  buffer.clear();
-  node.dump(buffer);
-  location = manager.insert(buffer);
-  locations.push_back(location);
-  // Update previous node
-  prev_node.next = location;
-  buffer.clear();
-  prev_node.dump(buffer);
-  manager.update(buffer, prev_location);
-
-  for (auto loc : locations) {
-    _buffer.clear();
-    _manager.get(_buffer, loc);
-    _node.load(_buffer);
-    std::cout << "\t[" << loc.pageId << ", " << loc.slotId << "]: N["
-              << _node.next.pageId << ", " << _node.next.slotId << "] P["
-              << _node.previous.pageId << ", " << _node.previous.slotId
-              << "] R[" << _node.record << "]\n";
-  }
-*/
-  manager.stop();
-  _manager.stop();
-}
-
-/*
 TEST_F(ListIteratorTestFixture, TestForwardTraversalPrefixIncrement) {
   List::Iterator it(list.get(), locations.front()), end;
   ByteBuffer buffer;
@@ -308,4 +215,3 @@ TEST_F(ListIteratorTestFixture, TestBackwardTraversalPostfixDecrement) {
   // Equality comparision operator test
   ASSERT_TRUE(it == begin);
 }
-*/

@@ -115,6 +115,23 @@ public:
    * @param output output buffer span to dump
    */
   void dump(Span output);
+
+#ifdef __PERSIST_DEBUG__
+  /**
+   * @brief Write metadata to output stream
+   */
+  friend std::ostream &operator<<(std::ostream &os, const MetaData &metadata) {
+    os << "--------- MetaData ---------\n";
+    os << "Page Size: " << metadata.pageSize << "\n";
+    os << "# Pages: " << metadata.numPages << "\n";
+    os << "Free Pages: \n";
+    for (auto pageId : metadata.freePages) {
+      os << "\tid: " << pageId << "\n";
+    }
+    os << "----------------------------";
+    return os;
+  }
+#endif
 };
 
 /**
@@ -146,6 +163,11 @@ public:
    * Construct
    */
   MetaDataDelta() : numPages(0) {}
+
+  /**
+   * Clear delta.
+   */
+  void clear();
 
   /**
    * Increase number of pages.
@@ -198,6 +220,23 @@ public:
    * @param output output buffer to dump
    */
   void dump(ByteBuffer &output);
+
+#ifdef __PERSIST_DEBUG__
+  /**
+   * @brief Write metadata delta to output stream
+   */
+  friend std::ostream &operator<<(std::ostream &os,
+                                  const MetaDataDelta &delta) {
+    os << "---- MetaData Delta ----\n";
+    os << "# Pages: " << int(delta.numPages) << "\n";
+    os << "Free Pages: \n";
+    for (auto element : delta.freePages) {
+      os << element.first << ": " << int(element.second) << "\n";
+    }
+    os << "------------------------";
+    return os;
+  }
+#endif
 };
 
 } // namespace persist

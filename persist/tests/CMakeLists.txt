@@ -30,7 +30,6 @@ target_link_libraries(
     ${TEST_BINARY}
     ${LIB}
     gtest
-    loguru::loguru
 )
 
 # Copy test data directory

@@ -30,8 +30,11 @@
 #ifndef CORE_DEFS_HPP
 #define CORE_DEFS_HPP
 
-#include <ostream>
 #include <vector>
+
+#ifdef __PERSIST_DEBUG__
+#include <ostream>
+#endif
 
 /**
  * Used for intrusive testing
@@ -99,6 +102,7 @@ inline ByteBuffer operator"" _bb(const char *string, size_t size) {
   return buffer;
 }
 
+#ifdef __PERSIST_DEBUG__
 /**
  * @brief Write byte buffer to output stream
  */
@@ -108,6 +112,7 @@ inline std::ostream &operator<<(std::ostream &os, const ByteBuffer &buffer) {
   }
   return os;
 }
+#endif
 
 } // namespace persist
 

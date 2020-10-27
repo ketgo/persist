@@ -89,6 +89,17 @@ public:
     bool operator!=(const Location &other) const {
       return pageId != other.pageId || slotId != other.slotId;
     }
+
+#ifdef __PERSIST_DEBUG__
+    /**
+     * @brief Write record block location to output stream
+     */
+    friend std::ostream &operator<<(std::ostream &os,
+                                    const Location &location) {
+      os << "[" << location.pageId << ", " << location.slotId << "]";
+      return os;
+    }
+#endif
   };
 
   /**
@@ -137,6 +148,19 @@ public:
      * @param output output buffer span to dump
      */
     void dump(Span output);
+
+#ifdef __PERSIST_DEBUG__
+    /**
+     * @brief Write record block header to output stream
+     */
+    friend std::ostream &operator<<(std::ostream &os, const Header &header) {
+      os << "---- Header ----\n";
+      os << "next: " << header.nextLocation << "\n";
+      os << "prev: " << header.prevLocation << "\n";
+      os << "-----------------";
+      return os;
+    }
+#endif
   };
 
   PERSIST_PRIVATE
@@ -192,6 +216,20 @@ public:
    * @param output output buffer span to dump
    */
   void dump(Span output);
+
+#ifdef __PERSIST_DEBUG__
+  /**
+   * @brief Write record block to output stream
+   */
+  friend std::ostream &operator<<(std::ostream &os,
+                                  const RecordBlock &recordBlock) {
+    os << "------ Record Block ------\n";
+    os << recordBlock.header << "\n";
+    os << "data: " << recordBlock.data << "\n";
+    os << "--------------------------";
+    return os;
+  }
+#endif
 };
 
 } // namespace persist
