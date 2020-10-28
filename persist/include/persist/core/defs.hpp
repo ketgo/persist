@@ -32,11 +32,15 @@
 
 #include <vector>
 
+#ifdef __PERSIST_DEBUG__
+#include <ostream>
+#endif
+
 /**
  * Used for intrusive testing
  *
  */
-#ifdef PERSIST_TESTING
+#ifdef PERSIST_INTRUSIVE_TESTING
 #define PERSIST_PRIVATE public:
 #define PERSIST_PROTECTED public:
 #else
@@ -97,6 +101,18 @@ inline ByteBuffer operator"" _bb(const char *string, size_t size) {
   }
   return buffer;
 }
+
+#ifdef __PERSIST_DEBUG__
+/**
+ * @brief Write byte buffer to output stream
+ */
+inline std::ostream &operator<<(std::ostream &os, const ByteBuffer &buffer) {
+  for (auto c : buffer) {
+    os << c;
+  }
+  return os;
+}
+#endif
 
 } // namespace persist
 

@@ -76,7 +76,7 @@ void PageTable::mark(PageId pageId) {
   // Check if page has free space and update metadata and metadata delta
   // accordingly. The minimum amount of space a page should contain is the size
   // of a record block header.
-  if (map.at(pageId)->page->freeSpace() > sizeof(RecordBlock::Header)) {
+  if (map.at(pageId)->page->freeSpace(true) > sizeof(RecordBlock::Header)) {
     // Set takes care of duplicates so no need to check
     metadata->freePages.insert(pageId);
     map.at(pageId)->metaDelta->addFreePage(pageId);
@@ -97,14 +97,18 @@ void PageTable::flush(PageId pageId) {
     // recovery via operation logs and commit checkpoints.
 
     // Persist updated metadata
-    // Refactor: Keep copy of persisted metadata in cache
+    // TODO: Keep copy of persisted metadata in cache to avaoid read from
+    // storage.
     std::unique_ptr<MetaData> _metadata = storage.read();
     map.at(pageId)->metaDelta->apply(*_metadata);
     storage.write(*_metadata);
 
     // Persist page
     storage.write(*(map.at(pageId)->page));
-    // Since the page has been saved it is now marked as un-modified.
+
+    // Since the page has been saved it is now marked as un-modified and clear
+    // metadata delta.
+    map.at(pageId)->metaDelta->clear();
     map.at(pageId)->modified = false;
   }
 }

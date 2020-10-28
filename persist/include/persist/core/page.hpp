@@ -184,6 +184,26 @@ public:
      * @param output output buffer span to dump
      */
     void dump(Span output);
+
+#ifdef __PERSIST_DEBUG__
+    /**
+     * @brief Write page header to output stream
+     */
+    friend std::ostream &operator<<(std::ostream &os, const Header &header) {
+      os << "------- Header -------\n";
+      os << "id: " << header.pageId << "\n";
+      os << "next: " << header.nextPageId << "\n";
+      os << "prev: " << header.prevPageId << "\n";
+      os << "_size: " << header.pageSize << "\n";
+      os << "slots: \n";
+      for (auto slot : header.slots) {
+        os << "\tid: " << slot.second.id << ", offset: " << slot.second.offset
+           << ", size: " << slot.second.size << "\n";
+      }
+      os << "----------------------";
+      return os;
+    }
+#endif
   };
 
   PERSIST_PRIVATE
@@ -299,6 +319,23 @@ public:
    * @param output output buffer span to dump
    */
   void dump(Span output);
+
+#ifdef __PERSIST_DEBUG__
+  /**
+   * @brief Write page to output stream
+   */
+  friend std::ostream &operator<<(std::ostream &os, const Page &page) {
+    os << "--------- Page " << page.header.pageId << " ---------\n";
+    os << page.header << "\n";
+    for (auto element : page.recordBlocks) {
+      os << ":--> [" << page.header.pageId << ", " << element.first << "]\n";
+      os << element.second << "\n";
+    }
+    os << "-----------------------------";
+
+    return os;
+  }
+#endif
 };
 
 } // namespace persist

@@ -315,7 +315,7 @@ public:
 /**
  * Storage Error
  *
- * This error is thrown if unable to open backend storage.
+ * This error is thrown by backend storage.
  */
 class StorageError : public PersistException {
 private:

@@ -129,6 +129,11 @@ void MetaData::dump(Span output) {
  * MetaDataDelta
  ************************/
 
+void MetaDataDelta::clear() {
+  numPages = 0;
+  freePages.clear();
+}
+
 void MetaDataDelta::numPagesUp() { ++numPages; }
 
 void MetaDataDelta::numPagesDown() { --numPages; }

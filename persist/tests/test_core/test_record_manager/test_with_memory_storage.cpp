@@ -33,7 +33,7 @@
 /**
  * Enabled intrusive testing
  */
-#define PERSIST_TESTING
+#define PERSIST_INTRUSIVE_TESTING
 
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
@@ -41,7 +41,7 @@
 
 using namespace persist;
 
-class RecordManagerTestFixture : public ::testing::Test {
+class RecordManagerWithMemoryStorageTestFixture : public ::testing::Test {
 protected:
   const uint64_t pageSize = DEFAULT_PAGE_SIZE;
   const uint64_t maxSize = 2;
@@ -77,7 +77,7 @@ protected:
   }
 };
 
-TEST_F(RecordManagerTestFixture, TestGetSingleRecordBlock) {
+TEST_F(RecordManagerWithMemoryStorageTestFixture, TestGetSingleRecordBlock) {
   ByteBuffer record;
 
   manager->get(record, locations[0]);
@@ -88,7 +88,7 @@ TEST_F(RecordManagerTestFixture, TestGetSingleRecordBlock) {
   ASSERT_EQ(record, records[1]);
 }
 
-TEST_F(RecordManagerTestFixture, TestGetErrorNullLocation) {
+TEST_F(RecordManagerWithMemoryStorageTestFixture, TestGetErrorNullLocation) {
   try {
     ByteBuffer record;
     RecordBlock::Location location;
@@ -100,7 +100,8 @@ TEST_F(RecordManagerTestFixture, TestGetErrorNullLocation) {
     FAIL() << "Expected RecordNotFoundError Exception.";
   }
 }
-TEST_F(RecordManagerTestFixture, TestGetErrorNonExistingLocation) {
+TEST_F(RecordManagerWithMemoryStorageTestFixture,
+       TestGetErrorNonExistingLocation) {
   try {
     ByteBuffer record;
     RecordBlock::Location location;
@@ -114,7 +115,7 @@ TEST_F(RecordManagerTestFixture, TestGetErrorNonExistingLocation) {
   }
 }
 
-TEST_F(RecordManagerTestFixture, TestRemoveSingleRecordBlock) {
+TEST_F(RecordManagerWithMemoryStorageTestFixture, TestRemoveSingleRecordBlock) {
   ByteBuffer record;
 
   // Testing first record deleted
@@ -127,7 +128,7 @@ TEST_F(RecordManagerTestFixture, TestRemoveSingleRecordBlock) {
   ASSERT_EQ(record, records[1]);
 }
 
-TEST_F(RecordManagerTestFixture, TestRemoveErrorNullLocation) {
+TEST_F(RecordManagerWithMemoryStorageTestFixture, TestRemoveErrorNullLocation) {
   try {
     RecordBlock::Location location;
     manager->remove(location);
@@ -138,7 +139,8 @@ TEST_F(RecordManagerTestFixture, TestRemoveErrorNullLocation) {
     FAIL() << "Expected RecordNotFoundError Exception.";
   }
 }
-TEST_F(RecordManagerTestFixture, TestRemoveErrorNonExistingLocation) {
+TEST_F(RecordManagerWithMemoryStorageTestFixture,
+       TestRemoveErrorNonExistingLocation) {
   try {
     RecordBlock::Location location;
     location.pageId = 10;
@@ -151,7 +153,7 @@ TEST_F(RecordManagerTestFixture, TestRemoveErrorNonExistingLocation) {
   }
 }
 
-TEST_F(RecordManagerTestFixture, TestUpdateSingleRecordBlock) {
+TEST_F(RecordManagerWithMemoryStorageTestFixture, TestUpdateSingleRecordBlock) {
   ByteBuffer update = "testing_1-update"_bb;
   ByteBuffer record;
 
@@ -166,7 +168,8 @@ TEST_F(RecordManagerTestFixture, TestUpdateSingleRecordBlock) {
   ASSERT_EQ(record, records[1]);
 }
 
-TEST_F(RecordManagerTestFixture, TestInsertAndGetMultiRecordBlock) {
+TEST_F(RecordManagerWithMemoryStorageTestFixture,
+       TestInsertAndGetMultiRecordBlock) {
   ByteBuffer input(2 * pageSize + 100, 'A');
   RecordBlock::Location location = manager->insert(input);
 
@@ -176,7 +179,8 @@ TEST_F(RecordManagerTestFixture, TestInsertAndGetMultiRecordBlock) {
   ASSERT_EQ(output, input);
 }
 
-TEST_F(RecordManagerTestFixture, TestInsertAndRemoveMultiRecordBlock) {
+TEST_F(RecordManagerWithMemoryStorageTestFixture,
+       TestInsertAndRemoveMultiRecordBlock) {
   ByteBuffer input(2 * pageSize + 100, 'A');
   RecordBlock::Location location = manager->insert(input);
   ByteBuffer record;
@@ -196,7 +200,8 @@ TEST_F(RecordManagerTestFixture, TestInsertAndRemoveMultiRecordBlock) {
   ASSERT_EQ(record, records[1]);
 }
 
-TEST_F(RecordManagerTestFixture, TestInsertAndUpdateMultiRecordBlock) {
+TEST_F(RecordManagerWithMemoryStorageTestFixture,
+       TestInsertAndUpdateMultiRecordBlock) {
   ByteBuffer input(2 * pageSize + 100, 'A'),
       updateIncrease(3 * pageSize + 100, 'A'),
       updateDecrease(1 * pageSize + 100, 'A');

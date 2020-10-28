@@ -144,8 +144,8 @@ void Page::Header::load(Span input) {
   while (slotsCount > 0) {
     Slot slot;
     std::memcpy((void *)&slot, (const void *)pos, sizeof(Slot));
-    slots[slot.id] = slot;
     pos += sizeof(Slot);
+    slots[slot.id] = slot;
     --slotsCount;
   }
   std::memcpy((void *)&checksum, (const void *)pos, sizeof(Checksum));
@@ -196,7 +196,11 @@ Page::Page(PageId pageId, uint64_t pageSize) : header(pageId, pageSize) {
 
 uint64_t Page::freeSpace(bool exclude) {
   if (exclude) {
-    return header.tail() - header.size() - sizeof(Header::Slot);
+    uint64_t size = header.tail() - header.size();
+    if (size > sizeof(Header::Slot)) {
+      return size - sizeof(Header::Slot);
+    }
+    return 0;
   }
   return header.tail() - header.size();
 }
@@ -271,9 +275,12 @@ void Page::dump(Span output) {
   std::memset((void *)span.start, 0, span.size);
   // Dump record blocks
   for (auto element : recordBlocks) {
+    PageSlotId slotId = element.first;
     RecordBlock &recordBlock = element.second;
-    span.start += span.size;
-    span.size = recordBlock.size();
+    // TODO: Need quicker way to access offset and size since the slots in
+    // header use binary search.
+    span.start = output.start + header.slots.at(slotId).offset;
+    span.size = header.slots.at(slotId).size;
     recordBlock.dump(span);
   }
 }
