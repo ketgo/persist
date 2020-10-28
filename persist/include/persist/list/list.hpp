@@ -31,10 +31,6 @@
 #include <persist/core/defs.hpp>
 
 namespace persist {
-/**
- * @brief Typedef for record location on backend storage
- */
-typedef RecordBlock::Location RecordLocation;
 
 // TODO: Implement template based list
 

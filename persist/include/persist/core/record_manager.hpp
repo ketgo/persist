@@ -34,6 +34,11 @@
 namespace persist {
 
 /**
+ * @brief Typedef for record location on backend storage
+ */
+typedef RecordBlock::Location RecordLocation;
+
+/**
  * Record Manager Class
  *
  * The record manager interfaces with page table to GET, INSERT, UPDATE and
@@ -65,8 +70,8 @@ class RecordManager {
    * @returns starting record block location of the record pointed by span
    */
   RecordBlock::Location
-  insert(PageTable::Session &session, Span span,
-         RecordBlock::Location location = RecordBlock::Location());
+  _insert(PageTable::Session &session, Span span,
+          RecordBlock::Location location = RecordBlock::Location());
 
   /**
    * @brief Remove doubly linked record blocks in srorage. This method is used
@@ -76,7 +81,7 @@ class RecordManager {
    * @param location location of the starting doubly linked record block to
    * remove
    */
-  void remove(PageTable::Session &session, RecordBlock::Location location);
+  void _remove(PageTable::Session &session, RecordBlock::Location location);
 
 public:
   /**
@@ -108,16 +113,16 @@ public:
    * @param buffer byte buffer into which the record will be stored
    * @param location record starting location
    */
-  void get(ByteBuffer &buffer, RecordBlock::Location location);
+  void get(ByteBuffer &buffer, RecordLocation location);
 
   /**
    * @brief Insert record stored in buffer to storage. The method returns the
    * insert location of the record.
    *
    * @param buffer byte buffer containing record data
-   * @return RecordLocation inserted location of the record
+   * @returns inserted location of the record
    */
-  RecordBlock::Location insert(ByteBuffer &buffer);
+  RecordLocation insert(ByteBuffer &buffer);
 
   /**
    * @brief Update record stored at given location.
@@ -125,14 +130,14 @@ public:
    * @param buffer byte buffer containing updated record
    * @param location starting location of record
    */
-  void update(ByteBuffer &buffer, RecordBlock::Location location);
+  void update(ByteBuffer &buffer, RecordLocation location);
 
   /**
    * @brief Remove record stored at given location.
    *
    * @param location starting location of record
    */
-  void remove(RecordBlock::Location location);
+  void remove(RecordLocation location);
 };
 
 } // namespace persist

@@ -38,9 +38,9 @@ RecordManager::RecordManager(std::string storageURL, uint64_t cacheSize)
 
 // Private Methods
 
-RecordBlock::Location RecordManager::insert(PageTable::Session &session,
-                                            Span span,
-                                            RecordBlock::Location location) {
+RecordBlock::Location RecordManager::_insert(PageTable::Session &session,
+                                             Span span,
+                                             RecordBlock::Location location) {
 
   // TODO: Fix issue with span of size 0 not getting stored.
 
@@ -95,8 +95,8 @@ RecordBlock::Location RecordManager::insert(PageTable::Session &session,
   return nullRecordBlock.nextLocation();
 }
 
-void RecordManager::remove(PageTable::Session &session,
-                           RecordBlock::Location location) {
+void RecordManager::_remove(PageTable::Session &session,
+                            RecordBlock::Location location) {
   // Start removing record blocks
   RecordBlock::Location removeLocation = location;
   try {
@@ -141,7 +141,7 @@ void RecordManager::stop() {
   }
 }
 
-void RecordManager::get(ByteBuffer &buffer, RecordBlock::Location location) {
+void RecordManager::get(ByteBuffer &buffer, RecordLocation location) {
   // Check if record manager has started
   if (!started) {
     throw RecordManagerNotStartedError();
@@ -186,7 +186,7 @@ void RecordManager::get(ByteBuffer &buffer, RecordBlock::Location location) {
   session.commit();
 }
 
-RecordBlock::Location RecordManager::insert(ByteBuffer &buffer) {
+RecordLocation RecordManager::insert(ByteBuffer &buffer) {
   // Check if record manager has started
   if (!started) {
     throw RecordManagerNotStartedError();
@@ -195,14 +195,14 @@ RecordBlock::Location RecordManager::insert(ByteBuffer &buffer) {
   // Start page table session
   PageTable::Session session = pageTable.createSession();
   // Insert data from buffer
-  RecordBlock::Location location = insert(session, Span(buffer));
+  RecordLocation location = _insert(session, Span(buffer));
   // Commit staged pages in session
   session.commit();
 
   return location;
 }
 
-void RecordManager::remove(RecordBlock::Location location) {
+void RecordManager::remove(RecordLocation location) {
   // Check if record manager has started
   if (!started) {
     throw RecordManagerNotStartedError();
@@ -216,12 +216,12 @@ void RecordManager::remove(RecordBlock::Location location) {
   // Start page table session
   PageTable::Session session = pageTable.createSession();
   // Remove record blocks
-  remove(session, location);
+  _remove(session, location);
   // Commit staged pages
   session.commit();
 }
 
-void RecordManager::update(ByteBuffer &buffer, RecordBlock::Location location) {
+void RecordManager::update(ByteBuffer &buffer, RecordLocation location) {
   // Check if record manager has started
   if (!started) {
     throw RecordManagerNotStartedError();
@@ -274,14 +274,14 @@ void RecordManager::update(ByteBuffer &buffer, RecordBlock::Location location) {
     // Insert rest of the buffer
     if (toWriteSize > 0) {
       updateRecordBlock->nextLocation() =
-          insert(session, Span(buffer.data() + writtenSize, toWriteSize),
-                 updateLocation);
+          _insert(session, Span(buffer.data() + writtenSize, toWriteSize),
+                  updateLocation);
     }
 
     // Remove remaining record blocks containing old data
     if (!updateLocation.isNull()) {
       updateRecordBlock->nextLocation().setNull();
-      remove(session, updateLocation);
+      _remove(session, updateLocation);
     }
   } catch (NotFoundException &err) {
     // If a not found exception is thrown for the starting record block then

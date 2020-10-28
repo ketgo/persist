@@ -274,13 +274,11 @@ void Page::dump(Span output) {
   span.size = freeSpace();
   std::memset((void *)span.start, 0, span.size);
   // Dump record blocks
-  for (auto element : recordBlocks) {
-    PageSlotId slotId = element.first;
-    RecordBlock &recordBlock = element.second;
-    // TODO: Need quicker way to access offset and size since the slots in
-    // header use binary search.
-    span.start = output.start + header.slots.at(slotId).offset;
-    span.size = header.slots.at(slotId).size;
+  for (auto element : header.slots) {
+    Header::Slot &slot = element.second;
+    RecordBlock &recordBlock = recordBlocks.at(slot.id);
+    span.start = output.start + slot.offset;
+    span.size = slot.size;
     recordBlock.dump(span);
   }
 }
