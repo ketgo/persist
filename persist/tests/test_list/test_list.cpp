@@ -38,7 +38,9 @@
 #define PERSIST_INTRUSIVE_TESTING
 
 #include <persist/core/defs.hpp>
+#include <persist/core/storage/base.hpp>
 #include <persist/list/list.hpp>
+#include <persist/list/record_manager.hpp>
 
 using namespace persist;
 
@@ -59,9 +61,9 @@ protected:
   }
 
   void TearDown() override {
-    empty_list->manager.storage->remove();
+    empty_list->storage->remove();
     empty_list->close();
-    list->manager.storage->remove();
+    list->storage->remove();
     list->close();
   }
 
@@ -70,7 +72,9 @@ private:
    * @brief Method to insert records in storage for testing.
    */
   void insert() {
-    RecordManager manager(connetionString, 10);
+    std::unique_ptr<Storage> storage = Storage::create(connetionString);
+    PageTable pageTable(*storage, 10);
+    ListRecordManager manager(pageTable);
     manager.start();
 
     List::Node prev_node, node;

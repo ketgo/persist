@@ -1,5 +1,5 @@
 /**
- * record_manager.hpp - Persist
+ * list/record_manager.hpp - Persist
  *
  * Copyright 2020 Ketan Goyal
  *
@@ -22,19 +22,17 @@
  * SOFTWARE.
  */
 
-#ifndef RECORD_MANAGER_HPP
-#define RECORD_MANAGER_HPP
+#ifndef LIST_RECORD_MANAGER_HPP
+#define LIST_RECORD_MANAGER_HPP
 
-#include <persist/core/defs.hpp>
+#include <memory>
+#include <string>
+
 #include <persist/core/page_table.hpp>
-#include <persist/core/storage/base.hpp>
+#include <persist/core/record_block.hpp>
+#include <persist/core/record_manager.hpp>
 
 namespace persist {
-
-/**
- * @brief Typedef for record location on backend storage
- */
-typedef RecordBlock::Location RecordLocation;
 
 /**
  * Record Manager Class
@@ -42,49 +40,38 @@ typedef RecordBlock::Location RecordLocation;
  * The record manager interfaces with page table to GET, INSERT, UPDATE and
  * DELETE records.
  */
-class RecordManager {
-  PERSIST_PROTECTED
-  /**
-   * @brief Page table
-   *
-   */
-  PageTable &pageTable;
+class ListRecordManager : public RecordManager {
+  PERSIST_PRIVATE
 
   /**
-   * @brief Flag indicating record manager started
+   * @brief Insert doubly linked record blocks in storage. This method is used
+   * for inserting and in-place updating of records stored in backend storage.
+   *
+   * @param session reference to the started page table session
+   * @param span span pointing to the record buffer to store
+   * @param location previous record block location. By default this is set to
+   * the NULL location
+   * @returns starting record block location of the record pointed by span
    */
-  bool started;
+  RecordBlock::Location
+  _insert(PageTable::Session &session, Span span,
+          RecordBlock::Location location = RecordBlock::Location());
+
+  /**
+   * @brief Remove doubly linked record blocks in srorage. This method is used
+   * for removing and in-place updating of records stored in backend storage.
+   *
+   * @param session reference to the started page table session
+   * @param location location of the starting doubly linked record block to
+   * remove
+   */
+  void _remove(PageTable::Session &session, RecordBlock::Location location);
 
 public:
   /**
-   * @brief Construct a new Record Manager object.
-   *
-   * @param pageTable reference to an opened page table.
+   * @brief Construct a new List Record Manager object
    */
-  RecordManager(PageTable &pageTable) : pageTable(pageTable), started(false) {}
-  virtual ~RecordManager() {}
-
-  /**
-   * @brief Start record manager. This opens the page table.
-   *
-   */
-  void start() {
-    if (!started) {
-      pageTable.open();
-      started = true;
-    }
-  }
-
-  /**
-   * @brief Stop record manager. This closes the page table.
-   *
-   */
-  virtual void stop() {
-    if (started) {
-      pageTable.close();
-      started = false;
-    }
-  }
+  ListRecordManager(PageTable &pageTable) : RecordManager(pageTable) {}
 
   /**
    * @brief Get record stored at given location.
@@ -92,7 +79,7 @@ public:
    * @param buffer byte buffer into which the record will be stored
    * @param location record starting location
    */
-  virtual void get(ByteBuffer &buffer, RecordLocation location) = 0;
+  void get(ByteBuffer &buffer, RecordLocation location) override;
 
   /**
    * @brief Insert record stored in buffer to storage. The method returns the
@@ -101,7 +88,7 @@ public:
    * @param buffer byte buffer containing record data
    * @returns inserted location of the record
    */
-  virtual RecordLocation insert(ByteBuffer &buffer) = 0;
+  RecordLocation insert(ByteBuffer &buffer) override;
 
   /**
    * @brief Update record stored at given location.
@@ -109,16 +96,16 @@ public:
    * @param buffer byte buffer containing updated record
    * @param location starting location of record
    */
-  virtual void update(ByteBuffer &buffer, RecordLocation location) = 0;
+  void update(ByteBuffer &buffer, RecordLocation location) override;
 
   /**
    * @brief Remove record stored at given location.
    *
    * @param location starting location of record
    */
-  virtual void remove(RecordLocation location) = 0;
+  void remove(RecordLocation location) override;
 };
 
 } // namespace persist
 
-#endif /* RECORD_MANAGER_HPP */
+#endif /* LIST_RECORD_MANAGER_HPP */

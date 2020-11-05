@@ -29,6 +29,7 @@
 
 #include <persist/core/collection.hpp>
 #include <persist/core/defs.hpp>
+#include <persist/list/record_manager.hpp>
 
 namespace persist {
 
@@ -42,6 +43,8 @@ namespace persist {
  */
 class List : public Collection {
   PERSIST_PRIVATE
+
+  ListRecordManager manager;
 
   /**
    * @brief Linked List Node
@@ -193,9 +196,32 @@ public:
    * uses the file `myCollection.db` in the root folder `/` to store data.
    * @param cacheSize the amount of memory in bytes to use for internal cache.
    */
-  List(std::string connectionString) : Collection(connectionString) {}
+  List(std::string connectionString)
+      : Collection(connectionString), manager(pageTable) {}
   List(std::string connectionString, uint64_t cacheSize)
-      : Collection(connectionString, cacheSize) {}
+      : Collection(connectionString, cacheSize), manager(pageTable) {}
+
+  /**
+   *Open the collection. This method starts the record manager which in turn
+   *sets up the connection with backend storage, e.g. file.
+   */
+  void open() {
+    if (!opened) {
+      manager.start();
+      opened = true;
+    }
+  }
+
+  /**
+   * Close the collection. This method stops the record manager which in turn
+   * tears down the connection with backend storage.
+   */
+  void close() {
+    if (opened) {
+      manager.stop();
+      opened = false;
+    }
+  }
 
   /**
    * @brief Insert record at specified postion in the collection.

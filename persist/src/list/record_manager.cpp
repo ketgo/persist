@@ -1,5 +1,5 @@
 /**
- * record_manager.cpp - Persist
+ * list/record_manager.cpp - Persist
  *
  * Copyright 2020 Ketan Goyal
  *
@@ -23,24 +23,15 @@
  */
 
 #include <persist/core/exceptions.hpp>
-#include <persist/core/record_manager.hpp>
+#include <persist/list/record_manager.hpp>
 
 namespace persist {
 
-static uint64_t cachesizeToBufferCount(uint64_t cacheSize) {
-  // TODO: Calculate page table max size from given cache size in bytes
-  return cacheSize;
-}
-
-RecordManager::RecordManager(std::string storageURL, uint64_t cacheSize)
-    : storage(Storage::create(storageURL)),
-      pageTable(*storage, cachesizeToBufferCount(cacheSize)), started(false) {}
-
 // Private Methods
 
-RecordBlock::Location RecordManager::_insert(PageTable::Session &session,
-                                             Span span,
-                                             RecordBlock::Location location) {
+RecordBlock::Location
+ListRecordManager::_insert(PageTable::Session &session, Span span,
+                           RecordBlock::Location location) {
 
   // TODO: Fix issue with span of size 0 not getting stored.
 
@@ -95,8 +86,8 @@ RecordBlock::Location RecordManager::_insert(PageTable::Session &session,
   return nullRecordBlock.nextLocation();
 }
 
-void RecordManager::_remove(PageTable::Session &session,
-                            RecordBlock::Location location) {
+void ListRecordManager::_remove(PageTable::Session &session,
+                                RecordBlock::Location location) {
   // Start removing record blocks
   RecordBlock::Location removeLocation = location;
   try {
@@ -127,21 +118,7 @@ void RecordManager::_remove(PageTable::Session &session,
 
 // Public Methods
 
-void RecordManager::start() {
-  if (!started) {
-    pageTable.open();
-    started = true;
-  }
-}
-
-void RecordManager::stop() {
-  if (started) {
-    pageTable.close();
-    started = false;
-  }
-}
-
-void RecordManager::get(ByteBuffer &buffer, RecordLocation location) {
+void ListRecordManager::get(ByteBuffer &buffer, RecordLocation location) {
   // Check if record manager has started
   if (!started) {
     throw RecordManagerNotStartedError();
@@ -186,7 +163,7 @@ void RecordManager::get(ByteBuffer &buffer, RecordLocation location) {
   session.commit();
 }
 
-RecordLocation RecordManager::insert(ByteBuffer &buffer) {
+RecordLocation ListRecordManager::insert(ByteBuffer &buffer) {
   // Check if record manager has started
   if (!started) {
     throw RecordManagerNotStartedError();
@@ -202,7 +179,7 @@ RecordLocation RecordManager::insert(ByteBuffer &buffer) {
   return location;
 }
 
-void RecordManager::remove(RecordLocation location) {
+void ListRecordManager::remove(RecordLocation location) {
   // Check if record manager has started
   if (!started) {
     throw RecordManagerNotStartedError();
@@ -221,7 +198,7 @@ void RecordManager::remove(RecordLocation location) {
   session.commit();
 }
 
-void RecordManager::update(ByteBuffer &buffer, RecordLocation location) {
+void ListRecordManager::update(ByteBuffer &buffer, RecordLocation location) {
   // Check if record manager has started
   if (!started) {
     throw RecordManagerNotStartedError();

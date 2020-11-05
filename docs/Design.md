@@ -56,26 +56,26 @@ This section details the implementation of the different package components.
 
 ### Collection
 
-A collection comprises of one or more objects which can be persisted in backend storage. Each object is stored in binary format. The package comes with the collections of type `List`, `Map`, and `BinaryTree`.
+A `Collection` comprises of one or more objects which can be persisted in backend storage. Each object is stored in binary format. The package comes with the collections of type `List`, `Map`, and `BinaryTree`.
 
 #### Objects
 
 This is any C++ data type that can be parsed from and into a binary form. The package supports both, primitive types as well as composite types like `struct` and `class`. An object is stored by splitting its binary form into chunks called [record blocks](#record-blocks). This approach enables efficient usage of storage space as large-sized objects are split into manageable sizes.
 
-#### Cursors
+#### Iterator
 
-A `Cursor` is just an iterator on persistent collections. It is used to traverse the collection while pointing to the stored objects. Each collection type implements its version of the cursor.
+An `Iterator` is a cursor on persistent collections. It is used to traverse the collection while pointing to the stored objects. Each collection type implements its version of the iterator.
 
 #### Record Manager
 
-The record manager handles read and write operations of [objects](#objects) on [pages](#page). Internally it interfaces with the buffer manager to access the required pages. One or more operations performed by the record manager are logged for concurrency control and durability. The following API is exposed by the record manager:
+The `RecordManager` handles read and write operations of [objects](#objects) on [pages](#page). Internally it interfaces with the page table to access the required pages. One or more operations performed by the record manager are logged for concurrency control and durability. The following API is exposed by the record manager:
 
 ```c++
 ```
 
-#### Buffer Manager
+#### Page Table
 
-The buffer manager is responsible for loading [pages](#page) from [backend storage](#backend-storage) and writing modified [pages](#page) back. It utilizes the exposed API by the `Storage` interface to achieve its goals. The buffer size is kept fixed and the least recently used (LRU) policy is used to replace a page. If the page has been modified since the last read, it is written back onto the storage. The following API are exposed by the manager:
+The `PageTable` is responsible for loading [pages](#page) from [backend storage](#backend-storage) and writing modified [pages](#page) back. It utilizes the exposed API by the `Storage` interface to achieve its goals. The buffer size is kept fixed and the least recently used (LRU) policy is used to replace a page. If the page has been modified since the last read, it is written back onto the storage. The following API are exposed by the manager:
 
 ```c++
 /**
