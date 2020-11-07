@@ -26,33 +26,86 @@
  * OpsManager Integration Tests
  */
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <memory>
 
+/**
+ * Enabled intrusive testing
+ */
+#define PERSIST_INTRUSIVE_TESTING
+
 #include <persist/core/ops_manager.hpp>
+#include <persist/core/page_table.hpp>
 #include <persist/core/record_manager.hpp>
+#include <persist/core/storage/memory_storage.hpp>
 
 using namespace persist;
+using ::testing::AtLeast;
+using ::testing::Return;
 
 class MockRecordManager : public RecordManager {
 public:
-  void get(ByteBuffer &buffer, RecordLocation location) {}
+  MockRecordManager(PageTable &pageTable) : RecordManager(pageTable) {}
 
-  RecordLocation insert(ByteBuffer &buffer) { return RecordLocation(); }
-
-  void update(ByteBuffer &buffer, RecordLocation location) {}
-
-  void remove(RecordLocation location) {}
+  MOCK_METHOD(void, get, (ByteBuffer & buffer, RecordLocation location),
+              (override));
+  MOCK_METHOD(RecordLocation, insert, (ByteBuffer & buffer), (override));
+  MOCK_METHOD(void, update, (ByteBuffer & buffer, RecordLocation location),
+              (override));
+  MOCK_METHOD(void, remove, (RecordLocation location), (override));
 };
 
 class OpsManagerTestFixture : public ::testing::Test {
 protected:
   std::unique_ptr<OpsManager<MockRecordManager>> manager;
+  std::unique_ptr<PageTable> pageTable;
+  std::unique_ptr<MemoryStorage> storage;
 
-  void SetUp() override {}
+  void SetUp() override {
+    storage = std::make_unique<MemoryStorage>();
+    pageTable = std::make_unique<PageTable>(*storage, 10);
+    manager = std::make_unique<OpsManager<MockRecordManager>>(*pageTable);
+    manager->start();
+  }
 
-  void TearDown() override {}
+  void TearDown() override {
+    storage->remove();
+    manager->stop();
+  }
 };
 
-TEST_F(OpsManagerTestFixture, Test) {}
+TEST_F(OpsManagerTestFixture, TestGet) {
+  ByteBuffer buffer;
+  RecordLocation location;
+
+  EXPECT_CALL(manager->recordManager, get(buffer, location)).Times(AtLeast(1));
+  manager->get(buffer, location);
+}
+
+TEST_F(OpsManagerTestFixture, TestInsert) {
+  ByteBuffer buffer;
+  RecordLocation location;
+
+  EXPECT_CALL(manager->recordManager, insert(buffer))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(location));
+  ASSERT_EQ(manager->insert(buffer), location);
+}
+
+TEST_F(OpsManagerTestFixture, TestUpdate) {
+  ByteBuffer buffer;
+  RecordLocation location;
+
+  EXPECT_CALL(manager->recordManager, update(buffer, location))
+      .Times(AtLeast(1));
+  manager->update(buffer, location);
+}
+
+TEST_F(OpsManagerTestFixture, TestRemove) {
+  RecordLocation location;
+
+  EXPECT_CALL(manager->recordManager, remove(location)).Times(AtLeast(1));
+  manager->remove(location);
+}
