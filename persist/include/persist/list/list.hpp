@@ -29,6 +29,7 @@
 
 #include <persist/core/collection.hpp>
 #include <persist/core/defs.hpp>
+
 #include <persist/list/record_manager.hpp>
 
 namespace persist {
@@ -41,10 +42,8 @@ namespace persist {
  * Lists are an sequence collection of elements. A double linked list is
  * implemented for this collection.
  */
-class List : public Collection {
+class List : public Collection<ListRecordManager> {
   PERSIST_PRIVATE
-
-  ListRecordManager manager;
 
   /**
    * @brief Linked List Node
@@ -196,10 +195,9 @@ public:
    * uses the file `myCollection.db` in the root folder `/` to store data.
    * @param cacheSize the amount of memory in bytes to use for internal cache.
    */
-  List(std::string connectionString)
-      : Collection(connectionString), manager(pageTable) {}
+  List(std::string connectionString) : Collection(connectionString) {}
   List(std::string connectionString, uint64_t cacheSize)
-      : Collection(connectionString, cacheSize), manager(pageTable) {}
+      : Collection(connectionString, cacheSize) {}
 
   /**
    *Open the collection. This method starts the record manager which in turn

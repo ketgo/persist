@@ -79,7 +79,7 @@ public:
    * @brief Stop record manager. This closes the page table.
    *
    */
-  virtual void stop() {
+  void stop() {
     if (started) {
       pageTable.close();
       started = false;

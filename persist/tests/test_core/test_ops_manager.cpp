@@ -1,5 +1,5 @@
 /**
- * ops_manager.cpp - Persist
+ * test_ops_manager.cpp - Persist
  *
  * Copyright 2020 Ketan Goyal
  *
@@ -22,22 +22,37 @@
  * SOFTWARE.
  */
 
+/**
+ * OpsManager Integration Tests
+ */
+
+#include <gtest/gtest.h>
+
+#include <memory>
+
 #include <persist/core/ops_manager.hpp>
+#include <persist/core/record_manager.hpp>
 
-namespace persist {
+using namespace persist;
 
-// Public Methods
+class MockRecordManager : public RecordManager {
+public:
+  void get(ByteBuffer &buffer, RecordLocation location) {}
 
-void OpsManager::start() {
-  if (!started) {
-    started = true;
-  }
-}
+  RecordLocation insert(ByteBuffer &buffer) { return RecordLocation(); }
 
-void OpsManager::stop() {
-  if (started) {
-    started = false;
-  }
-}
+  void update(ByteBuffer &buffer, RecordLocation location) {}
 
-} // namespace persist
+  void remove(RecordLocation location) {}
+};
+
+class OpsManagerTestFixture : public ::testing::Test {
+protected:
+  std::unique_ptr<OpsManager<MockRecordManager>> manager;
+
+  void SetUp() override {}
+
+  void TearDown() override {}
+};
+
+TEST_F(OpsManagerTestFixture, Test) {}

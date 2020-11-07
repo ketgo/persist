@@ -28,8 +28,8 @@
 #include <memory>
 
 #include <persist/core/defs.hpp>
+#include <persist/core/ops_manager.hpp>
 #include <persist/core/page_table.hpp>
-#include <persist/list/record_manager.hpp>
 
 namespace persist {
 
@@ -39,7 +39,7 @@ namespace persist {
  * The collection base class contains data members and methods common for all
  * types of collections.
  */
-class Collection {
+template <class RecordManagerType> class Collection {
   PERSIST_PROTECTED
   /**
    * @brief Pointer to backend storage
@@ -50,6 +50,11 @@ class Collection {
    * @brief Collection page table
    */
   PageTable pageTable;
+
+  /**
+   * @brief Operations manager
+   */
+  OpsManager<RecordManagerType> manager;
 
   /**
    * @brief Flag indicating if the collection is open
@@ -68,10 +73,11 @@ public:
    */
   Collection(std::string connectionString)
       : storage(Storage::create(connectionString)),
-        pageTable(*storage, DEFAULT_CACHE_SIZE), opened(false) {}
+        pageTable(*storage, DEFAULT_CACHE_SIZE), manager(pageTable),
+        opened(false) {}
   Collection(std::string connectionString, uint64_t cacheSize)
       : storage(Storage::create(connectionString)),
-        pageTable(*storage, cacheSize), opened(false) {}
+        pageTable(*storage, cacheSize), manager(pageTable), opened(false) {}
 
   /**
    *Open the collection. This method starts the record manager which in turn
