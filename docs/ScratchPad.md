@@ -73,3 +73,32 @@ List of operations:
 
 - Mark Page as dirty
   - Updates metadata if free space is available in the page.
+
+## Common Collection Operations
+
+- Insert object
+- Bulk insert objects
+- Update object
+- Bulk update objects
+- Delete object
+- Bulk delete objects
+
+## Transactions
+
+- Begin
+- RollBack: Abort transactions
+- Commit
+
+### Single-Collection Session
+
+- Same as page table session
+- rollback
+- recovery
+- API usage
+
+### Multi-Collection Session
+
+- Multi-collection access
+- Rollback
+- recovery
+- API usage

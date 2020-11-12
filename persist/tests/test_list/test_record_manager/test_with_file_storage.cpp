@@ -37,23 +37,80 @@
 
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
-#include <persist/core/record_manager.hpp>
+#include <persist/core/page_table.hpp>
+#include <persist/core/storage/base.hpp>
+#include <persist/list/record_manager.hpp>
 
 using namespace persist;
 
-class RecordManagerWithMemoryStorageTestFixture : public ::testing::Test {
+class ListRecordManagerWithFileStorageTestFixture : public ::testing::Test {
+private:
+  class WrappedListRecordManager {
+  public:
+    ListRecordManager &manager;
+
+    WrappedListRecordManager(ListRecordManager &manager) : manager(manager) {}
+
+    void get(ByteBuffer &buffer, RecordLocation location) {
+      Transaction txn(manager.pageTable, 0);
+      manager.get(txn, buffer, location);
+      txn.commit();
+    }
+
+    RecordLocation insert(ByteBuffer &buffer) {
+      Transaction txn(manager.pageTable, 0);
+      RecordLocation location = manager.insert(txn, buffer);
+      txn.commit();
+
+      return location;
+    }
+
+    void update(ByteBuffer &buffer, RecordLocation location) {
+      Transaction txn(manager.pageTable, 0);
+      manager.update(txn, buffer, location);
+      txn.commit();
+    }
+
+    void remove(RecordLocation location) {
+      Transaction txn(manager.pageTable, 0);
+      manager.remove(txn, location);
+      txn.commit();
+    }
+  };
+
 protected:
   const uint64_t pageSize = DEFAULT_PAGE_SIZE;
   const uint64_t maxSize = 2;
   const ByteBuffer records[2] = {"testing_1"_bb, "testing_2"_bb};
+  const std::string connetionString = "file://test_record_manager.storage";
   RecordBlock::Location locations[2];
-  std::unique_ptr<RecordManager> manager;
+  std::unique_ptr<Storage> storage;
+  std::unique_ptr<PageTable> pageTable;
+  std::unique_ptr<ListRecordManager> listRecordManager;
+  std::unique_ptr<WrappedListRecordManager> manager;
 
   void SetUp() override {
-    // TODO: Add page size to query when supported
-    manager = std::make_unique<RecordManager>("memory://", maxSize);
+    storage = Storage::create(connetionString);
+    pageTable = std::make_unique<PageTable>(*storage, maxSize);
+    listRecordManager = std::make_unique<ListRecordManager>(*pageTable);
+    manager = std::make_unique<WrappedListRecordManager>(*listRecordManager);
+    insert();
+    listRecordManager->start();
+  }
 
-    // Setup storage for tests
+  void TearDown() override {
+    storage->remove();
+    listRecordManager->stop();
+  }
+
+private:
+  /**
+   * @brief Insert data in backend storage for testing.
+   */
+  void insert() {
+    storage->open();
+
+    // Insert data
     MetaData metadata;
     metadata.pageSize = pageSize;
     metadata.numPages = 2;
@@ -65,19 +122,15 @@ protected:
       locations[i].pageId = pageId;
       locations[i].slotId = page.addRecordBlock(recordBlock);
       metadata.freePages.insert(pageId);
-      manager->storage->write(page);
+      storage->write(page);
     }
-    manager->storage->write(metadata);
-    manager->start();
-  }
+    storage->write(metadata);
 
-  void TearDown() override {
-    manager->storage->remove();
-    manager->stop();
+    storage->close();
   }
 };
 
-TEST_F(RecordManagerWithMemoryStorageTestFixture, TestGetSingleRecordBlock) {
+TEST_F(ListRecordManagerWithFileStorageTestFixture, TestGetSingleRecordBlock) {
   ByteBuffer record;
 
   manager->get(record, locations[0]);
@@ -88,7 +141,7 @@ TEST_F(RecordManagerWithMemoryStorageTestFixture, TestGetSingleRecordBlock) {
   ASSERT_EQ(record, records[1]);
 }
 
-TEST_F(RecordManagerWithMemoryStorageTestFixture, TestGetErrorNullLocation) {
+TEST_F(ListRecordManagerWithFileStorageTestFixture, TestGetErrorNullLocation) {
   try {
     ByteBuffer record;
     RecordBlock::Location location;
@@ -100,7 +153,7 @@ TEST_F(RecordManagerWithMemoryStorageTestFixture, TestGetErrorNullLocation) {
     FAIL() << "Expected RecordNotFoundError Exception.";
   }
 }
-TEST_F(RecordManagerWithMemoryStorageTestFixture,
+TEST_F(ListRecordManagerWithFileStorageTestFixture,
        TestGetErrorNonExistingLocation) {
   try {
     ByteBuffer record;
@@ -115,7 +168,8 @@ TEST_F(RecordManagerWithMemoryStorageTestFixture,
   }
 }
 
-TEST_F(RecordManagerWithMemoryStorageTestFixture, TestRemoveSingleRecordBlock) {
+TEST_F(ListRecordManagerWithFileStorageTestFixture,
+       TestRemoveSingleRecordBlock) {
   ByteBuffer record;
 
   // Testing first record deleted
@@ -128,7 +182,8 @@ TEST_F(RecordManagerWithMemoryStorageTestFixture, TestRemoveSingleRecordBlock) {
   ASSERT_EQ(record, records[1]);
 }
 
-TEST_F(RecordManagerWithMemoryStorageTestFixture, TestRemoveErrorNullLocation) {
+TEST_F(ListRecordManagerWithFileStorageTestFixture,
+       TestRemoveErrorNullLocation) {
   try {
     RecordBlock::Location location;
     manager->remove(location);
@@ -139,7 +194,7 @@ TEST_F(RecordManagerWithMemoryStorageTestFixture, TestRemoveErrorNullLocation) {
     FAIL() << "Expected RecordNotFoundError Exception.";
   }
 }
-TEST_F(RecordManagerWithMemoryStorageTestFixture,
+TEST_F(ListRecordManagerWithFileStorageTestFixture,
        TestRemoveErrorNonExistingLocation) {
   try {
     RecordBlock::Location location;
@@ -153,7 +208,8 @@ TEST_F(RecordManagerWithMemoryStorageTestFixture,
   }
 }
 
-TEST_F(RecordManagerWithMemoryStorageTestFixture, TestUpdateSingleRecordBlock) {
+TEST_F(ListRecordManagerWithFileStorageTestFixture,
+       TestUpdateSingleRecordBlock) {
   ByteBuffer update = "testing_1-update"_bb;
   ByteBuffer record;
 
@@ -168,7 +224,7 @@ TEST_F(RecordManagerWithMemoryStorageTestFixture, TestUpdateSingleRecordBlock) {
   ASSERT_EQ(record, records[1]);
 }
 
-TEST_F(RecordManagerWithMemoryStorageTestFixture,
+TEST_F(ListRecordManagerWithFileStorageTestFixture,
        TestInsertAndGetMultiRecordBlock) {
   ByteBuffer input(2 * pageSize + 100, 'A');
   RecordBlock::Location location = manager->insert(input);
@@ -179,7 +235,7 @@ TEST_F(RecordManagerWithMemoryStorageTestFixture,
   ASSERT_EQ(output, input);
 }
 
-TEST_F(RecordManagerWithMemoryStorageTestFixture,
+TEST_F(ListRecordManagerWithFileStorageTestFixture,
        TestInsertAndRemoveMultiRecordBlock) {
   ByteBuffer input(2 * pageSize + 100, 'A');
   RecordBlock::Location location = manager->insert(input);
@@ -200,7 +256,7 @@ TEST_F(RecordManagerWithMemoryStorageTestFixture,
   ASSERT_EQ(record, records[1]);
 }
 
-TEST_F(RecordManagerWithMemoryStorageTestFixture,
+TEST_F(ListRecordManagerWithFileStorageTestFixture,
        TestInsertAndUpdateMultiRecordBlock) {
   ByteBuffer input(2 * pageSize + 100, 'A'),
       updateIncrease(3 * pageSize + 100, 'A'),

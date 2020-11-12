@@ -1,5 +1,5 @@
 /**
- * record_manager.cpp - Persist
+ * list/record_manager.cpp - Persist
  *
  * Copyright 2020 Ketan Goyal
  *
@@ -23,24 +23,15 @@
  */
 
 #include <persist/core/exceptions.hpp>
-#include <persist/core/record_manager.hpp>
+#include <persist/list/record_manager.hpp>
 
 namespace persist {
 
-static uint64_t cachesizeToBufferCount(uint64_t cacheSize) {
-  // TODO: Calculate page table max size from given cache size in bytes
-  return cacheSize;
-}
-
-RecordManager::RecordManager(std::string storageURL, uint64_t cacheSize)
-    : storage(Storage::create(storageURL)),
-      pageTable(*storage, cachesizeToBufferCount(cacheSize)), started(false) {}
-
 // Private Methods
 
-RecordBlock::Location RecordManager::_insert(PageTable::Session &session,
-                                             Span span,
-                                             RecordBlock::Location location) {
+RecordBlock::Location
+ListRecordManager::_insert(Transaction &txn, Span span,
+                           RecordBlock::Location location) {
 
   // TODO: Fix issue with span of size 0 not getting stored.
 
@@ -81,7 +72,7 @@ RecordBlock::Location RecordManager::_insert(PageTable::Session &session,
     recordBlock.prevLocation().slotId = prevLocation->slotId;
 
     // Stage page for commit
-    session.stage(page.getId());
+    txn.stage(page.getId());
 
     // Update previous record block and location pointers
     prevLocation = &prevRecordBlock->nextLocation();
@@ -95,8 +86,8 @@ RecordBlock::Location RecordManager::_insert(PageTable::Session &session,
   return nullRecordBlock.nextLocation();
 }
 
-void RecordManager::_remove(PageTable::Session &session,
-                            RecordBlock::Location location) {
+void ListRecordManager::_remove(Transaction &txn,
+                                RecordBlock::Location location) {
   // Start removing record blocks
   RecordBlock::Location removeLocation = location;
   try {
@@ -111,7 +102,7 @@ void RecordManager::_remove(PageTable::Session &session,
       removeLocation = recordBlock.nextLocation();
       // Remove record block
       page.removeRecordBlock(slotId);
-      session.stage(pageId);
+      txn.stage(pageId);
     }
   } catch (NotFoundException &err) {
     // If a not found exception is thrown for the starting record block then
@@ -127,21 +118,8 @@ void RecordManager::_remove(PageTable::Session &session,
 
 // Public Methods
 
-void RecordManager::start() {
-  if (!started) {
-    pageTable.open();
-    started = true;
-  }
-}
-
-void RecordManager::stop() {
-  if (started) {
-    pageTable.close();
-    started = false;
-  }
-}
-
-void RecordManager::get(ByteBuffer &buffer, RecordLocation location) {
+void ListRecordManager::get(Transaction &txn, ByteBuffer &buffer,
+                            RecordLocation location) {
   // Check if record manager has started
   if (!started) {
     throw RecordManagerNotStartedError();
@@ -151,9 +129,6 @@ void RecordManager::get(ByteBuffer &buffer, RecordLocation location) {
   if (location.isNull()) {
     throw RecordNotFoundError("Invalid location provided.");
   }
-
-  // Start page table session
-  PageTable::Session session = pageTable.createSession();
 
   // Start reading record blocks
   RecordBlock::Location readLocation = location;
@@ -181,28 +156,21 @@ void RecordManager::get(ByteBuffer &buffer, RecordLocation location) {
       throw RecordCorruptError();
     }
   }
-
-  // Commit staged pages
-  session.commit();
 }
 
-RecordLocation RecordManager::insert(ByteBuffer &buffer) {
+RecordLocation ListRecordManager::insert(Transaction &txn, ByteBuffer &buffer) {
   // Check if record manager has started
   if (!started) {
     throw RecordManagerNotStartedError();
   }
 
-  // Start page table session
-  PageTable::Session session = pageTable.createSession();
   // Insert data from buffer
-  RecordLocation location = _insert(session, Span(buffer));
-  // Commit staged pages in session
-  session.commit();
+  RecordLocation location = _insert(txn, Span(buffer));
 
   return location;
 }
 
-void RecordManager::remove(RecordLocation location) {
+void ListRecordManager::remove(Transaction &txn, RecordLocation location) {
   // Check if record manager has started
   if (!started) {
     throw RecordManagerNotStartedError();
@@ -213,15 +181,12 @@ void RecordManager::remove(RecordLocation location) {
     throw RecordNotFoundError("Invalid location provided.");
   }
 
-  // Start page table session
-  PageTable::Session session = pageTable.createSession();
   // Remove record blocks
-  _remove(session, location);
-  // Commit staged pages
-  session.commit();
+  _remove(txn, location);
 }
 
-void RecordManager::update(ByteBuffer &buffer, RecordLocation location) {
+void ListRecordManager::update(Transaction &txn, ByteBuffer &buffer,
+                               RecordLocation location) {
   // Check if record manager has started
   if (!started) {
     throw RecordManagerNotStartedError();
@@ -231,9 +196,6 @@ void RecordManager::update(ByteBuffer &buffer, RecordLocation location) {
   if (location.isNull()) {
     throw RecordNotFoundError("Invalid location provided.");
   }
-
-  // Start page table session
-  PageTable::Session session = pageTable.createSession();
 
   // Bookkeeping variables
   uint64_t toWriteSize = buffer.size(), writtenSize = 0;
@@ -261,7 +223,7 @@ void RecordManager::update(ByteBuffer &buffer, RecordLocation location) {
       page.updateRecordBlock(updateLocation.slotId, *updateRecordBlock);
 
       // Stage page for commit
-      session.stage(updateLocation.pageId);
+      txn.stage(updateLocation.pageId);
 
       // Update location to next block
       updateLocation = updateRecordBlock->nextLocation();
@@ -273,15 +235,14 @@ void RecordManager::update(ByteBuffer &buffer, RecordLocation location) {
 
     // Insert rest of the buffer
     if (toWriteSize > 0) {
-      updateRecordBlock->nextLocation() =
-          _insert(session, Span(buffer.data() + writtenSize, toWriteSize),
-                  updateLocation);
+      updateRecordBlock->nextLocation() = _insert(
+          txn, Span(buffer.data() + writtenSize, toWriteSize), updateLocation);
     }
 
     // Remove remaining record blocks containing old data
     if (!updateLocation.isNull()) {
       updateRecordBlock->nextLocation().setNull();
-      _remove(session, updateLocation);
+      _remove(txn, updateLocation);
     }
   } catch (NotFoundException &err) {
     // If a not found exception is thrown for the starting record block then
@@ -293,9 +254,6 @@ void RecordManager::update(ByteBuffer &buffer, RecordLocation location) {
       throw RecordCorruptError();
     }
   }
-
-  // Commit staged pages
-  session.commit();
 }
 
 } // namespace persist

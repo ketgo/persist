@@ -30,6 +30,8 @@
 #include <persist/core/collection.hpp>
 #include <persist/core/defs.hpp>
 
+#include <persist/list/record_manager.hpp>
+
 namespace persist {
 
 // TODO: Implement template based list
@@ -40,7 +42,7 @@ namespace persist {
  * Lists are an sequence collection of elements. A double linked list is
  * implemented for this collection.
  */
-class List : public Collection {
+class List : public Collection<ListRecordManager> {
   PERSIST_PRIVATE
 
   /**

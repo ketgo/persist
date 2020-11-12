@@ -9,12 +9,6 @@ configure_file (
 # Set C++ standrard to 14
 set(CMAKE_CXX_STANDARD 14)
 
-# Set all targets include directories
-include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
 # Set project lib name
 set(LIB ${PROJECT_NAME}_lib)
 # Set test binary name
@@ -36,8 +30,47 @@ if (COVERAGE)
     )
 endif()
 
-# Source code
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src)
+# Get source files
+file(
+    GLOB_RECURSE 
+    SOURCES 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
+)
+
+# Create static lib for running test suits
+add_library(
+    ${LIB} 
+    STATIC 
+    ${SOURCES}
+)
+
+# Add include directories
+target_include_directories(
+    ${LIB} 
+    PUBLIC 
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+# Add libraries to link for lib
+if (${CMAKE_BUILD_TYPE} MATCHES Debug)
+target_link_libraries(
+    ${LIB} 
+    nlohmann_json::nlohmann_json
+    loguru::loguru
+)
+else()
+target_link_libraries(
+    ${LIB} 
+    nlohmann_json::nlohmann_json
+)
+endif()
+
+# Set compiler flags
+if (${CMAKE_BUILD_TYPE} MATCHES Debug)
+    target_compile_definitions(${LIB} PUBLIC __PERSIST_DEBUG__)
+endif()
+
 # Tests
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/tests)
 # Benchmarks

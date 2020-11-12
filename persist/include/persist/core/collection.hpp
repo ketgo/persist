@@ -25,8 +25,10 @@
 #ifndef COLLECTION_HPP
 #define COLLECTION_HPP
 
+#include <memory>
+
 #include <persist/core/defs.hpp>
-#include <persist/core/record_manager.hpp>
+#include <persist/core/ops_manager.hpp>
 
 namespace persist {
 
@@ -36,12 +38,17 @@ namespace persist {
  * The collection base class contains data members and methods common for all
  * types of collections.
  */
-class Collection {
+template <class RecordManagerType> class Collection {
   PERSIST_PROTECTED
   /**
-   * @brief Record manager used to persist collection records.
+   * @brief Pointer to backend storage
    */
-  RecordManager manager;
+  std::unique_ptr<Storage> storage;
+
+  /**
+   * @brief Operations manager
+   */
+  OpsManager<RecordManagerType> manager;
 
   /**
    * @brief Flag indicating if the collection is open
@@ -59,9 +66,11 @@ public:
    * @param cacheSize the amount of memory in bytes to use for internal cache.
    */
   Collection(std::string connectionString)
-      : manager(connectionString, DEFAULT_CACHE_SIZE), opened(false) {}
+      : storage(Storage::create(connectionString)), manager(*storage),
+        opened(false) {}
   Collection(std::string connectionString, uint64_t cacheSize)
-      : manager(connectionString, cacheSize), opened(false) {}
+      : storage(Storage::create(connectionString)),
+        manager(*storage, cacheSize), opened(false) {}
 
   /**
    *Open the collection. This method starts the record manager which in turn
@@ -75,11 +84,6 @@ public:
   }
 
   /**
-   * Check if the collection is open.
-   */
-  bool is_open() { return opened; }
-
-  /**
    * Close the collection. This method stops the record manager which in turn
    * tears down the connection with backend storage.
    */
@@ -89,6 +93,11 @@ public:
       opened = false;
     }
   }
+
+  /**
+   * Check if the collection is open.
+   */
+  bool is_open() { return opened; }
 };
 
 } // namespace persist

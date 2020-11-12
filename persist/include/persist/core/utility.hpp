@@ -34,6 +34,16 @@
 #include <persist/core/defs.hpp>
 
 namespace persist {
+
+namespace uuid {
+/**
+ * @brief Generate 64 bit UUID
+ *
+ * @returns 64 bit unique identifier.
+ */
+uint64_t generate();
+} // namespace uuid
+
 namespace file {
 
 /**
@@ -80,4 +90,5 @@ void write(std::fstream &file, ByteBuffer &buffer, std::streampos offset);
 } // namespace file
 
 } // namespace persist
+
 #endif /* UTILITY_HPP */

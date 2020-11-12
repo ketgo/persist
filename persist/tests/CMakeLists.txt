@@ -30,6 +30,7 @@ target_link_libraries(
     ${TEST_BINARY}
     ${LIB}
     gtest
+    gmock
 )
 
 # Copy test data directory

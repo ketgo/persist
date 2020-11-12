@@ -32,9 +32,6 @@ namespace persist {
  * Page Table
  *******************/
 
-PageTable::PageTable(Storage &storage)
-    : storage(storage), maxSize(DEFAULT_MAX_BUFFER_SIZE), opened(false) {}
-
 PageTable::PageTable(Storage &storage, uint64_t maxSize)
     : storage(storage), maxSize(maxSize), opened(false) {
   // Check buffer size value
@@ -192,33 +189,6 @@ Page &PageTable::get(PageId pageId) {
   buffer.splice(buffer.begin(), buffer, map.at(pageId));
 
   return *(map.at(pageId)->page);
-}
-
-PageTable::Session PageTable::createSession() {
-  // Check if table is open
-  if (!opened) {
-    throw PageTableError("Page table not opened.");
-  }
-
-  return Session(*this);
-}
-
-/*******************
- * Page Table Session
- ******************/
-
-void PageTable::Session::stage(PageId pageId) {
-  // Stage page ID
-  staged.insert(pageId);
-  // Mark page for commit
-  table.mark(pageId);
-}
-
-void PageTable::Session::commit() {
-  // Flush all staged pages
-  for (auto pageId : staged) {
-    table.flush(pageId);
-  }
 }
 
 } // namespace persist
