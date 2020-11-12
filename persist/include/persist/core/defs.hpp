@@ -31,6 +31,7 @@
 #define CORE_DEFS_HPP
 
 #include <cstdint>
+#include <cstddef>
 #include <vector>
 
 #ifdef __PERSIST_DEBUG__
