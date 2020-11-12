@@ -46,6 +46,28 @@ protected:
   std::unique_ptr<PageTable> table;
   std::unique_ptr<MemoryStorage> storage;
 
+  /**
+   * @brief Session class used for testing page table
+   */
+  class Session {
+  public:
+    PageTable &pageTable;
+    std::set<PageId> staged;
+
+    Session(PageTable &pageTable) : pageTable(pageTable) {}
+
+    void stage(PageId pageId) {
+      staged.insert(pageId);
+      pageTable.mark(pageId);
+    }
+
+    void commit() {
+      for (auto pageId : staged) {
+        pageTable.flush(pageId);
+      }
+    }
+  };
+
   void SetUp() override {
     // setting up pages
     page_1 = std::make_unique<Page>(1, pageSize);
@@ -112,7 +134,7 @@ TEST_F(PageTableWithMemoryStorageTestFixture, TestGetError) {
 }
 
 TEST_F(PageTableWithMemoryStorageTestFixture, TestGetLRUPersist) {
-  PageTable::Session session = table->createSession();
+  Session session(*table);
 
   // Getting the first page and modifying it
   Page &_page_1 = table->get(1);
@@ -140,7 +162,7 @@ TEST_F(PageTableWithMemoryStorageTestFixture, TestGetLRUPersist) {
 }
 
 TEST_F(PageTableWithMemoryStorageTestFixture, TestGetNewLRUPersist) {
-  PageTable::Session session = table->createSession();
+  Session session(*table);
 
   // Getting the new page
   Page &_page_4 = table->getNew();
@@ -170,7 +192,7 @@ TEST_F(PageTableWithMemoryStorageTestFixture, TestGetFree) {
 }
 
 TEST_F(PageTableWithMemoryStorageTestFixture, TestGetFreeNew) {
-  PageTable::Session session = table->createSession();
+  Session session(*table);
 
   // Fill all pages
   for (int i = 1; i <= 3; i++) {
@@ -189,7 +211,7 @@ TEST_F(PageTableWithMemoryStorageTestFixture, TestGetFreeNew) {
 }
 
 TEST_F(PageTableWithMemoryStorageTestFixture, TestSessionCommit) {
-  PageTable::Session session = table->createSession();
+  Session session(*table);
 
   // Getting the first page and modifying it
   Page &_page_1 = table->get(1);

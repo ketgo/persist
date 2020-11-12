@@ -76,6 +76,7 @@ private:
     PageTable pageTable(*storage, 10);
     ListRecordManager manager(pageTable);
     manager.start();
+    Transaction txn = Transaction(pageTable, 0);
 
     List::Node prev_node, node;
     RecordLocation prev_location, location;
@@ -86,7 +87,7 @@ private:
     node.record.push_back(std::to_string(0)[0]);
     buffer.clear();
     node.dump(buffer);
-    location = manager.insert(buffer);
+    location = manager.insert(txn, buffer);
     locations.push_back(location);
     size_t count = 1;
     while (count < num) {
@@ -100,17 +101,19 @@ private:
       node.previous = prev_location;
       buffer.clear();
       node.dump(buffer);
-      location = manager.insert(buffer);
+      location = manager.insert(txn, buffer);
       locations.push_back(location);
 
       // Update previous node
       prev_node.next = location;
       buffer.clear();
       prev_node.dump(buffer);
-      manager.update(buffer, prev_location);
+      manager.update(txn, buffer, prev_location);
 
       ++count;
     }
+
+    txn.commit();
 
     manager.stop();
   }

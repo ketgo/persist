@@ -37,6 +37,11 @@ namespace persist {
 typedef RecordBlock::Location RecordLocation;
 
 /**
+ * Forward declared transaction.
+ */
+class Transaction;
+
+/**
  * Record Manager Class
  *
  * The record manager interfaces with page table to GET, INSERT, UPDATE and
@@ -89,34 +94,40 @@ public:
   /**
    * @brief Get record stored at given location.
    *
+   * @param txn reference to active transaction
    * @param buffer byte buffer into which the record will be stored
    * @param location record starting location
    */
-  virtual void get(ByteBuffer &buffer, RecordLocation location) = 0;
+  virtual void get(Transaction &txn, ByteBuffer &buffer,
+                   RecordLocation location) = 0;
 
   /**
    * @brief Insert record stored in buffer to storage. The method returns the
    * insert location of the record.
    *
+   * @param txn reference to active transaction
    * @param buffer byte buffer containing record data
    * @returns inserted location of the record
    */
-  virtual RecordLocation insert(ByteBuffer &buffer) = 0;
+  virtual RecordLocation insert(Transaction &txn, ByteBuffer &buffer) = 0;
 
   /**
    * @brief Update record stored at given location.
    *
+   * @param txn reference to active transaction
    * @param buffer byte buffer containing updated record
    * @param location starting location of record
    */
-  virtual void update(ByteBuffer &buffer, RecordLocation location) = 0;
+  virtual void update(Transaction &txn, ByteBuffer &buffer,
+                      RecordLocation location) = 0;
 
   /**
    * @brief Remove record stored at given location.
    *
+   * @param txn reference to active transaction
    * @param location starting location of record
    */
-  virtual void remove(RecordLocation location) = 0;
+  virtual void remove(Transaction &txn, RecordLocation location) = 0;
 };
 
 } // namespace persist

@@ -200,28 +200,6 @@ public:
       : Collection(connectionString, cacheSize) {}
 
   /**
-   *Open the collection. This method starts the record manager which in turn
-   *sets up the connection with backend storage, e.g. file.
-   */
-  void open() {
-    if (!opened) {
-      manager.start();
-      opened = true;
-    }
-  }
-
-  /**
-   * Close the collection. This method stops the record manager which in turn
-   * tears down the connection with backend storage.
-   */
-  void close() {
-    if (opened) {
-      manager.stop();
-      opened = false;
-    }
-  }
-
-  /**
    * @brief Insert record at specified postion in the collection.
    *
    * @param postion constant iterator pointing to the position in the container

@@ -31,6 +31,7 @@
 #include <persist/core/page_table.hpp>
 #include <persist/core/record_block.hpp>
 #include <persist/core/record_manager.hpp>
+#include <persist/core/transaction.hpp>
 
 namespace persist {
 
@@ -47,25 +48,25 @@ class ListRecordManager : public RecordManager {
    * @brief Insert doubly linked record blocks in storage. This method is used
    * for inserting and in-place updating of records stored in backend storage.
    *
-   * @param session reference to the started page table session
+   * @param txn reference to active transaction
    * @param span span pointing to the record buffer to store
    * @param location previous record block location. By default this is set to
    * the NULL location
    * @returns starting record block location of the record pointed by span
    */
   RecordBlock::Location
-  _insert(PageTable::Session &session, Span span,
+  _insert(Transaction &txn, Span span,
           RecordBlock::Location location = RecordBlock::Location());
 
   /**
    * @brief Remove doubly linked record blocks in srorage. This method is used
    * for removing and in-place updating of records stored in backend storage.
    *
-   * @param session reference to the started page table session
+   * @param txn reference to active transaction
    * @param location location of the starting doubly linked record block to
    * remove
    */
-  void _remove(PageTable::Session &session, RecordBlock::Location location);
+  void _remove(Transaction &txn, RecordBlock::Location location);
 
 public:
   /**
@@ -76,34 +77,40 @@ public:
   /**
    * @brief Get record stored at given location.
    *
+   * @param txn reference to active transaction
    * @param buffer byte buffer into which the record will be stored
    * @param location record starting location
    */
-  void get(ByteBuffer &buffer, RecordLocation location) override;
+  void get(Transaction &txn, ByteBuffer &buffer,
+           RecordLocation location) override;
 
   /**
    * @brief Insert record stored in buffer to storage. The method returns the
    * insert location of the record.
    *
+   * @param txn reference to active transaction
    * @param buffer byte buffer containing record data
    * @returns inserted location of the record
    */
-  RecordLocation insert(ByteBuffer &buffer) override;
+  RecordLocation insert(Transaction &txn, ByteBuffer &buffer) override;
 
   /**
    * @brief Update record stored at given location.
    *
+   * @param txn reference to active transaction
    * @param buffer byte buffer containing updated record
    * @param location starting location of record
    */
-  void update(ByteBuffer &buffer, RecordLocation location) override;
+  void update(Transaction &txn, ByteBuffer &buffer,
+              RecordLocation location) override;
 
   /**
    * @brief Remove record stored at given location.
    *
+   * @param txn reference to active transaction
    * @param location starting location of record
    */
-  void remove(RecordLocation location) override;
+  void remove(Transaction &txn, RecordLocation location) override;
 };
 
 } // namespace persist

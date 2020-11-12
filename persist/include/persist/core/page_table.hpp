@@ -34,6 +34,7 @@
 #include <set>
 #include <unordered_map>
 
+#include <persist/core/defs.hpp>
 #include <persist/core/metadata.hpp>
 #include <persist/core/page.hpp>
 #include <persist/core/storage/base.hpp>
@@ -52,47 +53,7 @@ namespace persist {
  * page relplacement policy.
  */
 class PageTable {
-public:
-  /**
-   * Page Table Session Class
-   *
-   * Any operations perfored on the page table are grouped under a session to
-   * facilitates atomicity and concurency control.
-   */
-  class Session {
-    friend PageTable;
-
-  private:
-    /**
-     * @brief Reference to page table associated with the session.
-     */
-    PageTable &table;
-    /**
-     * @brief Set of staged page ID.
-     */
-    std::set<PageId> staged;
-
-    /**
-     * Constructor
-     */
-    Session(PageTable &table) : table(table) {}
-
-  public:
-    /**
-     * Stage the page with given ID for commit. This adds the page ID to the
-     * stage list and marks the corresponding page as modified.
-     *
-     * @param pageId page identifier
-     */
-    void stage(PageId pageId);
-
-    /**
-     * Persist all modified pages and metadata to backend storage.
-     */
-    void commit();
-  };
-
-private:
+  PERSIST_PRIVATE
   /**
    * Page Slot Struct
    *
@@ -122,22 +83,6 @@ private:
    */
   void put(std::unique_ptr<Page> &page);
 
-  /**
-   * Mark a page with given ID as modified and the free space map in the storage
-   * metadata is updated.
-   *
-   * @param pageId page identifier
-   */
-  void mark(PageId pageId);
-
-  /**
-   * Save a single page to backend storage. The page will be stored only
-   * if it is marked as modified.
-   *
-   * @param pageId page identifer
-   */
-  void flush(PageId pageId);
-
 public:
   /**
    * Construct a new Page Table object
@@ -150,8 +95,7 @@ public:
    *  - pinning slots with pages in use
    *  - multi-threaded and multi-process access control
    */
-  PageTable(Storage &storage);
-  PageTable(Storage &storage, uint64_t maxSize);
+  PageTable(Storage &storage, uint64_t maxSize = DEFAULT_MAX_BUFFER_SIZE);
 
   /**
    * @brief Open page table. The method opens the backend storage and sets up
@@ -166,16 +110,16 @@ public:
   void close();
 
   /**
-   * Get a new page. The method creates a new page and loads it into buffer. The
-   * `numPage` attribute in the storage metadata is increased by one.
+   * Get a new page. The method creates a new page and loads it into buffer.
+   * The `numPage` attribute in the storage metadata is increased by one.
    *
    * @returns referece to page in buffer
    */
   Page &getNew();
 
   /**
-   * Get a page with free space. If no such page is available then a new page is
-   * created.
+   * Get a page with free space. If no such page is available then a new page
+   * is created.
    *
    * @returns referece to page in buffer
    */
@@ -192,11 +136,20 @@ public:
   Page &get(PageId pageId);
 
   /**
-   * @brief Creates a Session object
+   * Mark a page with given ID as modified and the free space map in the
+   * storage metadata is updated.
    *
-   * @return Session new session object
+   * @param pageId page identifier
    */
-  Session createSession();
+  void mark(PageId pageId);
+
+  /**
+   * Save a single page to backend storage. The page will be stored only
+   * if it is marked as modified.
+   *
+   * @param pageId page identifer
+   */
+  void flush(PageId pageId);
 };
 
 } // namespace persist

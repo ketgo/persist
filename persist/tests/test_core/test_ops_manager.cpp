@@ -49,24 +49,26 @@ class MockRecordManager : public RecordManager {
 public:
   MockRecordManager(PageTable &pageTable) : RecordManager(pageTable) {}
 
-  MOCK_METHOD(void, get, (ByteBuffer & buffer, RecordLocation location),
+  MOCK_METHOD(void, get,
+              (Transaction & txn, ByteBuffer &buffer, RecordLocation location),
               (override));
-  MOCK_METHOD(RecordLocation, insert, (ByteBuffer & buffer), (override));
-  MOCK_METHOD(void, update, (ByteBuffer & buffer, RecordLocation location),
+  MOCK_METHOD(RecordLocation, insert, (Transaction & txn, ByteBuffer &buffer),
               (override));
-  MOCK_METHOD(void, remove, (RecordLocation location), (override));
+  MOCK_METHOD(void, update,
+              (Transaction & txn, ByteBuffer &buffer, RecordLocation location),
+              (override));
+  MOCK_METHOD(void, remove, (Transaction & txn, RecordLocation location),
+              (override));
 };
 
 class OpsManagerTestFixture : public ::testing::Test {
 protected:
   std::unique_ptr<OpsManager<MockRecordManager>> manager;
-  std::unique_ptr<PageTable> pageTable;
   std::unique_ptr<MemoryStorage> storage;
 
   void SetUp() override {
     storage = std::make_unique<MemoryStorage>();
-    pageTable = std::make_unique<PageTable>(*storage, 10);
-    manager = std::make_unique<OpsManager<MockRecordManager>>(*pageTable);
+    manager = std::make_unique<OpsManager<MockRecordManager>>(*storage, 10);
     manager->start();
   }
 
@@ -79,16 +81,19 @@ protected:
 TEST_F(OpsManagerTestFixture, TestGet) {
   ByteBuffer buffer;
   RecordLocation location;
+  Transaction txn = manager->createTransaction();
 
-  EXPECT_CALL(manager->recordManager, get(buffer, location)).Times(AtLeast(1));
+  EXPECT_CALL(manager->recordManager, get(txn, buffer, location))
+      .Times(AtLeast(1));
   manager->get(buffer, location);
 }
 
 TEST_F(OpsManagerTestFixture, TestInsert) {
   ByteBuffer buffer;
   RecordLocation location;
+  Transaction txn = manager->createTransaction();
 
-  EXPECT_CALL(manager->recordManager, insert(buffer))
+  EXPECT_CALL(manager->recordManager, insert(txn, buffer))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(location));
   ASSERT_EQ(manager->insert(buffer), location);
@@ -97,15 +102,17 @@ TEST_F(OpsManagerTestFixture, TestInsert) {
 TEST_F(OpsManagerTestFixture, TestUpdate) {
   ByteBuffer buffer;
   RecordLocation location;
+  Transaction txn = manager->createTransaction();
 
-  EXPECT_CALL(manager->recordManager, update(buffer, location))
+  EXPECT_CALL(manager->recordManager, update(txn, buffer, location))
       .Times(AtLeast(1));
   manager->update(buffer, location);
 }
 
 TEST_F(OpsManagerTestFixture, TestRemove) {
   RecordLocation location;
+  Transaction txn = manager->createTransaction();
 
-  EXPECT_CALL(manager->recordManager, remove(location)).Times(AtLeast(1));
+  EXPECT_CALL(manager->recordManager, remove(txn, location)).Times(AtLeast(1));
   manager->remove(location);
 }

@@ -44,6 +44,40 @@
 using namespace persist;
 
 class ListRecordManagerWithFileStorageTestFixture : public ::testing::Test {
+private:
+  class WrappedListRecordManager {
+  public:
+    ListRecordManager &manager;
+
+    WrappedListRecordManager(ListRecordManager &manager) : manager(manager) {}
+
+    void get(ByteBuffer &buffer, RecordLocation location) {
+      Transaction txn(manager.pageTable, 0);
+      manager.get(txn, buffer, location);
+      txn.commit();
+    }
+
+    RecordLocation insert(ByteBuffer &buffer) {
+      Transaction txn(manager.pageTable, 0);
+      RecordLocation location = manager.insert(txn, buffer);
+      txn.commit();
+
+      return location;
+    }
+
+    void update(ByteBuffer &buffer, RecordLocation location) {
+      Transaction txn(manager.pageTable, 0);
+      manager.update(txn, buffer, location);
+      txn.commit();
+    }
+
+    void remove(RecordLocation location) {
+      Transaction txn(manager.pageTable, 0);
+      manager.remove(txn, location);
+      txn.commit();
+    }
+  };
+
 protected:
   const uint64_t pageSize = DEFAULT_PAGE_SIZE;
   const uint64_t maxSize = 2;
@@ -52,19 +86,21 @@ protected:
   RecordBlock::Location locations[2];
   std::unique_ptr<Storage> storage;
   std::unique_ptr<PageTable> pageTable;
-  std::unique_ptr<ListRecordManager> manager;
+  std::unique_ptr<ListRecordManager> listRecordManager;
+  std::unique_ptr<WrappedListRecordManager> manager;
 
   void SetUp() override {
     storage = Storage::create(connetionString);
     pageTable = std::make_unique<PageTable>(*storage, maxSize);
-    manager = std::make_unique<ListRecordManager>(*pageTable);
+    listRecordManager = std::make_unique<ListRecordManager>(*pageTable);
+    manager = std::make_unique<WrappedListRecordManager>(*listRecordManager);
     insert();
-    manager->start();
+    listRecordManager->start();
   }
 
   void TearDown() override {
     storage->remove();
-    manager->stop();
+    listRecordManager->stop();
   }
 
 private:

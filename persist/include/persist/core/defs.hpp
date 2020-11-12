@@ -55,7 +55,7 @@
 #define MINIMUM_PAGE_SIZE 512
 // Default page size
 #define DEFAULT_PAGE_SIZE 1024
-// Default cache size
+// Default cache size in MB
 #define DEFAULT_CACHE_SIZE 1024
 
 namespace persist {

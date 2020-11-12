@@ -30,7 +30,10 @@
 
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
+#include <persist/core/page_table.hpp>
 #include <persist/core/record_manager.hpp>
+#include <persist/core/transaction.hpp>
+#include <persist/core/utility.hpp>
 
 namespace persist {
 
@@ -44,6 +47,11 @@ namespace persist {
  */
 template <class RecordManagerType> class OpsManager {
   PERSIST_PRIVATE
+  /**
+   * @brief Collection page table
+   */
+  PageTable pageTable;
+
   /**
    * @brief Collection specific record manager
    */
@@ -62,7 +70,10 @@ public:
    *
    * @param pageTable reference to an opened page table
    */
-  OpsManager(PageTable &pageTable) : recordManager(pageTable), started(false) {}
+  // TODO: Convert cache size in MB to  page buffer size.
+  OpsManager(Storage &storage, uint64_t cacheSize = DEFAULT_CACHE_SIZE)
+      : pageTable(storage, cacheSize), recordManager(pageTable),
+        started(false) {}
 
   /**
    * @brief Start ops manager.
@@ -76,7 +87,6 @@ public:
 
   /**
    * @brief Stop ops manager.
-   *
    */
   void stop() {
     if (!started) {
@@ -86,59 +96,116 @@ public:
   }
 
   /**
-   * @brief Get record stored at given location.
+   * @brief Create a transaction.
+   *
+   * @returns a new transaction object
+   */
+  Transaction createTransaction() {
+    return Transaction(pageTable, uuid::generate());
+  }
+
+  /**
+   * @brief Get record stored at given location. An optional pointer to an
+   * active transaction can also be provided. In case an active transaction is
+   * provided then the commit cycle is left for the user to complete.
    *
    * @param buffer byte buffer into which the record will be stored
    * @param location record starting location
+   * @param transaction currently active transaction to use. Defaults to null in
+   * which case a new transaction is created for the operation.
    */
-  void get(ByteBuffer &buffer, RecordLocation location) {
+  void get(ByteBuffer &buffer, RecordLocation location,
+           Transaction *transaction = nullptr) {
     // Check if ops manager has started
     if (!started) {
       throw OpsManagerNotStartedError();
     }
-    recordManager.get(buffer, location);
+    if (transaction == nullptr) {
+      Transaction txn = createTransaction();
+      recordManager.get(txn, buffer, location);
+      txn.commit();
+    } else {
+      recordManager.get(*transaction, buffer, location);
+    }
   }
 
   /**
    * @brief Insert record stored in buffer to storage. The method returns the
-   * insert location of the record.
+   * insert location of the record. An optional pointer to an active transaction
+   * can also be provided. In case an active transaction is provided then the
+   * commit cycle is left for the user to complete.
    *
    * @param buffer byte buffer containing record data
    * @returns inserted location of the record
+   * @param transaction currently active transaction to use. Defaults to null in
+   * which case a new transaction is created for the operation.
    */
-  RecordLocation insert(ByteBuffer &buffer) {
+  RecordLocation insert(ByteBuffer &buffer,
+                        Transaction *transaction = nullptr) {
     // Check if ops manager has started
     if (!started) {
       throw OpsManagerNotStartedError();
     }
-    return recordManager.insert(buffer);
+    RecordLocation location;
+    if (transaction == nullptr) {
+      Transaction txn = createTransaction();
+      location = recordManager.insert(txn, buffer);
+      txn.commit();
+    } else {
+      location = recordManager.insert(*transaction, buffer);
+    }
+
+    return location;
   }
 
   /**
-   * @brief Update record stored at given location.
+   * @brief Update record stored at given location. The method returns the
+   * insert location of the record. An optional pointer to an active transaction
+   * can also be provided. In case an active transaction is provided then the
+   * commit cycle is left for the user to complete.
    *
    * @param buffer byte buffer containing updated record
    * @param location starting location of record
+   * @param transaction currently active transaction to use. Defaults to null in
+   * which case a new transaction is created for the operation.
    */
-  void update(ByteBuffer &buffer, RecordLocation location) {
+  void update(ByteBuffer &buffer, RecordLocation location,
+              Transaction *transaction = nullptr) {
     // Check if ops manager has started
     if (!started) {
       throw OpsManagerNotStartedError();
     }
-    recordManager.update(buffer, location);
+    if (transaction == nullptr) {
+      Transaction txn = createTransaction();
+      recordManager.update(txn, buffer, location);
+      txn.commit();
+    } else {
+      recordManager.update(*transaction, buffer, location);
+    }
   }
 
   /**
-   * @brief Remove record stored at given location.
+   * @brief Remove record stored at given location. The method returns the
+   * insert location of the record. An optional pointer to an active transaction
+   * can also be provided. In case an active transaction is provided then the
+   * commit cycle is left for the user to complete.
    *
    * @param location starting location of record
+   * @param transaction currently active transaction to use. Defaults to null in
+   * which case a new transaction is created for the operation.
    */
-  void remove(RecordLocation location) {
+  void remove(RecordLocation location, Transaction *transaction = nullptr) {
     // Check if ops manager has started
     if (!started) {
       throw OpsManagerNotStartedError();
     }
-    recordManager.remove(location);
+    if (transaction == nullptr) {
+      Transaction txn = createTransaction();
+      recordManager.remove(txn, location);
+      txn.commit();
+    } else {
+      recordManager.remove(*transaction, location);
+    }
   }
 };
 

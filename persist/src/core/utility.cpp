@@ -23,10 +23,26 @@
  */
 
 #include <fstream>
+#include <limits>
+#include <random>
 
 #include <persist/core/utility.hpp>
 
 namespace persist {
+
+namespace uuid {
+
+uint64_t generate() {
+  std::random_device rd;
+  std::mt19937_64 e2(rd());
+  std::uniform_int_distribution<uint64_t> dist(
+      0, std::numeric_limits<uint64_t>::max());
+
+  return dist(e2);
+}
+
+} // namespace uuid
+
 namespace file {
 
 std::fstream open(std::string path, std::ios_base::openmode mode) {
