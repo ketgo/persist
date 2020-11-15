@@ -117,13 +117,7 @@ public:
     /**
      * Constructors
      */
-    Header()
-        : pageId(0), nextPageId(0), prevPageId(0), pageSize(DEFAULT_PAGE_SIZE),
-          checksum(0) {}
-    Header(PageId pageId)
-        : pageId(pageId), nextPageId(0), prevPageId(0),
-          pageSize(DEFAULT_PAGE_SIZE), checksum(0) {}
-    Header(PageId pageId, uint64_t pageSize)
+    Header(PageId pageId = 0, uint64_t pageSize = DEFAULT_PAGE_SIZE)
         : pageId(pageId), nextPageId(0), prevPageId(0), pageSize(pageSize),
           checksum(0) {}
 

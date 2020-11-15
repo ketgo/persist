@@ -72,7 +72,7 @@ public:
   /**
    * @brief Transaction ID
    */
-  uint64_t id;
+  TransactionId id;
 
   /**
    * @brief Transaction state.
@@ -113,6 +113,13 @@ public:
    * the transaction.
    */
   void abort();
+
+  /**
+   * @brief Get the transaction ID
+   *
+   * returns transaction unique identifier
+   */
+  TransactionId getId() { return id; }
 
   /**
    * Get the state of transaction.
