@@ -30,6 +30,7 @@
 
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
+#include <persist/core/log_manager.hpp>
 #include <persist/core/page_table.hpp>
 #include <persist/core/record_manager.hpp>
 #include <persist/core/transaction.hpp>
@@ -51,6 +52,11 @@ template <class RecordManagerType> class OpsManager {
    * @brief Collection page table
    */
   PageTable pageTable;
+
+  /**
+   * @brief Log manager
+   */
+  LogManager logManager;
 
   /**
    * @brief Collection specific record manager
@@ -101,7 +107,7 @@ public:
    * @returns a new transaction object
    */
   Transaction createTransaction() {
-    return Transaction(pageTable, uuid::generate());
+    return Transaction(pageTable, logManager, uuid::generate());
   }
 
   /**

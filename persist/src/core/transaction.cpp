@@ -34,6 +34,10 @@ void Transaction::stage(PageId pageId) {
 }
 
 void Transaction::commit() {
+  if (state == State::COMMITED || state == State::ABORTED) {
+    throw;
+  }
+
   state = State::COMMITED;
   // Flush all staged pages
   for (auto pageId : staged) {
@@ -41,6 +45,14 @@ void Transaction::commit() {
   }
 }
 
-void Transaction::abort() {}
+void Transaction::abort() {
+  if (state == State::COMMITED || state == State::ABORTED) {
+    throw;
+  }
+
+  state = State::SHRINKING;
+  // TODO: Rollback transition
+  state = State::ABORTED;
+}
 
 } // namespace persist

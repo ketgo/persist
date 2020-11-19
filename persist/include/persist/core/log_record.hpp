@@ -46,6 +46,9 @@ namespace persist {
  * Records used to store operations performed by transactions.
  */
 class LogRecord {
+  friend class LogManager;  // forward declared
+  friend class Transaction; // forward declared
+
 public:
   /**
    * @brief Log Record Header
@@ -146,6 +149,11 @@ public:
 
 public:
   /**
+   * Default constructor
+   */
+  LogRecord(){};
+
+  /**
    * @brief Construct a new Log Record object
    *
    * This constructor is used to create BEGIN, COMMIT, ABORT and DONE type log
@@ -205,10 +213,9 @@ public:
    */
   friend std::ostream &operator<<(std::ostream &os,
                                   const LogRecord &logRecord) {
-    os << "[" << logRecord.type << ", " << logRecord.transactionId << ", "
-       << logRecord.seqNumber << ", " << logRecord.prevSeqNumber << ", "
-       << logRecord.location << ", " << logRecord.oldRecordBlock << ", "
-       << logRecord.newRecordBlock << "]";
+    os << "[" << logRecord.header << ", " << uint64_t(logRecord.type) << ", "
+       << logRecord.location << ", " << logRecord.recordBlockA << ", "
+       << logRecord.recordBlockB << "]";
     return os;
   }
 #endif

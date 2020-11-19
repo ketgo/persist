@@ -28,6 +28,7 @@
 #include <set>
 
 #include <persist/core/defs.hpp>
+#include <persist/core/log_manager.hpp>
 #include <persist/core/page_table.hpp>
 #include <persist/core/record_manager.hpp>
 
@@ -52,22 +53,17 @@ public:
    */
   enum class State { GROWING, SHRINKING, COMMITED, ABORTED };
 
-  /**
-   * @brief Operation Class
-   */
-  struct Operation {
-    enum class Type { INSERT, UPDATE, DELETE };
-    Type type;
-    RecordLocation location;
-    ByteBuffer record;
-  };
-
   PERSIST_PRIVATE
 
   /**
    * @brief Reference to page table.
    */
   PageTable &pageTable;
+
+  /**
+   * @brief Reference to log manager.
+   */
+  LogManager &logManager;
 
   /**
    * @brief Transaction ID
@@ -84,16 +80,24 @@ public:
    */
   std::set<PageId> staged;
 
+  /**
+   * @brief Sequence number of the latest log record in the transaction.
+   */
+  SeqNumber seqNumber;
+
 public:
   /**
    * Construct a new Transaction object
    *
    * @param pageTable reference to page table object
+   * @param logManager reference to log manager
    * @param id Transaction ID
    * @param state transaction state
    */
-  Transaction(PageTable &pageTable, uint64_t id, State state = State::GROWING)
-      : pageTable(pageTable), id(id), state(state) {}
+  Transaction(PageTable &pageTable, LogManager &logManager, uint64_t id,
+              State state = State::GROWING)
+      : pageTable(pageTable), logManager(logManager), id(id), state(state),
+        seqNumber(0) {}
 
   /**
    * Stage the page with given ID for commit. This adds the page ID to the
@@ -127,6 +131,25 @@ public:
    * @returns transaction state
    */
   State getState() { return state; }
+
+  /**
+   * Get the latest log record sequence number for the transaction.
+   *
+   * @returns latest log record sequence number
+   */
+  SeqNumber getSeqNumber() { return seqNumber; }
+
+  /**
+   * Set the latest log record sequence number for the transaction.
+   *
+   * @param seqNumber sequence number to set
+   */
+  void setSeqNumber(SeqNumber seqNumber) { this->seqNumber = seqNumber; }
+
+  /**
+   * @brief Get the Log Manager for the transaction
+   */
+  LogManager &getLogManager() { return logManager; }
 
   /**
    * @brief Equality comparision operator.

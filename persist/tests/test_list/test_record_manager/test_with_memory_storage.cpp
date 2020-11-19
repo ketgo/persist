@@ -46,17 +46,19 @@ private:
   class WrappedListRecordManager {
   public:
     ListRecordManager &manager;
+    LogManager &logManager;
 
-    WrappedListRecordManager(ListRecordManager &manager) : manager(manager) {}
+    WrappedListRecordManager(ListRecordManager &manager, LogManager &logManager)
+        : manager(manager), logManager(logManager) {}
 
     void get(ByteBuffer &buffer, RecordLocation location) {
-      Transaction txn(manager.pageTable, 0);
+      Transaction txn(manager.pageTable, logManager, 0);
       manager.get(txn, buffer, location);
       txn.commit();
     }
 
     RecordLocation insert(ByteBuffer &buffer) {
-      Transaction txn(manager.pageTable, 0);
+      Transaction txn(manager.pageTable, logManager, 0);
       RecordLocation location = manager.insert(txn, buffer);
       txn.commit();
 
@@ -64,13 +66,13 @@ private:
     }
 
     void update(ByteBuffer &buffer, RecordLocation location) {
-      Transaction txn(manager.pageTable, 0);
+      Transaction txn(manager.pageTable, logManager, 0);
       manager.update(txn, buffer, location);
       txn.commit();
     }
 
     void remove(RecordLocation location) {
-      Transaction txn(manager.pageTable, 0);
+      Transaction txn(manager.pageTable, logManager, 0);
       manager.remove(txn, location);
       txn.commit();
     }
@@ -83,14 +85,17 @@ protected:
   RecordBlock::Location locations[2];
   std::unique_ptr<Storage> storage;
   std::unique_ptr<PageTable> pageTable;
+  std::unique_ptr<LogManager> logManager;
   std::unique_ptr<ListRecordManager> listRecordManager;
   std::unique_ptr<WrappedListRecordManager> manager;
 
   void SetUp() override {
     storage = Storage::create("memory://");
     pageTable = std::make_unique<PageTable>(*storage, maxSize);
+    logManager = std::make_unique<LogManager>();
     listRecordManager = std::make_unique<ListRecordManager>(*pageTable);
-    manager = std::make_unique<WrappedListRecordManager>(*listRecordManager);
+    manager = std::make_unique<WrappedListRecordManager>(*listRecordManager,
+                                                         *logManager);
     insert();
     listRecordManager->start();
   }

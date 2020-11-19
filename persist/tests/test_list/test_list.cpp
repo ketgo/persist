@@ -40,6 +40,7 @@
 #include <persist/core/defs.hpp>
 #include <persist/core/storage/base.hpp>
 #include <persist/list/list.hpp>
+#include <persist/core/log_manager.hpp>
 #include <persist/list/record_manager.hpp>
 
 using namespace persist;
@@ -74,9 +75,10 @@ private:
   void insert() {
     std::unique_ptr<Storage> storage = Storage::create(connetionString);
     PageTable pageTable(*storage, 10);
+    LogManager logManager;
     ListRecordManager manager(pageTable);
     manager.start();
-    Transaction txn = Transaction(pageTable, 0);
+    Transaction txn = Transaction(pageTable, logManager, 0);
 
     List::Node prev_node, node;
     RecordLocation prev_location, location;
