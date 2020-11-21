@@ -37,6 +37,7 @@
 
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
+#include <persist/core/log_manager.hpp>
 #include <persist/core/page.hpp>
 
 using namespace persist;
@@ -64,19 +65,23 @@ protected:
   std::unique_ptr<RecordBlock> recordBlock_1, recordBlock_2;
   const ByteBuffer recordBlockData_1 = "testing_1"_bb,
                    recordBlockData_2 = "testing_2"_bb;
+  std::unique_ptr<LogManager> logManager;
 
   void SetUp() override {
+    // Setup log manager
+    logManager = std::make_unique<LogManager>();
     // Setup valid page
     page = std::make_unique<Page>(pageId, pageSize);
     page->setNextPageId(nextPageId);
     page->setPrevPageId(prevPageId);
     // Add record blocks
+    Transaction txn(*logManager, 0);
     recordBlock_1 = std::make_unique<RecordBlock>();
     recordBlock_1->data = recordBlockData_1;
-    slotId_1 = page->addRecordBlock(*recordBlock_1);
+    slotId_1 = page->addRecordBlock(txn, *recordBlock_1);
     recordBlock_2 = std::make_unique<RecordBlock>();
     recordBlock_2->data = recordBlockData_2;
-    slotId_2 = page->addRecordBlock(*recordBlock_2);
+    slotId_2 = page->addRecordBlock(txn, *recordBlock_2);
 
     input = {
         12,  0,   0,   0,   0,   0,   0,   0,   15,  0,   0,   0,   0,   0,
@@ -192,7 +197,8 @@ TEST_F(PageTestFixture, TestFreeSpace) {
 }
 
 TEST_F(PageTestFixture, TestGetRecordBlock) {
-  RecordBlock _recordBlock = page->getRecordBlock(slotId_1);
+  Transaction txn(*logManager, 0);
+  RecordBlock _recordBlock = page->getRecordBlock(txn, slotId_1);
 
   ASSERT_EQ(_recordBlock.data, recordBlockData_1);
   ASSERT_TRUE(_recordBlock.nextLocation().isNull());
@@ -201,7 +207,8 @@ TEST_F(PageTestFixture, TestGetRecordBlock) {
 
 TEST_F(PageTestFixture, TestGetRecordBlockError) {
   try {
-    RecordBlock _recordBlock = page->getRecordBlock(10);
+    Transaction txn(*logManager, 0);
+    RecordBlock _recordBlock = page->getRecordBlock(txn, 10);
     FAIL() << "Expected RecordBlockNotFoundError Exception.";
   } catch (RecordBlockNotFoundError &err) {
     SUCCEED();
@@ -216,7 +223,8 @@ TEST_F(PageTestFixture, TestAddRecordBlock) {
 
   // Current free space in block
   uint64_t oldFreeSpace = page->freeSpace(true);
-  page->addRecordBlock(recordBlock);
+  Transaction txn(*logManager, 0);
+  page->addRecordBlock(txn, recordBlock);
   uint64_t newFreeSize = page->freeSpace();
   ASSERT_EQ(oldFreeSpace - newFreeSize, recordBlock.size());
 }
@@ -227,7 +235,8 @@ TEST_F(PageTestFixture, TestUpdateRecordBlock) {
 
   // Current free space in block
   uint64_t oldFreeSpace = page->freeSpace();
-  page->updateRecordBlock(slotId_1, recordBlock);
+  Transaction txn(*logManager, 0);
+  page->updateRecordBlock(txn, slotId_1, recordBlock);
   uint64_t newFreeSize = page->freeSpace();
   ASSERT_EQ(oldFreeSpace - newFreeSize,
             recordBlock.size() - recordBlock_1->size());
@@ -235,16 +244,18 @@ TEST_F(PageTestFixture, TestUpdateRecordBlock) {
 
 TEST_F(PageTestFixture, TestRemoveRecordBlock) {
   uint64_t oldFreeSpace = page->freeSpace();
-  page->removeRecordBlock(slotId_2);
+  Transaction txn(*logManager, 0);
+  page->removeRecordBlock(txn, slotId_2);
   uint64_t newFreeSize = page->freeSpace();
-  ASSERT_THROW(page->getRecordBlock(slotId_2), RecordBlockNotFoundError);
+  ASSERT_THROW(page->getRecordBlock(txn, slotId_2), RecordBlockNotFoundError);
   ASSERT_EQ(newFreeSize - oldFreeSpace,
             recordBlock_2->size() + sizeof(Page::Header::Slot));
 }
 
 TEST_F(PageTestFixture, TestRemoveRecordBlockError) {
   try {
-    page->removeRecordBlock(20);
+    Transaction txn(*logManager, 0);
+    page->removeRecordBlock(txn, 20);
     FAIL() << "Expected RecordBlockNotFoundError Exception.";
   } catch (RecordBlockNotFoundError &err) {
     SUCCEED();
@@ -259,12 +270,14 @@ TEST_F(PageTestFixture, TestLoad) {
 
   ASSERT_EQ(_block.getId(), page->getId());
 
-  RecordBlock &_recordBlock_1 = _block.getRecordBlock(slotId_1);
+  Transaction txn(*logManager, 0);
+
+  RecordBlock &_recordBlock_1 = _block.getRecordBlock(txn, slotId_1);
   ASSERT_EQ(_recordBlock_1.data, recordBlockData_1);
   ASSERT_TRUE(_recordBlock_1.nextLocation().isNull());
   ASSERT_TRUE(_recordBlock_1.prevLocation().isNull());
 
-  RecordBlock &_recordBlock_2 = _block.getRecordBlock(slotId_2);
+  RecordBlock &_recordBlock_2 = _block.getRecordBlock(txn, slotId_2);
   ASSERT_EQ(_recordBlock_2.data, recordBlockData_2);
   ASSERT_TRUE(_recordBlock_2.nextLocation().isNull());
   ASSERT_TRUE(_recordBlock_2.prevLocation().isNull());

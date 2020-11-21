@@ -116,7 +116,7 @@ private:
       ++count;
     }
 
-    txnManager.commit(&txn);
+    txnManager.commit(txn);
 
     manager.stop();
   }

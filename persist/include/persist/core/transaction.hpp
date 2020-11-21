@@ -29,7 +29,6 @@
 
 #include <persist/core/defs.hpp>
 #include <persist/core/log_manager.hpp>
-#include <persist/core/record_manager.hpp>
 
 namespace persist {
 
@@ -39,7 +38,6 @@ namespace persist {
  * A transaction represents group of operations performed on collection while
  * mentaining atomicity. A transaction can have the following states:
  *
- * - NOT_STARTED: Transaction not started
  * - GROWING: Adding operations to the transaction
  * - SHRINKING: Removing operations during rollback
  * - COMMITED: Successful completion of operations
@@ -53,7 +51,7 @@ public:
   /**
    * @brief Transaction states.
    */
-  enum class State { NOT_STARTED, GROWING, SHRINKING, COMMITED, ABORTED };
+  enum class State { GROWING, SHRINKING, COMMITED, ABORTED };
 
   PERSIST_PRIVATE
 
@@ -90,8 +88,7 @@ public:
    * @param id Transaction ID
    * @param state transaction state
    */
-  Transaction(LogManager &logManager, uint64_t id,
-              State state = State::NOT_STARTED)
+  Transaction(LogManager &logManager, uint64_t id, State state = State::GROWING)
       : logManager(logManager), id(id), state(state), seqNumber(0) {}
 
   /**

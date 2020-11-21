@@ -205,7 +205,7 @@ uint64_t Page::freeSpace(bool exclude) {
   return header.tail() - header.size();
 }
 
-RecordBlock &Page::getRecordBlock(PageSlotId slotId) {
+RecordBlock &Page::getRecordBlock(Transaction &txn, PageSlotId slotId) {
   // Check if slot exists
   RecordBlockMap::iterator it = recordBlocks.find(slotId);
   if (it == recordBlocks.end()) {
@@ -214,7 +214,7 @@ RecordBlock &Page::getRecordBlock(PageSlotId slotId) {
   return it->second;
 }
 
-PageSlotId Page::addRecordBlock(RecordBlock &recordBlock) {
+PageSlotId Page::addRecordBlock(Transaction &txn, RecordBlock &recordBlock) {
   // Create slot for record block
   PageSlotId slotId = header.createSlot(recordBlock.size());
   // Insert record block at slot
@@ -223,14 +223,15 @@ PageSlotId Page::addRecordBlock(RecordBlock &recordBlock) {
   return slotId;
 }
 
-void Page::updateRecordBlock(PageSlotId slotId, RecordBlock &recordBlock) {
+void Page::updateRecordBlock(Transaction &txn, PageSlotId slotId,
+                             RecordBlock &recordBlock) {
   // Update slot for record block
   header.updateSlot(slotId, recordBlock.size());
   // Update record block at slot
   recordBlocks.at(slotId) = recordBlock;
 }
 
-void Page::removeRecordBlock(PageSlotId slotId) {
+void Page::removeRecordBlock(Transaction &txn, PageSlotId slotId) {
   // Check if slot exists in the Page
   RecordBlockMap::iterator it = recordBlocks.find(slotId);
   if (it == recordBlocks.end()) {

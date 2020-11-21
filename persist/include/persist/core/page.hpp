@@ -31,6 +31,7 @@
 
 #include <persist/core/defs.hpp>
 #include <persist/core/record_block.hpp>
+#include <persist/core/transaction.hpp>
 
 namespace persist {
 
@@ -276,7 +277,7 @@ public:
    * @param slotId slot identifier
    * @returns reference to RecordBlock object
    */
-  RecordBlock &getRecordBlock(PageSlotId slotId);
+  RecordBlock &getRecordBlock(Transaction &txn, PageSlotId slotId);
 
   /**
    * Add RecordBlock object to the page.
@@ -285,7 +286,7 @@ public:
    * @param recordBlock RecordBlock object to be added
    * @returns page slot ID where record block is stored
    */
-  PageSlotId addRecordBlock(RecordBlock &recordBlock);
+  PageSlotId addRecordBlock(Transaction &txn, RecordBlock &recordBlock);
 
   /**
    * Update record block in the page.
@@ -294,7 +295,8 @@ public:
    * @param slotId slot ID of the record being updated
    * @param recordBlock updated record block
    */
-  void updateRecordBlock(PageSlotId slotId, RecordBlock &recordBlock);
+  void updateRecordBlock(Transaction &txn, PageSlotId slotId,
+                         RecordBlock &recordBlock);
 
   /**
    * Remove RecordBlock object at given slot.
@@ -302,7 +304,7 @@ public:
    * @param txn reference to active transaction
    * @param slotId slot identifier
    */
-  void removeRecordBlock(PageSlotId slotId);
+  void removeRecordBlock(Transaction &txn, PageSlotId slotId);
 
   /**
    * Load Block object from byte string.

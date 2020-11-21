@@ -49,6 +49,7 @@ ListRecordManager::_insert(Transaction &txn, Span span,
   while (toWriteSize > 0) {
     // Get a free page
     Page &page = pageTable.getFree();
+    PageId pageId = page.getId();
 
     // Create record block to add to page
     RecordBlock recordBlock;
@@ -63,21 +64,23 @@ ListRecordManager::_insert(Transaction &txn, Span span,
     for (int i = 0; i < writeSpace; i++) {
       recordBlock.data.push_back(*(pos + i));
     }
-    PageSlotId slotId = page.addRecordBlock(recordBlock);
+    PageSlotId slotId = page.addRecordBlock(txn, recordBlock);
 
     // Create double linkage between record blocks
-    prevRecordBlock->nextLocation().pageId = page.getId();
+    prevRecordBlock->nextLocation().pageId = pageId;
     prevRecordBlock->nextLocation().slotId = slotId;
-    recordBlock.prevLocation().pageId = prevLocation->pageId;
-    recordBlock.prevLocation().slotId = prevLocation->slotId;
+    page.getRecordBlock(txn, slotId).prevLocation().pageId =
+        prevLocation->pageId;
+    page.getRecordBlock(txn, slotId).prevLocation().slotId =
+        prevLocation->slotId;
 
     // Stage page for commit
-    txn.stage(page.getId());
-    pageTable.mark(page.getId());
+    txn.stage(pageId);
+    pageTable.mark(pageId);
 
     // Update previous record block and location pointers
     prevLocation = &prevRecordBlock->nextLocation();
-    prevRecordBlock = &page.getRecordBlock(slotId);
+    prevRecordBlock = &page.getRecordBlock(txn, slotId);
 
     // Update counters
     writtenSize += writeSpace;
@@ -98,11 +101,11 @@ void ListRecordManager::_remove(Transaction &txn,
 
       // Get record block
       Page &page = pageTable.get(pageId);
-      RecordBlock &recordBlock = page.getRecordBlock(slotId);
+      RecordBlock &recordBlock = page.getRecordBlock(txn, slotId);
       // Set next remove location
       removeLocation = recordBlock.nextLocation();
       // Remove record block
-      page.removeRecordBlock(slotId);
+      page.removeRecordBlock(txn, slotId);
       txn.stage(pageId);
       pageTable.mark(pageId);
     }
@@ -138,7 +141,7 @@ void ListRecordManager::get(Transaction &txn, ByteBuffer &buffer,
     while (!readLocation.isNull()) {
       // Get record block
       Page &page = pageTable.get(readLocation.pageId);
-      RecordBlock &recordBlock = page.getRecordBlock(readLocation.slotId);
+      RecordBlock &recordBlock = page.getRecordBlock(txn, readLocation.slotId);
       // TODO: Optimize by resizing buffer to buffer.size() +
       // recordBlock.data.size(); This way we reduce number of memory allocation
       // calls in the buffer.
@@ -209,7 +212,7 @@ void ListRecordManager::update(Transaction &txn, ByteBuffer &buffer,
     while (!updateLocation.isNull() && toWriteSize > 0) {
       // Get record block
       Page &page = pageTable.get(updateLocation.pageId);
-      updateRecordBlock = &page.getRecordBlock(updateLocation.slotId);
+      updateRecordBlock = &page.getRecordBlock(txn, updateLocation.slotId);
 
       // Compute availble space to write data in page
       uint64_t writeSpace = updateRecordBlock->data.size() + page.freeSpace();
@@ -222,7 +225,7 @@ void ListRecordManager::update(Transaction &txn, ByteBuffer &buffer,
                                      buffer.begin() + writtenSize,
                                      buffer.begin() + writtenSize + writeSpace);
       // Update page
-      page.updateRecordBlock(updateLocation.slotId, *updateRecordBlock);
+      page.updateRecordBlock(txn, updateLocation.slotId, *updateRecordBlock);
 
       // Stage page for commit
       txn.stage(updateLocation.pageId);

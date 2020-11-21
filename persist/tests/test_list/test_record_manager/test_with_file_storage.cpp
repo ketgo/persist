@@ -50,23 +50,22 @@ private:
   class WrappedListRecordManager {
   public:
     ListRecordManager &manager;
-    LogManager &logManager;
-    TransactionManager txnManager;
+    TransactionManager &txnManager;
 
-    WrappedListRecordManager(ListRecordManager &manager, LogManager &logManager)
-        : manager(manager), logManager(logManager),
-          txnManager(manager.pageTable, logManager) {}
+    WrappedListRecordManager(ListRecordManager &manager,
+                             TransactionManager &txnManager)
+        : manager(manager), txnManager(txnManager) {}
 
     void get(ByteBuffer &buffer, RecordLocation location) {
       Transaction txn = txnManager.begin();
       manager.get(txn, buffer, location);
-      txnManager.commit(&txn);
+      txnManager.commit(txn);
     }
 
     RecordLocation insert(ByteBuffer &buffer) {
       Transaction txn = txnManager.begin();
       RecordLocation location = manager.insert(txn, buffer);
-      txnManager.commit(&txn);
+      txnManager.commit(txn);
 
       return location;
     }
@@ -74,13 +73,13 @@ private:
     void update(ByteBuffer &buffer, RecordLocation location) {
       Transaction txn = txnManager.begin();
       manager.update(txn, buffer, location);
-      txnManager.commit(&txn);
+      txnManager.commit(txn);
     }
 
     void remove(RecordLocation location) {
       Transaction txn = txnManager.begin();
       manager.remove(txn, location);
-      txnManager.commit(&txn);
+      txnManager.commit(txn);
     }
   };
 
@@ -93,6 +92,7 @@ protected:
   std::unique_ptr<Storage> storage;
   std::unique_ptr<PageTable> pageTable;
   std::unique_ptr<LogManager> logManager;
+  std::unique_ptr<TransactionManager> txnManager;
   std::unique_ptr<ListRecordManager> listRecordManager;
   std::unique_ptr<WrappedListRecordManager> manager;
 
@@ -100,9 +100,10 @@ protected:
     storage = Storage::create(connetionString);
     pageTable = std::make_unique<PageTable>(*storage, maxSize);
     logManager = std::make_unique<LogManager>();
+    txnManager = std::make_unique<TransactionManager>(*pageTable, *logManager);
     listRecordManager = std::make_unique<ListRecordManager>(*pageTable);
     manager = std::make_unique<WrappedListRecordManager>(*listRecordManager,
-                                                         *logManager);
+                                                         *txnManager);
     insert();
     listRecordManager->start();
   }
@@ -118,6 +119,7 @@ private:
    */
   void insert() {
     storage->open();
+    Transaction txn = txnManager->begin();
 
     // Insert data
     MetaData metadata;
@@ -129,7 +131,7 @@ private:
       RecordBlock recordBlock;
       recordBlock.data = records[i];
       locations[i].pageId = pageId;
-      locations[i].slotId = page.addRecordBlock(recordBlock);
+      locations[i].slotId = page.addRecordBlock(txn, recordBlock);
       metadata.freePages.insert(pageId);
       storage->write(page);
     }

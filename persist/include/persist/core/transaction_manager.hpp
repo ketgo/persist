@@ -27,6 +27,7 @@
 
 #include <persist/core/defs.hpp>
 #include <persist/core/log_manager.hpp>
+#include <persist/core/page_table.hpp>
 #include <persist/core/transaction.hpp>
 
 namespace persist {
@@ -59,31 +60,29 @@ public:
       : pageTable(pageTable), logManager(logManager) {}
 
   /**
-   * @brief Begin a new or existing transaction.
+   * @brief Begin a new transaction.
    *
-   * @param txn pointer to existing transaction to begin. A new transaction is
-   * created if set to null.
    * @returns transaction object
    */
-  Transaction begin(Transaction *txn = nullptr);
+  Transaction begin();
 
   /**
    * @brief Abort given transaction. This operation rollsback all changes
    * performed during the transaction.
    *
-   * @param txn pointer to the transaction to abort. Nop is performed if null is
-   * passed.
+   * @param txn reference to the transaction to abort. Nop is performed if null
+   * is passed.
    */
-  void abort(Transaction *txn);
+  void abort(Transaction &txn);
 
   /**
    * @brief Commit given transaction. Persists all modified pages and metadata
    * to backend storage.
    *
-   * @param txn pointer to the transaction to commit. Nop is performed if null
+   * @param txn reference to the transaction to commit. Nop is performed if null
    * is passed.
    */
-  void commit(Transaction *txn);
+  void commit(Transaction &txn);
 };
 
 } // namespace persist

@@ -28,41 +28,28 @@
 
 namespace persist {
 
-Transaction TransactionManager::begin(Transaction *txn) {
-  if (txn == nullptr) {
-    return Transaction(logManager, uuid::generate(),
-                       Transaction::State::GROWING);
-  }
-  // Begin transaction if not started else perform NOP
-  if (txn->state == Transaction::State::NOT_STARTED) {
-    txn->state = Transaction::State::GROWING;
-  }
-
-  return *txn;
+Transaction TransactionManager::begin() {
+  return Transaction(logManager, uuid::generate(), Transaction::State::GROWING);
 }
 
-void TransactionManager::abort(Transaction *txn) {
-  if (txn != nullptr) {
-    // Abort transaction if not in completed state, i.e. COMMITED or
-    // ABORTED.
-    if (txn->state != Transaction::State::COMMITED &&
-        txn->state != Transaction::State::ABORTED) {
-      // TODO: Rollback transition
-    }
+void TransactionManager::abort(Transaction &txn) {
+  // Abort transaction if not in completed state, i.e. COMMITED or
+  // ABORTED.
+  if (txn.state != Transaction::State::COMMITED &&
+      txn.state != Transaction::State::ABORTED) {
+    // TODO: Rollback transition
   }
 }
 
-void TransactionManager::commit(Transaction *txn) {
-  if (txn != nullptr) {
-    // Commit pages if transaction not in completed state, i.e. COMMITED or
-    // ABORTED.
-    if (txn->state != Transaction::State::COMMITED &&
-        txn->state != Transaction::State::ABORTED) {
-      txn->state = Transaction::State::COMMITED;
-      // Flush all staged pages
-      for (auto pageId : txn->staged) {
-        pageTable.flush(pageId);
-      }
+void TransactionManager::commit(Transaction &txn) {
+  // Commit pages if transaction not in completed state, i.e. COMMITED or
+  // ABORTED.
+  if (txn.state != Transaction::State::COMMITED &&
+      txn.state != Transaction::State::ABORTED) {
+    txn.state = Transaction::State::COMMITED;
+    // Flush all staged pages
+    for (auto pageId : txn.staged) {
+      pageTable.flush(pageId);
     }
   }
 }

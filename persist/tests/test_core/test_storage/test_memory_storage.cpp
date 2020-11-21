@@ -33,8 +33,10 @@
 #include <vector>
 
 #include <persist/core/exceptions.hpp>
+#include <persist/core/log_manager.hpp>
 #include <persist/core/page.hpp>
 #include <persist/core/storage/memory_storage.hpp>
+#include <persist/core/transaction.hpp>
 
 using namespace persist;
 
@@ -42,10 +44,14 @@ class MemoryStorageTestFixture : public ::testing::Test {
 protected:
   const uint64_t pageSize = 512;
   std::unique_ptr<MemoryStorage> storage;
+  std::unique_ptr<LogManager> logManager;
 
   void SetUp() override {
     storage = std::make_unique<MemoryStorage>(pageSize);
     storage->open();
+
+    // Setup log manager
+    logManager = std::make_unique<LogManager>();
   }
 
   void TearDown() override { storage->close(); }
@@ -63,15 +69,16 @@ TEST_F(MemoryStorageTestFixture, TestReadPageError) {
 }
 
 TEST_F(MemoryStorageTestFixture, TestReadWritePage) {
+  Transaction txn(*logManager, 0);
   RecordBlock recordBlock;
   recordBlock.data = "testing"_bb;
 
   Page page(1, pageSize);
-  PageSlotId slotId = page.addRecordBlock(recordBlock);
+  PageSlotId slotId = page.addRecordBlock(txn, recordBlock);
   storage->write(page);
 
   std::unique_ptr<Page> _page = storage->read(1);
-  RecordBlock &_recordBlock = _page->getRecordBlock(slotId);
+  RecordBlock &_recordBlock = _page->getRecordBlock(txn, slotId);
 
   ASSERT_EQ(page.getId(), _page->getId());
   ASSERT_EQ(recordBlock.data, _recordBlock.data);

@@ -94,7 +94,7 @@ template <class RecordManagerType> class Collection {
     if (transaction == nullptr) {
       Transaction txn = transactionManager.begin();
       recordManager.get(txn, buffer, location);
-      transactionManager.commit(&txn);
+      transactionManager.commit(txn);
     } else {
       recordManager.get(*transaction, buffer, location);
     }
@@ -121,7 +121,7 @@ template <class RecordManagerType> class Collection {
     if (transaction == nullptr) {
       Transaction txn = transactionManager.begin();
       location = recordManager.insert(txn, buffer);
-      transactionManager.commit(&txn);
+      transactionManager.commit(txn);
     } else {
       location = recordManager.insert(*transaction, buffer);
     }
@@ -149,7 +149,7 @@ template <class RecordManagerType> class Collection {
     if (transaction == nullptr) {
       Transaction txn = transactionManager.begin();
       recordManager.update(txn, buffer, location);
-      transactionManager.commit(&txn);
+      transactionManager.commit(txn);
     } else {
       recordManager.update(*transaction, buffer, location);
     }
@@ -173,7 +173,7 @@ template <class RecordManagerType> class Collection {
     if (transaction == nullptr) {
       Transaction txn = transactionManager.begin();
       recordManager.remove(txn, location);
-      transactionManager.commit(&txn);
+      transactionManager.commit(txn);
     } else {
       recordManager.remove(*transaction, location);
     }
