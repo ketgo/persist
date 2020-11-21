@@ -37,6 +37,10 @@
 
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
+#include <persist/core/log_manager.hpp>
+#include <persist/core/page_table.hpp>
+#include <persist/core/storage/base.hpp>
+#include <persist/core/transaction_manager.hpp>
 #include <persist/list/record_manager.hpp>
 
 using namespace persist;
@@ -47,34 +51,36 @@ private:
   public:
     ListRecordManager &manager;
     LogManager &logManager;
+    TransactionManager txnManager;
 
     WrappedListRecordManager(ListRecordManager &manager, LogManager &logManager)
-        : manager(manager), logManager(logManager) {}
+        : manager(manager), logManager(logManager),
+          txnManager(manager.pageTable, logManager) {}
 
     void get(ByteBuffer &buffer, RecordLocation location) {
-      Transaction txn(manager.pageTable, logManager, 0);
+      Transaction txn = txnManager.begin();
       manager.get(txn, buffer, location);
-      txn.commit();
+      txnManager.commit(&txn);
     }
 
     RecordLocation insert(ByteBuffer &buffer) {
-      Transaction txn(manager.pageTable, logManager, 0);
+      Transaction txn = txnManager.begin();
       RecordLocation location = manager.insert(txn, buffer);
-      txn.commit();
+      txnManager.commit(&txn);
 
       return location;
     }
 
     void update(ByteBuffer &buffer, RecordLocation location) {
-      Transaction txn(manager.pageTable, logManager, 0);
+      Transaction txn = txnManager.begin();
       manager.update(txn, buffer, location);
-      txn.commit();
+      txnManager.commit(&txn);
     }
 
     void remove(RecordLocation location) {
-      Transaction txn(manager.pageTable, logManager, 0);
+      Transaction txn = txnManager.begin();
       manager.remove(txn, location);
-      txn.commit();
+      txnManager.commit(&txn);
     }
   };
 

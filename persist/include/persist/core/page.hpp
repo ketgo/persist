@@ -34,8 +34,6 @@
 
 namespace persist {
 
-class Transaction;
-
 /**
  * Page Class
  *
@@ -278,7 +276,7 @@ public:
    * @param slotId slot identifier
    * @returns reference to RecordBlock object
    */
-  RecordBlock &getRecordBlock(Transaction &txn, PageSlotId slotId);
+  RecordBlock &getRecordBlock(PageSlotId slotId);
 
   /**
    * Add RecordBlock object to the page.
@@ -287,7 +285,7 @@ public:
    * @param recordBlock RecordBlock object to be added
    * @returns page slot ID where record block is stored
    */
-  PageSlotId addRecordBlock(Transaction &txn, RecordBlock &recordBlock);
+  PageSlotId addRecordBlock(RecordBlock &recordBlock);
 
   /**
    * Update record block in the page.
@@ -296,8 +294,7 @@ public:
    * @param slotId slot ID of the record being updated
    * @param recordBlock updated record block
    */
-  void updateRecordBlock(Transaction &txn, PageSlotId slotId,
-                         RecordBlock &recordBlock);
+  void updateRecordBlock(PageSlotId slotId, RecordBlock &recordBlock);
 
   /**
    * Remove RecordBlock object at given slot.
@@ -305,7 +302,7 @@ public:
    * @param txn reference to active transaction
    * @param slotId slot identifier
    */
-  void removeRecordBlock(Transaction &txn, PageSlotId slotId);
+  void removeRecordBlock(PageSlotId slotId);
 
   /**
    * Load Block object from byte string.

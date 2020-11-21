@@ -38,9 +38,9 @@
 #define PERSIST_INTRUSIVE_TESTING
 
 #include <persist/core/defs.hpp>
+#include <persist/core/log_manager.hpp>
 #include <persist/core/storage/base.hpp>
 #include <persist/list/list.hpp>
-#include <persist/core/log_manager.hpp>
 #include <persist/list/record_manager.hpp>
 
 using namespace persist;
@@ -76,9 +76,10 @@ private:
     std::unique_ptr<Storage> storage = Storage::create(connetionString);
     PageTable pageTable(*storage, 10);
     LogManager logManager;
+    TransactionManager txnManager(pageTable, logManager);
     ListRecordManager manager(pageTable);
     manager.start();
-    Transaction txn = Transaction(pageTable, logManager, 0);
+    Transaction txn = txnManager.begin();
 
     List::Node prev_node, node;
     RecordLocation prev_location, location;
@@ -115,7 +116,7 @@ private:
       ++count;
     }
 
-    txn.commit();
+    txnManager.commit(&txn);
 
     manager.stop();
   }

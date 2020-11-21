@@ -29,7 +29,6 @@
 
 #include <persist/core/defs.hpp>
 #include <persist/core/log_manager.hpp>
-#include <persist/core/page_table.hpp>
 #include <persist/core/record_manager.hpp>
 
 namespace persist {
@@ -40,25 +39,23 @@ namespace persist {
  * A transaction represents group of operations performed on collection while
  * mentaining atomicity. A transaction can have the following states:
  *
- *  - GROWING: Adding operations to the transaction
- *  - SHRINKING: Removing operations during rollback
- *  - COMMITED: Successful completion of operations
- *  - ABORTED: The transaction has been rolled back and the database  has
+ * - NOT_STARTED: Transaction not started
+ * - GROWING: Adding operations to the transaction
+ * - SHRINKING: Removing operations during rollback
+ * - COMMITED: Successful completion of operations
+ * - ABORTED: The transaction has been rolled back and the database  has
  * beenrestored to its state prior to the start of the transaction.
  */
 class Transaction {
+  friend class TransactionManager;
+
 public:
   /**
    * @brief Transaction states.
    */
-  enum class State { GROWING, SHRINKING, COMMITED, ABORTED };
+  enum class State { NOT_STARTED, GROWING, SHRINKING, COMMITED, ABORTED };
 
   PERSIST_PRIVATE
-
-  /**
-   * @brief Reference to page table.
-   */
-  PageTable &pageTable;
 
   /**
    * @brief Reference to log manager.
@@ -89,15 +86,13 @@ public:
   /**
    * Construct a new Transaction object
    *
-   * @param pageTable reference to page table object
    * @param logManager reference to log manager
    * @param id Transaction ID
    * @param state transaction state
    */
-  Transaction(PageTable &pageTable, LogManager &logManager, uint64_t id,
-              State state = State::GROWING)
-      : pageTable(pageTable), logManager(logManager), id(id), state(state),
-        seqNumber(0) {}
+  Transaction(LogManager &logManager, uint64_t id,
+              State state = State::NOT_STARTED)
+      : logManager(logManager), id(id), state(state), seqNumber(0) {}
 
   /**
    * Stage the page with given ID for commit. This adds the page ID to the
@@ -105,18 +100,7 @@ public:
    *
    * @param pageId page identifier
    */
-  void stage(PageId pageId);
-
-  /**
-   * Persist all modified pages and metadata to backend storage.
-   */
-  void commit();
-
-  /**
-   * Abort transaction. This operation rollsback all changes performed during
-   * the transaction.
-   */
-  void abort();
+  void stage(PageId pageId) { staged.insert(pageId); }
 
   /**
    * @brief Get the transaction ID
@@ -155,8 +139,7 @@ public:
    * @brief Equality comparision operator.
    */
   bool operator==(const Transaction &other) const {
-    return &pageTable == &other.pageTable && staged == other.staged &&
-           state == other.state;
+    return staged == other.staged && state == other.state;
   }
 };
 

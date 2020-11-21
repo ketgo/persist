@@ -115,21 +115,6 @@ public:
 };
 
 /**
- * Ops Manager Not Started Error
- *
- * This error is thrown if the ops manager is not started.
- */
-class OpsManagerNotStartedError : public PersistException {
-private:
-  std::string msg;
-
-public:
-  OpsManagerNotStartedError() : msg("Ops manager not started.") {}
-
-  const char *what() const throw() { return msg.c_str(); }
-};
-
-/**
  * Record Manager Not Started Error
  *
  * This error is thrown if the record manager is not started.
