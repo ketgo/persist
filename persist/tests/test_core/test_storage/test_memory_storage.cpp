@@ -74,7 +74,7 @@ TEST_F(MemoryStorageTestFixture, TestReadWritePage) {
   recordBlock.data = "testing"_bb;
 
   Page page(1, pageSize);
-  PageSlotId slotId = page.addRecordBlock(txn, recordBlock);
+  PageSlotId slotId = page.addRecordBlock(txn, recordBlock).first;
   storage->write(page);
 
   std::unique_ptr<Page> _page = storage->read(1);

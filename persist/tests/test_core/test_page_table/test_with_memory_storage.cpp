@@ -126,7 +126,7 @@ TEST_F(PageTableWithMemoryStorageTestFixture, TestGetLRUPersist) {
   RecordBlock block;
   block.data =
       ByteBuffer(_page_1.freeSpace(true) - sizeof(RecordBlock::Header), 'A');
-  PageSlotId slotId = _page_1.addRecordBlock(txn, block);
+  PageSlotId slotId = _page_1.addRecordBlock(txn, block).first;
   txn.stage(1);
   pageTable->mark(1);
 
@@ -187,7 +187,7 @@ TEST_F(PageTableWithMemoryStorageTestFixture, TestGetFreeNew) {
     RecordBlock block;
     block.data =
         ByteBuffer(_page.freeSpace(true) - sizeof(RecordBlock::Header), 'A');
-    PageSlotId slotId = _page.addRecordBlock(txn, block);
+    PageSlotId slotId = _page.addRecordBlock(txn, block).first;
     txn.stage(i);
     pageTable->mark(i);
   }
@@ -206,7 +206,7 @@ TEST_F(PageTableWithMemoryStorageTestFixture, TestSessionCommit) {
   RecordBlock block;
   block.data =
       ByteBuffer(_page_1.freeSpace(true) - sizeof(RecordBlock::Header), 'A');
-  PageSlotId slotId = _page_1.addRecordBlock(txn, block);
+  PageSlotId slotId = _page_1.addRecordBlock(txn, block).first;
   txn.stage(1);
   pageTable->mark(1);
 

@@ -284,9 +284,11 @@ public:
    *
    * @param txn reference to active transaction
    * @param recordBlock RecordBlock object to be added
-   * @returns page slot ID where record block is stored
+   * @returns page slot ID where record block is stored and pointer to stored
+   * record block
    */
-  PageSlotId addRecordBlock(Transaction &txn, RecordBlock &recordBlock);
+  std::pair<PageSlotId, RecordBlock *>
+  addRecordBlock(Transaction &txn, RecordBlock &recordBlock);
 
   /**
    * Update record block in the page.

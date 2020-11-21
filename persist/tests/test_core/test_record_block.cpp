@@ -102,6 +102,14 @@ TEST_F(RecordBlockTestFixture, TestDump) {
   ASSERT_EQ(input, output);
 }
 
+TEST_F(RecordBlockTestFixture, TestMoveRecordBlock) {
+  RecordBlock _block;
+  _block = std::move(*block);
+
+  ASSERT_EQ(block->data, ""_bb);
+  ASSERT_EQ(_block.data, data);
+}
+
 TEST_F(RecordBlockTestFixture, TestSize) {
   ASSERT_EQ(block->size(), data.size() + sizeof(RecordBlock::Header));
 }

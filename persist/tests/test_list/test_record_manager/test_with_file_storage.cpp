@@ -131,7 +131,7 @@ private:
       RecordBlock recordBlock;
       recordBlock.data = records[i];
       locations[i].pageId = pageId;
-      locations[i].slotId = page.addRecordBlock(txn, recordBlock);
+      locations[i].slotId = page.addRecordBlock(txn, recordBlock).first;
       metadata.freePages.insert(pageId);
       storage->write(page);
     }

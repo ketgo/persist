@@ -87,7 +87,7 @@ TEST_F(NewFileStorageTestFixture, TestWriteBlock) {
   recordBlock.data = "testing"_bb;
 
   Page page(1, pageSize);
-  PageSlotId slotId = page.addRecordBlock(txn, recordBlock);
+  PageSlotId slotId = page.addRecordBlock(txn, recordBlock).first;
   writeStorage->write(page);
 
   std::fstream file = file::open(writePath, std::ios::in | std::ios::binary);
@@ -176,7 +176,7 @@ TEST_F(ExistingFileStorageTestFixture, TestWriteBlock) {
   recordBlock.data = "testing"_bb;
 
   Page page(1, pageSize);
-  PageSlotId slotId = page.addRecordBlock(txn, recordBlock);
+  PageSlotId slotId = page.addRecordBlock(txn, recordBlock).first;
   writeStorage->write(page);
 
   std::fstream file = file::open(writePath, std::ios::in | std::ios::binary);

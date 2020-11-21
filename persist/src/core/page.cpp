@@ -214,13 +214,15 @@ RecordBlock &Page::getRecordBlock(Transaction &txn, PageSlotId slotId) {
   return it->second;
 }
 
-PageSlotId Page::addRecordBlock(Transaction &txn, RecordBlock &recordBlock) {
+std::pair<PageSlotId, RecordBlock *>
+Page::addRecordBlock(Transaction &txn, RecordBlock &recordBlock) {
   // Create slot for record block
   PageSlotId slotId = header.createSlot(recordBlock.size());
   // Insert record block at slot
-  recordBlocks.insert(std::pair<PageSlotId, RecordBlock>(slotId, recordBlock));
+  auto inserted = recordBlocks.insert(
+      std::pair<PageSlotId, RecordBlock>(slotId, recordBlock));
 
-  return slotId;
+  return std::pair<PageSlotId, RecordBlock *>(slotId, &inserted.first->second);
 }
 
 void Page::updateRecordBlock(Transaction &txn, PageSlotId slotId,
@@ -228,7 +230,7 @@ void Page::updateRecordBlock(Transaction &txn, PageSlotId slotId,
   // Update slot for record block
   header.updateSlot(slotId, recordBlock.size());
   // Update record block at slot
-  recordBlocks.at(slotId) = recordBlock;
+  recordBlocks.at(slotId) = std::move(recordBlock);
 }
 
 void Page::removeRecordBlock(Transaction &txn, PageSlotId slotId) {

@@ -64,15 +64,13 @@ ListRecordManager::_insert(Transaction &txn, Span span,
     for (int i = 0; i < writeSpace; i++) {
       recordBlock.data.push_back(*(pos + i));
     }
-    PageSlotId slotId = page.addRecordBlock(txn, recordBlock);
+    auto inserted = page.addRecordBlock(txn, recordBlock);
 
     // Create double linkage between record blocks
     prevRecordBlock->nextLocation().pageId = pageId;
-    prevRecordBlock->nextLocation().slotId = slotId;
-    page.getRecordBlock(txn, slotId).prevLocation().pageId =
-        prevLocation->pageId;
-    page.getRecordBlock(txn, slotId).prevLocation().slotId =
-        prevLocation->slotId;
+    prevRecordBlock->nextLocation().slotId = inserted.first;
+    inserted.second->prevLocation().pageId = prevLocation->pageId;
+    inserted.second->prevLocation().slotId = prevLocation->slotId;
 
     // Stage page for commit
     txn.stage(pageId);
@@ -80,7 +78,7 @@ ListRecordManager::_insert(Transaction &txn, Span span,
 
     // Update previous record block and location pointers
     prevLocation = &prevRecordBlock->nextLocation();
-    prevRecordBlock = &page.getRecordBlock(txn, slotId);
+    prevRecordBlock = inserted.second;
 
     // Update counters
     writtenSize += writeSpace;
@@ -206,33 +204,35 @@ void ListRecordManager::update(Transaction &txn, ByteBuffer &buffer,
   uint64_t toWriteSize = buffer.size(), writtenSize = 0;
   // Start update
   RecordBlock::Location updateLocation = location;
-  RecordBlock *updateRecordBlock;
+  RecordBlock *recordBlockPtr, recordBlock;
   try {
     // In-place update record blocks
     while (!updateLocation.isNull() && toWriteSize > 0) {
       // Get record block
       Page &page = pageTable.get(updateLocation.pageId);
-      updateRecordBlock = &page.getRecordBlock(txn, updateLocation.slotId);
+      recordBlockPtr = &page.getRecordBlock(txn, updateLocation.slotId);
 
       // Compute availble space to write data in page
-      uint64_t writeSpace = updateRecordBlock->data.size() + page.freeSpace();
+      uint64_t writeSpace = recordBlockPtr->data.size() + page.freeSpace();
       if (toWriteSize < writeSpace) {
         writeSpace = toWriteSize;
       }
-      // Update data in record block
-      updateRecordBlock->data.clear();
-      updateRecordBlock->data.insert(updateRecordBlock->data.end(),
-                                     buffer.begin() + writtenSize,
-                                     buffer.begin() + writtenSize + writeSpace);
+      // Create updated record block
+      Byte *pos = buffer.data() + writtenSize;
+      for (int i = 0; i < writeSpace; i++) {
+        recordBlock.data.push_back(*(pos + i));
+      }
+      recordBlock.nextLocation() = recordBlockPtr->nextLocation();
+      recordBlock.prevLocation() = recordBlockPtr->prevLocation();
       // Update page
-      page.updateRecordBlock(txn, updateLocation.slotId, *updateRecordBlock);
+      page.updateRecordBlock(txn, updateLocation.slotId, recordBlock);
 
       // Stage page for commit
       txn.stage(updateLocation.pageId);
       pageTable.mark(updateLocation.pageId);
 
       // Update location to next block
-      updateLocation = updateRecordBlock->nextLocation();
+      updateLocation = recordBlockPtr->nextLocation();
 
       // Update counters
       writtenSize += writeSpace;
@@ -241,13 +241,13 @@ void ListRecordManager::update(Transaction &txn, ByteBuffer &buffer,
 
     // Insert rest of the buffer
     if (toWriteSize > 0) {
-      updateRecordBlock->nextLocation() = _insert(
+      recordBlockPtr->nextLocation() = _insert(
           txn, Span(buffer.data() + writtenSize, toWriteSize), updateLocation);
     }
 
     // Remove remaining record blocks containing old data
     if (!updateLocation.isNull()) {
-      updateRecordBlock->nextLocation().setNull();
+      recordBlockPtr->nextLocation().setNull();
       _remove(txn, updateLocation);
     }
   } catch (NotFoundException &err) {

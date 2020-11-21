@@ -78,10 +78,10 @@ protected:
     Transaction txn(*logManager, 0);
     recordBlock_1 = std::make_unique<RecordBlock>();
     recordBlock_1->data = recordBlockData_1;
-    slotId_1 = page->addRecordBlock(txn, *recordBlock_1);
+    slotId_1 = page->addRecordBlock(txn, *recordBlock_1).first;
     recordBlock_2 = std::make_unique<RecordBlock>();
     recordBlock_2->data = recordBlockData_2;
-    slotId_2 = page->addRecordBlock(txn, *recordBlock_2);
+    slotId_2 = page->addRecordBlock(txn, *recordBlock_2).first;
 
     input = {
         12,  0,   0,   0,   0,   0,   0,   0,   15,  0,   0,   0,   0,   0,
@@ -238,8 +238,10 @@ TEST_F(PageTestFixture, TestUpdateRecordBlock) {
   Transaction txn(*logManager, 0);
   page->updateRecordBlock(txn, slotId_1, recordBlock);
   uint64_t newFreeSize = page->freeSpace();
+  RecordBlock recordBlock_;
+  recordBlock_.data = "testing_1-update"_bb;
   ASSERT_EQ(oldFreeSpace - newFreeSize,
-            recordBlock.size() - recordBlock_1->size());
+            recordBlock_.size() - recordBlock_1->size());
 }
 
 TEST_F(PageTestFixture, TestRemoveRecordBlock) {
