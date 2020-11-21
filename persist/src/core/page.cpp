@@ -194,6 +194,16 @@ Page::Page(PageId pageId, uint64_t pageSize) : header(pageId, pageSize) {
   }
 }
 
+void Page::registerObserver(PageObserver *observer) {
+  observers.insert(observers.end(), observer);
+}
+
+void Page::notifyObservers() {
+  for (auto observer : observers) {
+    observer->handleModifiedPage(header.pageId);
+  }
+}
+
 uint64_t Page::freeSpace(bool exclude) {
   if (exclude) {
     uint64_t size = header.tail() - header.size();
@@ -203,6 +213,18 @@ uint64_t Page::freeSpace(bool exclude) {
     return 0;
   }
   return header.tail() - header.size();
+}
+
+void Page::setNextPageId(PageId pageId) {
+  header.nextPageId = pageId;
+  // Notify observers of modification
+  notifyObservers();
+}
+
+void Page::setPrevPageId(PageId pageId) {
+  header.prevPageId = pageId;
+  // Notify observers of modification
+  notifyObservers();
 }
 
 RecordBlock &Page::getRecordBlock(Transaction &txn, PageSlotId slotId) {
@@ -221,6 +243,10 @@ Page::addRecordBlock(Transaction &txn, RecordBlock &recordBlock) {
   // Insert record block at slot
   auto inserted = recordBlocks.insert(
       std::pair<PageSlotId, RecordBlock>(slotId, recordBlock));
+  // Stage current page
+  txn.stage(header.pageId);
+  // Notify observers of modification
+  notifyObservers();
 
   return std::pair<PageSlotId, RecordBlock *>(slotId, &inserted.first->second);
 }
@@ -231,6 +257,10 @@ void Page::updateRecordBlock(Transaction &txn, PageSlotId slotId,
   header.updateSlot(slotId, recordBlock.size());
   // Update record block at slot
   recordBlocks.at(slotId) = std::move(recordBlock);
+  // Stage current page
+  txn.stage(header.pageId);
+  // Notify observers of modification
+  notifyObservers();
 }
 
 void Page::removeRecordBlock(Transaction &txn, PageSlotId slotId) {
@@ -243,6 +273,10 @@ void Page::removeRecordBlock(Transaction &txn, PageSlotId slotId) {
   header.freeSlot(slotId);
   // Removing record block from cache
   recordBlocks.erase(it);
+  // Stage current page
+  txn.stage(header.pageId);
+  // Notify observers of modification
+  notifyObservers();
 }
 
 void Page::load(Span input) {

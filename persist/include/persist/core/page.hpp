@@ -26,6 +26,7 @@
 #define PAGE_HPP
 
 #include <cstdint>
+#include <list>
 #include <map>
 #include <unordered_map>
 
@@ -34,6 +35,21 @@
 #include <persist/core/transaction.hpp>
 
 namespace persist {
+
+/**
+ * @brief Page Observer
+ *
+ * Observes modification on page.
+ */
+class PageObserver {
+public:
+  /**
+   * @brief Handle page modification.
+   *
+   * @param pageId ID of the page modified
+   */
+  virtual void handleModifiedPage(PageId pageId) = 0;
+};
 
 /**
  * Page Class
@@ -213,13 +229,29 @@ public:
   typedef std::unordered_map<PageSlotId, RecordBlock> RecordBlockMap;
   RecordBlockMap recordBlocks;
 
+  /**
+   * @brief List of registered page modification observers
+   */
+  std::list<PageObserver *> observers;
+
+  /**
+   * @brief Notify all registered observers of page modification.
+   */
+  void notifyObservers();
+
 public:
   /**
    * Constructors
    */
   Page() {}
-  Page(PageId pageId) : header(pageId) {}
-  Page(PageId pageId, uint64_t pageSize);
+  Page(PageId pageId, uint64_t pageSize = DEFAULT_PAGE_SIZE);
+
+  /**
+   * @brief Register page modification observer
+   *
+   * @param observer pointer to page modication observer
+   */
+  void registerObserver(PageObserver *observer);
 
   /**
    * Get block ID.
@@ -242,7 +274,7 @@ public:
    *
    * @param pageId next page ID value to set
    */
-  void setNextPageId(PageId pageId) { header.nextPageId = pageId; }
+  void setNextPageId(PageId pageId);
 
   /**
    * Get previous page ID. This is the ID for the previous page when there is
@@ -258,7 +290,7 @@ public:
    *
    * @param pageId previous page ID value to set
    */
-  void setPrevPageId(PageId pageId) { header.prevPageId = pageId; }
+  void setPrevPageId(PageId pageId);
 
   /**
    * Get free space in bytes available in the block.
@@ -287,8 +319,8 @@ public:
    * @returns page slot ID where record block is stored and pointer to stored
    * record block
    */
-  std::pair<PageSlotId, RecordBlock *>
-  addRecordBlock(Transaction &txn, RecordBlock &recordBlock);
+  std::pair<PageSlotId, RecordBlock *> addRecordBlock(Transaction &txn,
+                                                      RecordBlock &recordBlock);
 
   /**
    * Update record block in the page.

@@ -72,10 +72,6 @@ ListRecordManager::_insert(Transaction &txn, Span span,
     inserted.second->prevLocation().pageId = prevLocation->pageId;
     inserted.second->prevLocation().slotId = prevLocation->slotId;
 
-    // Stage page for commit
-    txn.stage(pageId);
-    pageTable.mark(pageId);
-
     // Update previous record block and location pointers
     prevLocation = &prevRecordBlock->nextLocation();
     prevRecordBlock = inserted.second;
@@ -104,8 +100,6 @@ void ListRecordManager::_remove(Transaction &txn,
       removeLocation = recordBlock.nextLocation();
       // Remove record block
       page.removeRecordBlock(txn, slotId);
-      txn.stage(pageId);
-      pageTable.mark(pageId);
     }
   } catch (NotFoundException &err) {
     // If a not found exception is thrown for the starting record block then
@@ -226,10 +220,6 @@ void ListRecordManager::update(Transaction &txn, ByteBuffer &buffer,
       recordBlock.prevLocation() = recordBlockPtr->prevLocation();
       // Update page
       page.updateRecordBlock(txn, updateLocation.slotId, recordBlock);
-
-      // Stage page for commit
-      txn.stage(updateLocation.pageId);
-      pageTable.mark(updateLocation.pageId);
 
       // Update location to next block
       updateLocation = recordBlockPtr->nextLocation();
