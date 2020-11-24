@@ -46,8 +46,8 @@ namespace persist {
  * Records used to store operations performed by transactions.
  */
 class LogRecord {
-  friend class LogManager;  // forward declared
-  friend class Transaction; // forward declared
+  friend class LogManager;         // forward declared
+  friend class TransactionManager; // forward declared
 
 public:
   /**
@@ -64,7 +64,7 @@ public:
 
     /**
      * @brief Previous record sequence number with valid values greater than
-     * `1`. For the first record this is set to `0`.
+     * `1`. For the first record of a transaction this is set to `0`.
      */
     SeqNumber prevSeqNumber;
 
@@ -99,6 +99,24 @@ public:
      * @param output output buffer span to dump
      */
     void dump(Span output);
+
+    /**
+     * @brief Equality comparision operator.
+     */
+    bool operator==(const Header &other) const {
+      return seqNumber == other.seqNumber &&
+             prevSeqNumber == other.prevSeqNumber &&
+             transactionId == other.transactionId && checksum == other.checksum;
+    }
+
+    /**
+     * @brief Non-equality comparision operator.
+     */
+    bool operator!=(const Header &other) const {
+      return seqNumber != other.seqNumber ||
+             prevSeqNumber != other.prevSeqNumber ||
+             transactionId != other.transactionId || checksum != other.checksum;
+    }
 
 #ifdef __PERSIST_DEBUG__
     /**
@@ -207,15 +225,34 @@ public:
    */
   void dump(Span output);
 
+  /**
+   * @brief Equality comparision operator.
+   */
+  bool operator==(const LogRecord &other) const {
+    return header == other.header && type == other.type &&
+           location == other.location && recordBlockA == other.recordBlockA &&
+           recordBlockB == other.recordBlockB;
+  }
+
+  /**
+   * @brief Non-equality comparision operator.
+   */
+  bool operator!=(const LogRecord &other) const {
+    return header != other.header || type != other.type ||
+           location != other.location || recordBlockA != other.recordBlockA ||
+           recordBlockB != other.recordBlockB;
+  }
+
 #ifdef __PERSIST_DEBUG__
   /**
    * @brief Write log record to output stream
    */
   friend std::ostream &operator<<(std::ostream &os,
                                   const LogRecord &logRecord) {
-    os << "[" << logRecord.header << ", " << uint64_t(logRecord.type) << ", "
-       << logRecord.location << ", " << logRecord.recordBlockA << ", "
-       << logRecord.recordBlockB << "]";
+    os << logRecord.header << "\nType: " << uint64_t(logRecord.type)
+       << "\nLocation: " << logRecord.location << "\nRecord A: \n"
+       << logRecord.recordBlockA << "\nRecord B: \n"
+       << logRecord.recordBlockB;
     return os;
   }
 #endif

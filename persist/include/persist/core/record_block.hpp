@@ -149,6 +149,22 @@ public:
      */
     void dump(Span output);
 
+    /**
+     * @brief Equality comparision operator.
+     */
+    bool operator==(const Header &other) const {
+      return nextLocation == other.nextLocation &&
+             prevLocation == other.prevLocation && checksum == other.checksum;
+    }
+
+    /**
+     * @brief Non-equality comparision operator.
+     */
+    bool operator!=(const Header &other) const {
+      return nextLocation != other.nextLocation ||
+             prevLocation != other.prevLocation || checksum != other.checksum;
+    }
+
 #ifdef __PERSIST_DEBUG__
     /**
      * @brief Write record block header to output stream
@@ -216,6 +232,20 @@ public:
    * @param output output buffer span to dump
    */
   void dump(Span output);
+
+  /**
+   * @brief Equality comparision operator.
+   */
+  bool operator==(const RecordBlock &other) const {
+    return header == other.header && data == other.data;
+  }
+
+  /**
+   * @brief Non-equality comparision operator.
+   */
+  bool operator!=(const RecordBlock &other) const {
+    return header != other.header || data != other.data;
+  }
 
 #ifdef __PERSIST_DEBUG__
   /**

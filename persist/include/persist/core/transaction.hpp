@@ -76,7 +76,8 @@ public:
   std::set<PageId> staged;
 
   /**
-   * @brief Sequence number of the latest log record in the transaction.
+   * @brief Sequence number of the latest log record in the transaction. This
+   * used to set the previous sequence number in the next log record.
    */
   SeqNumber seqNumber;
 

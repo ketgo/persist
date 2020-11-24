@@ -32,12 +32,38 @@ Transaction TransactionManager::begin() {
   return Transaction(logManager, uuid::generate(), Transaction::State::GROWING);
 }
 
+void TransactionManager::undo(Transaction &txn, LogRecord &logRecord) {
+  Page *page;
+  switch (logRecord.type) {
+  case LogRecord::Type::INSERT:
+    page = &pageTable.get(logRecord.location.pageId);
+    page->removeRecordBlock(txn, logRecord.location.slotId);
+    break;
+  case LogRecord::Type::DELETE:
+    page = &pageTable.get(logRecord.location.pageId);
+    page->undoRemoveRecordBlock(txn, logRecord.location.slotId,
+                                logRecord.recordBlockA);
+    break;
+  case LogRecord::Type::UPDATE:
+    page = &pageTable.get(logRecord.location.pageId);
+    page->updateRecordBlock(txn, logRecord.location.slotId,
+                            logRecord.recordBlockB);
+    break;
+  default:
+    break;
+  }
+}
+
 void TransactionManager::abort(Transaction &txn) {
   // Abort transaction if not in completed state, i.e. COMMITED or
   // ABORTED.
   if (txn.state != Transaction::State::COMMITED &&
       txn.state != Transaction::State::ABORTED) {
-    // TODO: Rollback transition
+    LogRecord *logRecord = &logManager.get(txn.getSeqNumber());
+    while (logRecord->header.prevSeqNumber) {
+      logRecord = &logManager.get(logRecord->header.prevSeqNumber);
+      undo(txn, *logRecord);
+    }
   }
 }
 

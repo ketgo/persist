@@ -341,6 +341,16 @@ public:
   void removeRecordBlock(Transaction &txn, PageSlotId slotId);
 
   /**
+   * Undo remove RecordBlock object at given slot.
+   *
+   * @param txn reference to active transaction
+   * @param slotId slot identifier
+   * @param recordBlock removed record block to add back to page
+   */
+  void undoRemoveRecordBlock(Transaction &txn, PageSlotId slotId,
+                             RecordBlock &recordBlock);
+
+  /**
    * Load Block object from byte string.
    *
    * @param input input buffer span to load

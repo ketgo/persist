@@ -49,6 +49,15 @@ class TransactionManager {
    */
   LogManager &logManager;
 
+  /**
+   * @brief Undo operation specified in the log record as part of transaction
+   * abort.
+   *
+   * @param txn reference to the transaction for which to perfrom undo
+   * @param logRecord log record containing operation information
+   */
+  void undo(Transaction &txn, LogRecord &logRecord);
+
 public:
   /**
    * @brief Construct a new Transaction Manager object

@@ -57,7 +57,7 @@ public:
    *
    * TODO: Obtain sequence number from log records backend storage
    */
-  LogManager() : seqNumber(1) {}
+  LogManager() : seqNumber(0) {}
 
   /**
    * @brief Add log record to transaction logs
@@ -74,6 +74,13 @@ public:
    * @returns reference to the log record
    */
   LogRecord &get(SeqNumber seqNumber);
+
+  /**
+   * @brief Get sequence number.
+   *
+   * @returns sequence number in the log
+   */
+  SeqNumber getSeqNumber() { return seqNumber; }
 };
 
 } // namespace persist

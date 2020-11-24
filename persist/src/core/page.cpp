@@ -26,6 +26,8 @@
  * Page Implementation
  */
 
+#include <iostream>
+
 #include <cstring>
 
 #include <persist/core/exceptions.hpp>
@@ -248,6 +250,13 @@ Page::addRecordBlock(Transaction &txn, RecordBlock &recordBlock) {
   // Notify observers of modification
   notifyObservers();
 
+  // Log insert operation
+  LogRecord logRecord(txn.getId(), txn.getSeqNumber(), LogRecord::Type::INSERT,
+                      RecordBlock::Location(header.pageId, slotId),
+                      recordBlocks.at(slotId));
+  SeqNumber seqNumber = txn.getLogManager().add(logRecord);
+  txn.setSeqNumber(seqNumber);
+
   return std::pair<PageSlotId, RecordBlock *>(slotId, &inserted.first->second);
 }
 
@@ -256,11 +265,19 @@ void Page::updateRecordBlock(Transaction &txn, PageSlotId slotId,
   // Update slot for record block
   header.updateSlot(slotId, recordBlock.size());
   // Update record block at slot
+  RecordBlock oldRecordBlock = recordBlocks.at(slotId);
   recordBlocks.at(slotId) = std::move(recordBlock);
   // Stage current page
   txn.stage(header.pageId);
   // Notify observers of modification
   notifyObservers();
+
+  // Log update operation
+  LogRecord logRecord(txn.getId(), txn.getSeqNumber(), LogRecord::Type::UPDATE,
+                      RecordBlock::Location(header.pageId, slotId),
+                      oldRecordBlock, recordBlocks.at(slotId));
+  SeqNumber seqNumber = txn.getLogManager().add(logRecord);
+  txn.setSeqNumber(seqNumber);
 }
 
 void Page::removeRecordBlock(Transaction &txn, PageSlotId slotId) {
@@ -269,6 +286,7 @@ void Page::removeRecordBlock(Transaction &txn, PageSlotId slotId) {
   if (it == recordBlocks.end()) {
     throw RecordBlockNotFoundError(header.pageId, slotId);
   }
+  RecordBlock recordBlock = recordBlocks.at(slotId);
   // Adjusting header
   header.freeSlot(slotId);
   // Removing record block from cache
@@ -277,6 +295,32 @@ void Page::removeRecordBlock(Transaction &txn, PageSlotId slotId) {
   txn.stage(header.pageId);
   // Notify observers of modification
   notifyObservers();
+
+  // Log delete operation
+  LogRecord logRecord(txn.getId(), txn.getSeqNumber(), LogRecord::Type::DELETE,
+                      RecordBlock::Location(header.pageId, slotId),
+                      recordBlock);
+  SeqNumber seqNumber = txn.getLogManager().add(logRecord);
+  txn.setSeqNumber(seqNumber);
+}
+
+void Page::undoRemoveRecordBlock(Transaction &txn, PageSlotId slotId,
+                                 RecordBlock &recordBlock) {
+  // Update slot for record block
+  header.updateSlot(slotId, recordBlock.size());
+  // Update record block at slot
+  recordBlocks.at(slotId) = std::move(recordBlock);
+  // Stage current page
+  txn.stage(header.pageId);
+  // Notify observers of modification
+  notifyObservers();
+
+  // Log insert operation
+  LogRecord logRecord(txn.getId(), txn.getSeqNumber(), LogRecord::Type::INSERT,
+                      RecordBlock::Location(header.pageId, slotId),
+                      recordBlocks.at(slotId));
+  SeqNumber seqNumber = txn.getLogManager().add(logRecord);
+  txn.setSeqNumber(seqNumber);
 }
 
 void Page::load(Span input) {
