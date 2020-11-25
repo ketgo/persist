@@ -29,7 +29,10 @@
 namespace persist {
 
 Transaction TransactionManager::begin() {
-  return Transaction(logManager, uuid::generate(), Transaction::State::GROWING);
+  Transaction txn(logManager, uuid::generate(), Transaction::State::GROWING);
+  logBegin(txn);
+
+  return txn;
 }
 
 void TransactionManager::undo(Transaction &txn, LogRecord &logRecord) {
@@ -59,11 +62,14 @@ void TransactionManager::abort(Transaction &txn) {
   // ABORTED.
   if (txn.state != Transaction::State::COMMITED &&
       txn.state != Transaction::State::ABORTED) {
-    LogRecord *logRecord = &logManager.get(txn.getSeqNumber());
+    logAbort(txn);
+    LogRecord *logRecord = &logManager.get(txn.prevSeqNumber);
     while (logRecord->header.prevSeqNumber) {
       logRecord = &logManager.get(logRecord->header.prevSeqNumber);
       undo(txn, *logRecord);
     }
+    txn.state = Transaction::State::ABORTED;
+    logDone(txn);
   }
 }
 
@@ -73,10 +79,12 @@ void TransactionManager::commit(Transaction &txn) {
   if (txn.state != Transaction::State::COMMITED &&
       txn.state != Transaction::State::ABORTED) {
     txn.state = Transaction::State::COMMITED;
+    logCommit(txn);
     // Flush all staged pages
     for (auto pageId : txn.staged) {
       pageTable.flush(pageId);
     }
+    logDone(txn);
   }
 }
 

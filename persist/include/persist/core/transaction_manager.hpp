@@ -50,6 +50,50 @@ class TransactionManager {
   LogManager &logManager;
 
   /**
+   * @brief Log transaction begin.
+   *
+   * @param txn reference to the new transaction
+   */
+  void logBegin(Transaction &txn) {
+    // Log record for starting transaction
+    LogRecord logRecord(txn.id, txn.prevSeqNumber, LogRecord::Type::BEGIN);
+    txn.prevSeqNumber = logManager.add(logRecord);
+  }
+
+  /**
+   * @brief Log transaction abort.
+   *
+   * @param txn reference to the aborted transaction
+   */
+  void logAbort(Transaction &txn) {
+    // Log record for transaction abortion
+    LogRecord logRecord(txn.id, txn.prevSeqNumber, LogRecord::Type::ABORT);
+    txn.prevSeqNumber = logManager.add(logRecord);
+  }
+
+  /**
+   * @brief Log transaction commit operation.
+   *
+   * @param txn reference to the committed transaction
+   */
+  void logCommit(Transaction &txn) {
+    // Log record for commit operation
+    LogRecord logRecord(txn.id, txn.prevSeqNumber, LogRecord::Type::COMMIT);
+    txn.prevSeqNumber = logManager.add(logRecord);
+  }
+
+  /**
+   * @brief Log transaction completion.
+   *
+   * @param txn reference to the completion of transaction
+   */
+  void logDone(Transaction &txn) {
+    // Log record for transaction completion
+    LogRecord logRecord(txn.id, txn.prevSeqNumber, LogRecord::Type::DONE);
+    txn.prevSeqNumber = logManager.add(logRecord);
+  }
+
+  /**
    * @brief Undo operation specified in the log record as part of transaction
    * abort.
    *

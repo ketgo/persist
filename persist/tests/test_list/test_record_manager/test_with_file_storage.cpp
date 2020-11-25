@@ -51,19 +51,18 @@ private:
   public:
     ListRecordManager &manager;
     TransactionManager &txnManager;
+    Transaction txn;
 
     WrappedListRecordManager(ListRecordManager &manager,
                              TransactionManager &txnManager)
-        : manager(manager), txnManager(txnManager) {}
+        : manager(manager), txnManager(txnManager), txn(txnManager.begin()) {}
 
     void get(ByteBuffer &buffer, RecordLocation location) {
-      Transaction txn = txnManager.begin();
       manager.get(txn, buffer, location);
       txnManager.commit(txn);
     }
 
     RecordLocation insert(ByteBuffer &buffer) {
-      Transaction txn = txnManager.begin();
       RecordLocation location = manager.insert(txn, buffer);
       txnManager.commit(txn);
 
@@ -71,13 +70,11 @@ private:
     }
 
     void update(ByteBuffer &buffer, RecordLocation location) {
-      Transaction txn = txnManager.begin();
       manager.update(txn, buffer, location);
       txnManager.commit(txn);
     }
 
     void remove(RecordLocation location) {
-      Transaction txn = txnManager.begin();
       manager.remove(txn, location);
       txnManager.commit(txn);
     }
@@ -239,6 +236,22 @@ TEST_F(ListRecordManagerWithFileStorageTestFixture,
        TestInsertAndGetMultiRecordBlock) {
   ByteBuffer input(2 * pageSize + 100, 'A');
   RecordBlock::Location location = manager->insert(input);
+
+  Transaction &txn = manager->txn;
+  std::vector<LogRecord> logRecords;
+  SeqNumber seqNumber = txn.prevSeqNumber;
+  while (seqNumber) {
+    logRecords.push_back(logManager->get(seqNumber));
+    ASSERT_EQ(logRecords.back().header.seqNumber, seqNumber);
+    seqNumber = logRecords.back().header.prevSeqNumber;
+  }
+  ASSERT_EQ(logRecords.size(), 6);
+  ASSERT_EQ(logRecords[5].type, LogRecord::Type::BEGIN);
+  for (int i = 4; i > 1; i--) {
+    ASSERT_EQ(logRecords[i].type, LogRecord::Type::INSERT);
+  }
+  ASSERT_EQ(logRecords[1].type, LogRecord::Type::COMMIT);
+  ASSERT_EQ(logRecords[0].type, LogRecord::Type::DONE);
 
   ByteBuffer output;
   manager->get(output, location);

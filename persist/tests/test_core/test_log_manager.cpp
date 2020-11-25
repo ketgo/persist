@@ -58,3 +58,7 @@ TEST_F(LogManagerTestFixture, TestAddAndGet) {
   logManager->add(logRecord);
   ASSERT_EQ(logManager->get(startSeqNumber), logRecord);
 }
+
+TEST_F(LogManagerTestFixture, TestGetSeqNumber) {
+  ASSERT_EQ(logManager->getSeqNumber(), 0);
+}

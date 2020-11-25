@@ -251,11 +251,8 @@ Page::addRecordBlock(Transaction &txn, RecordBlock &recordBlock) {
   notifyObservers();
 
   // Log insert operation
-  LogRecord logRecord(txn.getId(), txn.getSeqNumber(), LogRecord::Type::INSERT,
-                      RecordBlock::Location(header.pageId, slotId),
-                      recordBlocks.at(slotId));
-  SeqNumber seqNumber = txn.getLogManager().add(logRecord);
-  txn.setSeqNumber(seqNumber);
+  RecordBlock::Location location(header.pageId, slotId);
+  txn.logInsertOp(location, recordBlocks.at(slotId));
 
   return std::pair<PageSlotId, RecordBlock *>(slotId, &inserted.first->second);
 }
@@ -273,11 +270,8 @@ void Page::updateRecordBlock(Transaction &txn, PageSlotId slotId,
   notifyObservers();
 
   // Log update operation
-  LogRecord logRecord(txn.getId(), txn.getSeqNumber(), LogRecord::Type::UPDATE,
-                      RecordBlock::Location(header.pageId, slotId),
-                      oldRecordBlock, recordBlocks.at(slotId));
-  SeqNumber seqNumber = txn.getLogManager().add(logRecord);
-  txn.setSeqNumber(seqNumber);
+  RecordBlock::Location location(header.pageId, slotId);
+  txn.logUpdateOp(location, oldRecordBlock, recordBlocks.at(slotId));
 }
 
 void Page::removeRecordBlock(Transaction &txn, PageSlotId slotId) {
@@ -297,11 +291,8 @@ void Page::removeRecordBlock(Transaction &txn, PageSlotId slotId) {
   notifyObservers();
 
   // Log delete operation
-  LogRecord logRecord(txn.getId(), txn.getSeqNumber(), LogRecord::Type::DELETE,
-                      RecordBlock::Location(header.pageId, slotId),
-                      recordBlock);
-  SeqNumber seqNumber = txn.getLogManager().add(logRecord);
-  txn.setSeqNumber(seqNumber);
+  RecordBlock::Location location(header.pageId, slotId);
+  txn.logDeleteOp(location, recordBlock);
 }
 
 void Page::undoRemoveRecordBlock(Transaction &txn, PageSlotId slotId,
@@ -316,11 +307,8 @@ void Page::undoRemoveRecordBlock(Transaction &txn, PageSlotId slotId,
   notifyObservers();
 
   // Log insert operation
-  LogRecord logRecord(txn.getId(), txn.getSeqNumber(), LogRecord::Type::INSERT,
-                      RecordBlock::Location(header.pageId, slotId),
-                      recordBlocks.at(slotId));
-  SeqNumber seqNumber = txn.getLogManager().add(logRecord);
-  txn.setSeqNumber(seqNumber);
+  RecordBlock::Location location(header.pageId, slotId);
+  txn.logInsertOp(location, recordBlocks.at(slotId));
 }
 
 void Page::load(Span input) {

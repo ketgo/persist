@@ -45,6 +45,7 @@ namespace persist {
  * beenrestored to its state prior to the start of the transaction.
  */
 class Transaction {
+  friend class Page;
   friend class TransactionManager;
 
 public:
@@ -79,7 +80,56 @@ public:
    * @brief Sequence number of the latest log record in the transaction. This
    * used to set the previous sequence number in the next log record.
    */
-  SeqNumber seqNumber;
+  SeqNumber prevSeqNumber;
+
+  /**
+   * @brief Log INSERT operation.
+   *
+   * @param location location where record is inserted
+   * @param recordBlock record block inserted
+   */
+  void logInsertOp(RecordBlock::Location &location, RecordBlock &recordBlock) {
+    // Log record for insert operation
+    LogRecord logRecord(id, prevSeqNumber, LogRecord::Type::INSERT, location,
+                        recordBlock);
+    prevSeqNumber = logManager.add(logRecord);
+  }
+
+  /**
+   * @brief Log UPDATE operation.
+   *
+   * @param location location where record is located
+   * @param oldRecordBlock old record block
+   * @param newRecordBlock new record block
+   */
+  void logUpdateOp(RecordBlock::Location &location, RecordBlock &oldRecordBlock,
+                   RecordBlock &newRecordBlock) {
+    // Log record for update operation
+    LogRecord logRecord(id, prevSeqNumber, LogRecord::Type::UPDATE, location,
+                        oldRecordBlock, newRecordBlock);
+    prevSeqNumber = logManager.add(logRecord);
+  }
+
+  /**
+   * @brief Log DELETE operation.
+   *
+   * @param location location where record is located
+   * @param recordBlock record block deleted
+   */
+  void logDeleteOp(RecordBlock::Location &location, RecordBlock &recordBlock) {
+    // Log record for delete operation
+    LogRecord logRecord(id, prevSeqNumber, LogRecord::Type::DELETE, location,
+                        recordBlock);
+    prevSeqNumber = logManager.add(logRecord);
+  }
+
+  /**
+   * Stage the page with given ID for commit. This adds the page ID to the
+   * stage list and marks the corresponding page as modified.
+   *
+   * @param pageId page identifier
+   */
+  void stage(PageId pageId) { staged.insert(pageId); }
 
 public:
   /**
@@ -90,15 +140,7 @@ public:
    * @param state transaction state
    */
   Transaction(LogManager &logManager, uint64_t id, State state = State::GROWING)
-      : logManager(logManager), id(id), state(state), seqNumber(0) {}
-
-  /**
-   * Stage the page with given ID for commit. This adds the page ID to the
-   * stage list and marks the corresponding page as modified.
-   *
-   * @param pageId page identifier
-   */
-  void stage(PageId pageId) { staged.insert(pageId); }
+      : logManager(logManager), id(id), state(state), prevSeqNumber(0) {}
 
   /**
    * @brief Get the transaction ID
@@ -113,25 +155,6 @@ public:
    * @returns transaction state
    */
   State getState() { return state; }
-
-  /**
-   * Get the latest log record sequence number for the transaction.
-   *
-   * @returns latest log record sequence number
-   */
-  SeqNumber getSeqNumber() { return seqNumber; }
-
-  /**
-   * Set the latest log record sequence number for the transaction.
-   *
-   * @param seqNumber sequence number to set
-   */
-  void setSeqNumber(SeqNumber seqNumber) { this->seqNumber = seqNumber; }
-
-  /**
-   * @brief Get the Log Manager for the transaction
-   */
-  LogManager &getLogManager() { return logManager; }
 
   /**
    * @brief Equality comparision operator.

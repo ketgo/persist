@@ -240,17 +240,19 @@ TEST_F(PageTestFixture, TestAddRecordBlock) {
   uint64_t oldFreeSpace = page->freeSpace(true);
   Transaction txn(*logManager, 0);
   PageSlotId slotId = page->addRecordBlock(txn, recordBlock).first;
-  uint64_t newFreeSize = page->freeSpace();
-  ASSERT_EQ(oldFreeSpace - newFreeSize, recordBlock.size());
 
-  LogRecord logRecord = logManager->get(txn.getSeqNumber());
+  LogRecord logRecord = logManager->get(txn.prevSeqNumber);
   ASSERT_EQ(logRecord.header.transactionId, txn.getId());
-  ASSERT_EQ(logRecord.header.seqNumber, txn.getSeqNumber());
+  ASSERT_EQ(logRecord.header.seqNumber, txn.prevSeqNumber);
   ASSERT_EQ(logRecord.header.prevSeqNumber, 0);
   ASSERT_EQ(logRecord.type, LogRecord::Type::INSERT);
   ASSERT_EQ(logRecord.location, RecordBlock::Location(page->getId(), slotId));
   ASSERT_EQ(logRecord.recordBlockA, recordBlock);
   ASSERT_EQ(logRecord.recordBlockB, RecordBlock());
+
+  uint64_t newFreeSize = page->freeSpace();
+  ASSERT_EQ(oldFreeSpace - newFreeSize, recordBlock.size());
+  ASSERT_EQ(page->getRecordBlock(txn, slotId), recordBlock);
 }
 
 TEST_F(PageTestFixture, TestUpdateRecordBlock) {
@@ -264,20 +266,22 @@ TEST_F(PageTestFixture, TestUpdateRecordBlock) {
   uint64_t oldFreeSpace = page->freeSpace();
   Transaction txn(*logManager, 0);
   page->updateRecordBlock(txn, slotId_1, recordBlock);
-  uint64_t newFreeSize = page->freeSpace();
-  RecordBlock recordBlock_;
-  recordBlock_.data = "testing_1-update"_bb;
-  ASSERT_EQ(oldFreeSpace - newFreeSize,
-            recordBlock_.size() - recordBlock_1->size());
 
-  LogRecord logRecord = logManager->get(txn.getSeqNumber());
+  LogRecord logRecord = logManager->get(txn.prevSeqNumber);
   ASSERT_EQ(logRecord.header.transactionId, txn.getId());
-  ASSERT_EQ(logRecord.header.seqNumber, txn.getSeqNumber());
+  ASSERT_EQ(logRecord.header.seqNumber, txn.prevSeqNumber);
   ASSERT_EQ(logRecord.header.prevSeqNumber, 0);
   ASSERT_EQ(logRecord.type, LogRecord::Type::UPDATE);
   ASSERT_EQ(logRecord.location, RecordBlock::Location(page->getId(), slotId_1));
   ASSERT_EQ(logRecord.recordBlockA, *recordBlock_1);
   ASSERT_EQ(logRecord.recordBlockB, recordBlockCopy);
+
+  uint64_t newFreeSize = page->freeSpace();
+  RecordBlock recordBlock_;
+  recordBlock_.data = "testing_1-update"_bb;
+  ASSERT_EQ(oldFreeSpace - newFreeSize,
+            recordBlock_.size() - recordBlock_1->size());
+  ASSERT_EQ(page->getRecordBlock(txn, slotId_1), recordBlockCopy);
 }
 
 TEST_F(PageTestFixture, TestRemoveRecordBlock) {
@@ -286,19 +290,20 @@ TEST_F(PageTestFixture, TestRemoveRecordBlock) {
   uint64_t oldFreeSpace = page->freeSpace();
   Transaction txn(*logManager, 0);
   page->removeRecordBlock(txn, slotId_2);
-  uint64_t newFreeSize = page->freeSpace();
-  ASSERT_THROW(page->getRecordBlock(txn, slotId_2), RecordBlockNotFoundError);
-  ASSERT_EQ(newFreeSize - oldFreeSpace,
-            recordBlock_2->size() + sizeof(Page::Header::Slot));
 
-  LogRecord logRecord = logManager->get(txn.getSeqNumber());
+  LogRecord logRecord = logManager->get(txn.prevSeqNumber);
   ASSERT_EQ(logRecord.header.transactionId, txn.getId());
-  ASSERT_EQ(logRecord.header.seqNumber, txn.getSeqNumber());
+  ASSERT_EQ(logRecord.header.seqNumber, txn.prevSeqNumber);
   ASSERT_EQ(logRecord.header.prevSeqNumber, 0);
   ASSERT_EQ(logRecord.type, LogRecord::Type::DELETE);
   ASSERT_EQ(logRecord.location, RecordBlock::Location(page->getId(), slotId_2));
   ASSERT_EQ(logRecord.recordBlockA, *recordBlock_2);
   ASSERT_EQ(logRecord.recordBlockB, RecordBlock());
+
+  uint64_t newFreeSize = page->freeSpace();
+  ASSERT_THROW(page->getRecordBlock(txn, slotId_2), RecordBlockNotFoundError);
+  ASSERT_EQ(newFreeSize - oldFreeSpace,
+            recordBlock_2->size() + sizeof(Page::Header::Slot));
 }
 
 TEST_F(PageTestFixture, TestRemoveRecordBlockError) {
