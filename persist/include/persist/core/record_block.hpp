@@ -154,7 +154,7 @@ public:
      */
     bool operator==(const Header &other) const {
       return nextLocation == other.nextLocation &&
-             prevLocation == other.prevLocation && checksum == other.checksum;
+             prevLocation == other.prevLocation;
     }
 
     /**

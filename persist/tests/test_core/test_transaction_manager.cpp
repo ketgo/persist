@@ -30,6 +30,11 @@
 
 #include <memory>
 
+/**
+ * Enabled intrusive testing
+ */
+#define PERSIST_INTRUSIVE_TESTING
+
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
 #include <persist/core/page_table.hpp>
@@ -65,4 +70,79 @@ protected:
   }
 };
 
-TEST_F(TransactionManagerTestFixture, TestBegin) {}
+TEST_F(TransactionManagerTestFixture, TestBegin) {
+  Transaction txn = txnManager->begin();
+  std::vector<LogRecord> logRecords;
+  SeqNumber seqNumber = txn.prevSeqNumber;
+  while (seqNumber) {
+    logRecords.push_back(logManager->get(seqNumber));
+    ASSERT_EQ(logRecords.back().header.seqNumber, seqNumber);
+    seqNumber = logRecords.back().header.prevSeqNumber;
+  }
+  ASSERT_EQ(logRecords.size(), 1);
+  ASSERT_EQ(logRecords.back().type, LogRecord::Type::BEGIN);
+}
+
+TEST_F(TransactionManagerTestFixture, TestCommit) {
+  Transaction txn = txnManager->begin();
+  Page &page = pageTable->getNew();
+  RecordBlock recordBlock;
+  recordBlock.data = "testing"_bb;
+  auto inserted = page.addRecordBlock(txn, recordBlock);
+  txnManager->commit(txn);
+
+  ASSERT_EQ(pageTable->get(page.getId()).getRecordBlock(txn, inserted.first),
+            recordBlock);
+
+  std::vector<LogRecord> logRecords;
+  SeqNumber seqNumber = txn.prevSeqNumber;
+  while (seqNumber) {
+    logRecords.push_back(logManager->get(seqNumber));
+    ASSERT_EQ(logRecords.back().header.seqNumber, seqNumber);
+    seqNumber = logRecords.back().header.prevSeqNumber;
+  }
+  ASSERT_EQ(logRecords.size(), 4);
+  ASSERT_EQ(logRecords[3].type, LogRecord::Type::BEGIN);
+  ASSERT_EQ(logRecords[2].type, LogRecord::Type::INSERT);
+  ASSERT_EQ(logRecords[2].location,
+            RecordBlock::Location(page.getId(), inserted.first));
+  ASSERT_EQ(logRecords[2].recordBlockA, recordBlock);
+  ASSERT_EQ(logRecords[2].recordBlockB, RecordBlock());
+  ASSERT_EQ(logRecords[1].type, LogRecord::Type::COMMIT);
+  ASSERT_EQ(logRecords[0].type, LogRecord::Type::DONE);
+}
+
+TEST_F(TransactionManagerTestFixture, TestInsertAbort) {
+  Transaction txn = txnManager->begin();
+  Page &page = pageTable->getNew();
+  RecordBlock recordBlock;
+  recordBlock.data = "testing"_bb;
+  auto inserted = page.addRecordBlock(txn, recordBlock);
+  ASSERT_EQ(pageTable->get(page.getId()).getRecordBlock(txn, inserted.first),
+            recordBlock);
+  txnManager->abort(txn);
+  EXPECT_THROW(pageTable->get(page.getId()).getRecordBlock(txn, inserted.first),
+               RecordBlockNotFoundError);
+
+  std::vector<LogRecord> logRecords;
+  SeqNumber seqNumber = txn.prevSeqNumber;
+  while (seqNumber) {
+    logRecords.push_back(logManager->get(seqNumber));
+    ASSERT_EQ(logRecords.back().header.seqNumber, seqNumber);
+    seqNumber = logRecords.back().header.prevSeqNumber;
+  }
+  ASSERT_EQ(logRecords.size(), 5);
+  ASSERT_EQ(logRecords[4].type, LogRecord::Type::BEGIN);
+  ASSERT_EQ(logRecords[3].type, LogRecord::Type::INSERT);
+  ASSERT_EQ(logRecords[3].location,
+            RecordBlock::Location(page.getId(), inserted.first));
+  ASSERT_EQ(logRecords[3].recordBlockA, recordBlock);
+  ASSERT_EQ(logRecords[3].recordBlockB, RecordBlock());
+  ASSERT_EQ(logRecords[2].type, LogRecord::Type::ABORT);
+  ASSERT_EQ(logRecords[1].type, LogRecord::Type::DELETE);
+  ASSERT_EQ(logRecords[1].location,
+            RecordBlock::Location(page.getId(), inserted.first));
+  ASSERT_EQ(logRecords[1].recordBlockA, recordBlock);
+  ASSERT_EQ(logRecords[1].recordBlockB, RecordBlock());
+  ASSERT_EQ(logRecords[0].type, LogRecord::Type::DONE);
+}
