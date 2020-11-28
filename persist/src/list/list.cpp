@@ -71,13 +71,13 @@ List::Iterator::Iterator(List *list, RecordLocation location)
 }
 
 void List::Iterator::loadNode() {
-  if (!list->opened) {
+  if (!list->is_open()) {
     throw CollectionNotOpenError();
   } else if (location.isNull()) {
     node.record.clear();
   } else {
     ByteBuffer buffer;
-    list->manager.get(buffer, location);
+    list->get(buffer, location);
     node.load(buffer);
   }
 }

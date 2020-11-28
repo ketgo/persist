@@ -26,13 +26,30 @@
 #define PAGE_HPP
 
 #include <cstdint>
+#include <list>
 #include <map>
 #include <unordered_map>
 
 #include <persist/core/defs.hpp>
 #include <persist/core/record_block.hpp>
+#include <persist/core/transaction.hpp>
 
 namespace persist {
+
+/**
+ * @brief Page Observer
+ *
+ * Observes modification on page.
+ */
+class PageObserver {
+public:
+  /**
+   * @brief Handle page modification.
+   *
+   * @param pageId ID of the page modified
+   */
+  virtual void handleModifiedPage(PageId pageId) = 0;
+};
 
 /**
  * Page Class
@@ -117,13 +134,7 @@ public:
     /**
      * Constructors
      */
-    Header()
-        : pageId(0), nextPageId(0), prevPageId(0), pageSize(DEFAULT_PAGE_SIZE),
-          checksum(0) {}
-    Header(PageId pageId)
-        : pageId(pageId), nextPageId(0), prevPageId(0),
-          pageSize(DEFAULT_PAGE_SIZE), checksum(0) {}
-    Header(PageId pageId, uint64_t pageSize)
+    Header(PageId pageId = 0, uint64_t pageSize = DEFAULT_PAGE_SIZE)
         : pageId(pageId), nextPageId(0), prevPageId(0), pageSize(pageSize),
           checksum(0) {}
 
@@ -155,6 +166,17 @@ public:
      * @returns ID of the new slot
      */
     PageSlotId createSlot(uint64_t size);
+
+    /**
+     * Use up chunk of space of given size from the available free space in the
+     * Page. This operation allocates storage slot with given ID. In case a slot
+     * with given ID already exists then no operation is performed.
+     *
+     * @param slotId the slot ID to use when creating. By default set to 0 in
+     * which case an ID is generated.
+     * @param size amount of space in bytes to occupy
+     */
+    void createSlot(PageSlotId slotId, uint64_t size);
 
     /**
      * Update size of used chunk of space occupied by slot of given ID.
@@ -218,13 +240,29 @@ public:
   typedef std::unordered_map<PageSlotId, RecordBlock> RecordBlockMap;
   RecordBlockMap recordBlocks;
 
+  /**
+   * @brief List of registered page modification observers
+   */
+  std::list<PageObserver *> observers;
+
+  /**
+   * @brief Notify all registered observers of page modification.
+   */
+  void notifyObservers();
+
 public:
   /**
    * Constructors
    */
   Page() {}
-  Page(PageId pageId) : header(pageId) {}
-  Page(PageId pageId, uint64_t pageSize);
+  Page(PageId pageId, uint64_t pageSize = DEFAULT_PAGE_SIZE);
+
+  /**
+   * @brief Register page modification observer
+   *
+   * @param observer pointer to page modication observer
+   */
+  void registerObserver(PageObserver *observer);
 
   /**
    * Get block ID.
@@ -247,7 +285,7 @@ public:
    *
    * @param pageId next page ID value to set
    */
-  void setNextPageId(PageId pageId) { header.nextPageId = pageId; }
+  void setNextPageId(PageId pageId);
 
   /**
    * Get previous page ID. This is the ID for the previous page when there is
@@ -263,7 +301,7 @@ public:
    *
    * @param pageId previous page ID value to set
    */
-  void setPrevPageId(PageId pageId) { header.prevPageId = pageId; }
+  void setPrevPageId(PageId pageId);
 
   /**
    * Get free space in bytes available in the block.
@@ -278,33 +316,52 @@ public:
   /**
    * Get RecordBlock object at a given slot.
    *
+   * @param txn reference to active transaction
    * @param slotId slot identifier
    * @returns reference to RecordBlock object
    */
-  RecordBlock &getRecordBlock(PageSlotId slotId);
+  RecordBlock &getRecordBlock(Transaction &txn, PageSlotId slotId);
 
   /**
    * Add RecordBlock object to the page.
    *
+   * @param txn reference to active transaction
    * @param recordBlock RecordBlock object to be added
-   * @returns page slot ID where record block is stored
+   * @param pageSlotId the slot ID where to insert the record block. If set to 0
+   * then the record block is inserted at the back of all the slots.
+   * @returns page slot ID where record block is stored and pointer to stored
+   * record block
    */
-  PageSlotId addRecordBlock(RecordBlock &recordBlock);
+  std::pair<PageSlotId, RecordBlock *> addRecordBlock(Transaction &txn,
+                                                      RecordBlock &recordBlock);
 
   /**
    * Update record block in the page.
    *
+   * @param txn reference to active transaction
    * @param slotId slot ID of the record being updated
    * @param recordBlock updated record block
    */
-  void updateRecordBlock(PageSlotId slotId, RecordBlock &recordBlock);
+  void updateRecordBlock(Transaction &txn, PageSlotId slotId,
+                         RecordBlock &recordBlock);
 
   /**
    * Remove RecordBlock object at given slot.
    *
+   * @param txn reference to active transaction
    * @param slotId slot identifier
    */
-  void removeRecordBlock(PageSlotId slotId);
+  void removeRecordBlock(Transaction &txn, PageSlotId slotId);
+
+  /**
+   * Undo remove RecordBlock object at given slot.
+   *
+   * @param txn reference to active transaction
+   * @param slotId slot identifier
+   * @param recordBlock removed record block to add back to page
+   */
+  void undoRemoveRecordBlock(Transaction &txn, PageSlotId slotId,
+                             RecordBlock &recordBlock);
 
   /**
    * Load Block object from byte string.

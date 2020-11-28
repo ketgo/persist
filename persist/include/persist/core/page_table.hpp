@@ -52,7 +52,7 @@ namespace persist {
  * reading and writing modified pages to backend storage in compliance with LRU
  * page relplacement policy.
  */
-class PageTable {
+class PageTable : public PageObserver {
   PERSIST_PRIVATE
   /**
    * Page Slot Struct
@@ -150,6 +150,11 @@ public:
    * @param pageId page identifer
    */
   void flush(PageId pageId);
+
+  /**
+   * @brief Handle page modifications. This method marks the page with given ID.
+   */
+  void handleModifiedPage(PageId pageId) override;
 };
 
 } // namespace persist

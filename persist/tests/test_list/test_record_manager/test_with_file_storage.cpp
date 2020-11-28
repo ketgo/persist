@@ -37,8 +37,10 @@
 
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
+#include <persist/core/log_manager.hpp>
 #include <persist/core/page_table.hpp>
 #include <persist/core/storage/base.hpp>
+#include <persist/core/transaction_manager.hpp>
 #include <persist/list/record_manager.hpp>
 
 using namespace persist;
@@ -48,33 +50,33 @@ private:
   class WrappedListRecordManager {
   public:
     ListRecordManager &manager;
+    TransactionManager &txnManager;
+    Transaction txn;
 
-    WrappedListRecordManager(ListRecordManager &manager) : manager(manager) {}
+    WrappedListRecordManager(ListRecordManager &manager,
+                             TransactionManager &txnManager)
+        : manager(manager), txnManager(txnManager), txn(txnManager.begin()) {}
 
     void get(ByteBuffer &buffer, RecordLocation location) {
-      Transaction txn(manager.pageTable, 0);
       manager.get(txn, buffer, location);
-      txn.commit();
+      txnManager.commit(txn);
     }
 
     RecordLocation insert(ByteBuffer &buffer) {
-      Transaction txn(manager.pageTable, 0);
       RecordLocation location = manager.insert(txn, buffer);
-      txn.commit();
+      txnManager.commit(txn);
 
       return location;
     }
 
     void update(ByteBuffer &buffer, RecordLocation location) {
-      Transaction txn(manager.pageTable, 0);
       manager.update(txn, buffer, location);
-      txn.commit();
+      txnManager.commit(txn);
     }
 
     void remove(RecordLocation location) {
-      Transaction txn(manager.pageTable, 0);
       manager.remove(txn, location);
-      txn.commit();
+      txnManager.commit(txn);
     }
   };
 
@@ -86,14 +88,19 @@ protected:
   RecordBlock::Location locations[2];
   std::unique_ptr<Storage> storage;
   std::unique_ptr<PageTable> pageTable;
+  std::unique_ptr<LogManager> logManager;
+  std::unique_ptr<TransactionManager> txnManager;
   std::unique_ptr<ListRecordManager> listRecordManager;
   std::unique_ptr<WrappedListRecordManager> manager;
 
   void SetUp() override {
     storage = Storage::create(connetionString);
     pageTable = std::make_unique<PageTable>(*storage, maxSize);
+    logManager = std::make_unique<LogManager>();
+    txnManager = std::make_unique<TransactionManager>(*pageTable, *logManager);
     listRecordManager = std::make_unique<ListRecordManager>(*pageTable);
-    manager = std::make_unique<WrappedListRecordManager>(*listRecordManager);
+    manager = std::make_unique<WrappedListRecordManager>(*listRecordManager,
+                                                         *txnManager);
     insert();
     listRecordManager->start();
   }
@@ -109,6 +116,7 @@ private:
    */
   void insert() {
     storage->open();
+    Transaction txn = txnManager->begin();
 
     // Insert data
     MetaData metadata;
@@ -120,7 +128,7 @@ private:
       RecordBlock recordBlock;
       recordBlock.data = records[i];
       locations[i].pageId = pageId;
-      locations[i].slotId = page.addRecordBlock(recordBlock);
+      locations[i].slotId = page.addRecordBlock(txn, recordBlock).first;
       metadata.freePages.insert(pageId);
       storage->write(page);
     }
@@ -228,6 +236,22 @@ TEST_F(ListRecordManagerWithFileStorageTestFixture,
        TestInsertAndGetMultiRecordBlock) {
   ByteBuffer input(2 * pageSize + 100, 'A');
   RecordBlock::Location location = manager->insert(input);
+
+  Transaction &txn = manager->txn;
+  std::vector<LogRecord> logRecords;
+  SeqNumber seqNumber = txn.prevSeqNumber;
+  while (seqNumber) {
+    logRecords.push_back(logManager->get(seqNumber));
+    ASSERT_EQ(logRecords.back().header.seqNumber, seqNumber);
+    seqNumber = logRecords.back().header.prevSeqNumber;
+  }
+  ASSERT_EQ(logRecords.size(), 6);
+  ASSERT_EQ(logRecords[5].type, LogRecord::Type::BEGIN);
+  for (int i = 4; i > 1; i--) {
+    ASSERT_EQ(logRecords[i].type, LogRecord::Type::INSERT);
+  }
+  ASSERT_EQ(logRecords[1].type, LogRecord::Type::COMMIT);
+  ASSERT_EQ(logRecords[0].type, LogRecord::Type::DONE);
 
   ByteBuffer output;
   manager->get(output, location);

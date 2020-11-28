@@ -56,6 +56,7 @@ class List : public Collection<ListRecordManager> {
      * @brief Next linked node
      */
     RecordLocation next;
+  
     /**
      * @brief Previous linked node
      */

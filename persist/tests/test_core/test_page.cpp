@@ -26,6 +26,7 @@
  * Data Block Unit Tests
  */
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <memory>
@@ -37,9 +38,12 @@
 
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
+#include <persist/core/log_manager.hpp>
 #include <persist/core/page.hpp>
 
 using namespace persist;
+using ::testing::AtLeast;
+using ::testing::Return;
 
 TEST(DataBlockTest, PageSizeError) {
   try {
@@ -51,6 +55,11 @@ TEST(DataBlockTest, PageSizeError) {
     FAIL() << "Expected PageSizeError Exception.";
   }
 }
+
+class MockPageObserver : public PageObserver {
+public:
+  MOCK_METHOD(void, handleModifiedPage, (PageId pageId), (override));
+};
 
 class PageTestFixture : public ::testing::Test {
 protected:
@@ -64,19 +73,24 @@ protected:
   std::unique_ptr<RecordBlock> recordBlock_1, recordBlock_2;
   const ByteBuffer recordBlockData_1 = "testing_1"_bb,
                    recordBlockData_2 = "testing_2"_bb;
+  std::unique_ptr<LogManager> logManager;
+  MockPageObserver observer;
 
   void SetUp() override {
+    // Setup log manager
+    logManager = std::make_unique<LogManager>();
     // Setup valid page
     page = std::make_unique<Page>(pageId, pageSize);
     page->setNextPageId(nextPageId);
     page->setPrevPageId(prevPageId);
     // Add record blocks
+    Transaction txn(*logManager, 0);
     recordBlock_1 = std::make_unique<RecordBlock>();
     recordBlock_1->data = recordBlockData_1;
-    slotId_1 = page->addRecordBlock(*recordBlock_1);
+    slotId_1 = page->addRecordBlock(txn, *recordBlock_1).first;
     recordBlock_2 = std::make_unique<RecordBlock>();
     recordBlock_2->data = recordBlockData_2;
-    slotId_2 = page->addRecordBlock(*recordBlock_2);
+    slotId_2 = page->addRecordBlock(txn, *recordBlock_2).first;
 
     input = {
         12,  0,   0,   0,   0,   0,   0,   0,   15,  0,   0,   0,   0,   0,
@@ -164,6 +178,8 @@ TEST_F(PageTestFixture, TestGetNextBlockId) {
 
 TEST_F(PageTestFixture, TestSetNextBlockId) {
   PageId blockId = 99;
+  page->registerObserver(&observer);
+  EXPECT_CALL(observer, handleModifiedPage(page->getId())).Times(AtLeast(1));
   page->setNextPageId(blockId);
   ASSERT_EQ(page->getNextPageId(), blockId);
 }
@@ -174,6 +190,8 @@ TEST_F(PageTestFixture, TestGetPrevBlockId) {
 
 TEST_F(PageTestFixture, TestSetPrevBlockId) {
   PageId blockId = 99;
+  page->registerObserver(&observer);
+  EXPECT_CALL(observer, handleModifiedPage(page->getId())).Times(AtLeast(1));
   page->setPrevPageId(blockId);
   ASSERT_EQ(page->getPrevPageId(), blockId);
 }
@@ -192,7 +210,8 @@ TEST_F(PageTestFixture, TestFreeSpace) {
 }
 
 TEST_F(PageTestFixture, TestGetRecordBlock) {
-  RecordBlock _recordBlock = page->getRecordBlock(slotId_1);
+  Transaction txn(*logManager, 0);
+  RecordBlock _recordBlock = page->getRecordBlock(txn, slotId_1);
 
   ASSERT_EQ(_recordBlock.data, recordBlockData_1);
   ASSERT_TRUE(_recordBlock.nextLocation().isNull());
@@ -201,7 +220,8 @@ TEST_F(PageTestFixture, TestGetRecordBlock) {
 
 TEST_F(PageTestFixture, TestGetRecordBlockError) {
   try {
-    RecordBlock _recordBlock = page->getRecordBlock(10);
+    Transaction txn(*logManager, 0);
+    RecordBlock _recordBlock = page->getRecordBlock(txn, 10);
     FAIL() << "Expected RecordBlockNotFoundError Exception.";
   } catch (RecordBlockNotFoundError &err) {
     SUCCEED();
@@ -215,36 +235,81 @@ TEST_F(PageTestFixture, TestAddRecordBlock) {
   recordBlock.data = "testing_3"_bb;
 
   // Current free space in block
+  page->registerObserver(&observer);
+  EXPECT_CALL(observer, handleModifiedPage(page->getId())).Times(AtLeast(1));
   uint64_t oldFreeSpace = page->freeSpace(true);
-  page->addRecordBlock(recordBlock);
+  Transaction txn(*logManager, 0);
+  PageSlotId slotId = page->addRecordBlock(txn, recordBlock).first;
+
+  LogRecord logRecord = logManager->get(txn.prevSeqNumber);
+  ASSERT_EQ(logRecord.header.transactionId, txn.getId());
+  ASSERT_EQ(logRecord.header.seqNumber, txn.prevSeqNumber);
+  ASSERT_EQ(logRecord.header.prevSeqNumber, 0);
+  ASSERT_EQ(logRecord.type, LogRecord::Type::INSERT);
+  ASSERT_EQ(logRecord.location, RecordBlock::Location(page->getId(), slotId));
+  ASSERT_EQ(logRecord.recordBlockA, recordBlock);
+  ASSERT_EQ(logRecord.recordBlockB, RecordBlock());
+
   uint64_t newFreeSize = page->freeSpace();
   ASSERT_EQ(oldFreeSpace - newFreeSize, recordBlock.size());
+  ASSERT_EQ(page->getRecordBlock(txn, slotId), recordBlock);
 }
 
 TEST_F(PageTestFixture, TestUpdateRecordBlock) {
   RecordBlock recordBlock;
   recordBlock.data = "testing_1-update"_bb;
+  RecordBlock recordBlockCopy = recordBlock;
 
   // Current free space in block
+  page->registerObserver(&observer);
+  EXPECT_CALL(observer, handleModifiedPage(page->getId())).Times(AtLeast(1));
   uint64_t oldFreeSpace = page->freeSpace();
-  page->updateRecordBlock(slotId_1, recordBlock);
+  Transaction txn(*logManager, 0);
+  page->updateRecordBlock(txn, slotId_1, recordBlock);
+
+  LogRecord logRecord = logManager->get(txn.prevSeqNumber);
+  ASSERT_EQ(logRecord.header.transactionId, txn.getId());
+  ASSERT_EQ(logRecord.header.seqNumber, txn.prevSeqNumber);
+  ASSERT_EQ(logRecord.header.prevSeqNumber, 0);
+  ASSERT_EQ(logRecord.type, LogRecord::Type::UPDATE);
+  ASSERT_EQ(logRecord.location, RecordBlock::Location(page->getId(), slotId_1));
+  ASSERT_EQ(logRecord.recordBlockA, *recordBlock_1);
+  ASSERT_EQ(logRecord.recordBlockB, recordBlockCopy);
+
   uint64_t newFreeSize = page->freeSpace();
+  RecordBlock recordBlock_;
+  recordBlock_.data = "testing_1-update"_bb;
   ASSERT_EQ(oldFreeSpace - newFreeSize,
-            recordBlock.size() - recordBlock_1->size());
+            recordBlock_.size() - recordBlock_1->size());
+  ASSERT_EQ(page->getRecordBlock(txn, slotId_1), recordBlockCopy);
 }
 
 TEST_F(PageTestFixture, TestRemoveRecordBlock) {
+  page->registerObserver(&observer);
+  EXPECT_CALL(observer, handleModifiedPage(page->getId())).Times(AtLeast(1));
   uint64_t oldFreeSpace = page->freeSpace();
-  page->removeRecordBlock(slotId_2);
+  Transaction txn(*logManager, 0);
+  page->removeRecordBlock(txn, slotId_2);
+
+  LogRecord logRecord = logManager->get(txn.prevSeqNumber);
+  ASSERT_EQ(logRecord.header.transactionId, txn.getId());
+  ASSERT_EQ(logRecord.header.seqNumber, txn.prevSeqNumber);
+  ASSERT_EQ(logRecord.header.prevSeqNumber, 0);
+  ASSERT_EQ(logRecord.type, LogRecord::Type::DELETE);
+  ASSERT_EQ(logRecord.location, RecordBlock::Location(page->getId(), slotId_2));
+  ASSERT_EQ(logRecord.recordBlockA, *recordBlock_2);
+  ASSERT_EQ(logRecord.recordBlockB, RecordBlock());
+
   uint64_t newFreeSize = page->freeSpace();
-  ASSERT_THROW(page->getRecordBlock(slotId_2), RecordBlockNotFoundError);
+  ASSERT_THROW(page->getRecordBlock(txn, slotId_2), RecordBlockNotFoundError);
   ASSERT_EQ(newFreeSize - oldFreeSpace,
             recordBlock_2->size() + sizeof(Page::Header::Slot));
 }
 
 TEST_F(PageTestFixture, TestRemoveRecordBlockError) {
   try {
-    page->removeRecordBlock(20);
+    Transaction txn(*logManager, 0);
+    page->removeRecordBlock(txn, 20);
     FAIL() << "Expected RecordBlockNotFoundError Exception.";
   } catch (RecordBlockNotFoundError &err) {
     SUCCEED();
@@ -259,12 +324,14 @@ TEST_F(PageTestFixture, TestLoad) {
 
   ASSERT_EQ(_block.getId(), page->getId());
 
-  RecordBlock &_recordBlock_1 = _block.getRecordBlock(slotId_1);
+  Transaction txn(*logManager, 0);
+
+  RecordBlock &_recordBlock_1 = _block.getRecordBlock(txn, slotId_1);
   ASSERT_EQ(_recordBlock_1.data, recordBlockData_1);
   ASSERT_TRUE(_recordBlock_1.nextLocation().isNull());
   ASSERT_TRUE(_recordBlock_1.prevLocation().isNull());
 
-  RecordBlock &_recordBlock_2 = _block.getRecordBlock(slotId_2);
+  RecordBlock &_recordBlock_2 = _block.getRecordBlock(txn, slotId_2);
   ASSERT_EQ(_recordBlock_2.data, recordBlockData_2);
   ASSERT_TRUE(_recordBlock_2.nextLocation().isNull());
   ASSERT_TRUE(_recordBlock_2.prevLocation().isNull());

@@ -26,6 +26,8 @@
  * Page Implementation
  */
 
+#include <iostream>
+
 #include <cstring>
 
 #include <persist/core/exceptions.hpp>
@@ -92,6 +94,17 @@ PageSlotId Page::Header::createSlot(uint64_t size) {
       std::pair<PageSlotId, Slot>(newId, {newId, tail() - size, size}));
 
   return newId;
+}
+
+void Page::Header::createSlot(PageSlotId slotId, uint64_t size) {
+  uint64_t prevOffset;
+  if (slotId == 1) {
+    prevOffset = pageSize;
+  } else {
+    prevOffset = slots.at(slotId - 1).offset;
+  }
+  auto emplaced = slots.emplace(slotId, Slot{slotId, prevOffset - size, 0});
+  updateSlot(slotId, size);
 }
 
 void Page::Header::updateSlot(PageSlotId slotId, uint64_t size) {
@@ -194,6 +207,16 @@ Page::Page(PageId pageId, uint64_t pageSize) : header(pageId, pageSize) {
   }
 }
 
+void Page::registerObserver(PageObserver *observer) {
+  observers.insert(observers.end(), observer);
+}
+
+void Page::notifyObservers() {
+  for (auto observer : observers) {
+    observer->handleModifiedPage(header.pageId);
+  }
+}
+
 uint64_t Page::freeSpace(bool exclude) {
   if (exclude) {
     uint64_t size = header.tail() - header.size();
@@ -205,7 +228,19 @@ uint64_t Page::freeSpace(bool exclude) {
   return header.tail() - header.size();
 }
 
-RecordBlock &Page::getRecordBlock(PageSlotId slotId) {
+void Page::setNextPageId(PageId pageId) {
+  header.nextPageId = pageId;
+  // Notify observers of modification
+  notifyObservers();
+}
+
+void Page::setPrevPageId(PageId pageId) {
+  header.prevPageId = pageId;
+  // Notify observers of modification
+  notifyObservers();
+}
+
+RecordBlock &Page::getRecordBlock(Transaction &txn, PageSlotId slotId) {
   // Check if slot exists
   RecordBlockMap::iterator it = recordBlocks.find(slotId);
   if (it == recordBlocks.end()) {
@@ -214,32 +249,75 @@ RecordBlock &Page::getRecordBlock(PageSlotId slotId) {
   return it->second;
 }
 
-PageSlotId Page::addRecordBlock(RecordBlock &recordBlock) {
+std::pair<PageSlotId, RecordBlock *>
+Page::addRecordBlock(Transaction &txn, RecordBlock &recordBlock) {
   // Create slot for record block
   PageSlotId slotId = header.createSlot(recordBlock.size());
-  // Insert record block at slot
-  recordBlocks.insert(std::pair<PageSlotId, RecordBlock>(slotId, recordBlock));
 
-  return slotId;
+  // Log insert operation
+  RecordBlock::Location location(header.pageId, slotId);
+  txn.logInsertOp(location, recordBlock);
+
+  // Insert record block at slot
+  auto inserted = recordBlocks.emplace(slotId, recordBlock);
+  // Stage current page
+  txn.stage(header.pageId);
+  // Notify observers of modification
+  notifyObservers();
+
+  return std::pair<PageSlotId, RecordBlock *>(slotId, &inserted.first->second);
 }
 
-void Page::updateRecordBlock(PageSlotId slotId, RecordBlock &recordBlock) {
+void Page::updateRecordBlock(Transaction &txn, PageSlotId slotId,
+                             RecordBlock &recordBlock) {
+  // Log update operation
+  RecordBlock::Location location(header.pageId, slotId);
+  txn.logUpdateOp(location, recordBlocks.at(slotId), recordBlock);
+
   // Update slot for record block
   header.updateSlot(slotId, recordBlock.size());
   // Update record block at slot
-  recordBlocks.at(slotId) = recordBlock;
+  recordBlocks.at(slotId) = std::move(recordBlock);
+  // Stage current page
+  txn.stage(header.pageId);
+  // Notify observers of modification
+  notifyObservers();
 }
 
-void Page::removeRecordBlock(PageSlotId slotId) {
+void Page::removeRecordBlock(Transaction &txn, PageSlotId slotId) {
   // Check if slot exists in the Page
   RecordBlockMap::iterator it = recordBlocks.find(slotId);
   if (it == recordBlocks.end()) {
     throw RecordBlockNotFoundError(header.pageId, slotId);
   }
+  // Log delete operation
+  RecordBlock::Location location(header.pageId, slotId);
+  txn.logDeleteOp(location, recordBlocks.at(slotId));
+
   // Adjusting header
   header.freeSlot(slotId);
   // Removing record block from cache
   recordBlocks.erase(it);
+  // Stage current page
+  txn.stage(header.pageId);
+  // Notify observers of modification
+  notifyObservers();
+}
+
+void Page::undoRemoveRecordBlock(Transaction &txn, PageSlotId slotId,
+                                 RecordBlock &recordBlock) {
+  // Log insert operation
+  RecordBlock::Location location(header.pageId, slotId);
+  txn.logInsertOp(location, recordBlock);
+
+  // Update slot for record block
+  header.createSlot(slotId, recordBlock.size());
+  // Update record block at slot
+  recordBlocks.emplace(slotId, recordBlock);
+  // Stage current page
+  txn.stage(header.pageId);
+  // Notify observers of modification
+  notifyObservers();
 }
 
 void Page::load(Span input) {

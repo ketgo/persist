@@ -62,6 +62,8 @@ void PageTable::put(std::unique_ptr<Page> &page) {
     buffer.push_front(
         {std::move(page), std::make_unique<MetaDataDelta>(), false});
     map[pageId] = buffer.begin();
+    // Register page table as observer
+    map[pageId]->page->registerObserver(this);
   } else {
     // Page ID present in cache. Updated the page slot
     map.at(pageId)->page = std::move(page);
@@ -82,6 +84,8 @@ void PageTable::mark(PageId pageId) {
     map.at(pageId)->metaDelta->removeFreePage(pageId);
   }
 }
+
+void PageTable::handleModifiedPage(PageId pageId) { mark(pageId); }
 
 void PageTable::flush(PageId pageId) {
   // Find page

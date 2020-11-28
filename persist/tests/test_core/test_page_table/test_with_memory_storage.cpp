@@ -30,10 +30,16 @@
 
 #include <memory>
 
+/**
+ * Enabled intrusive testing
+ */
+#define PERSIST_INTRUSIVE_TESTING
+
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
 #include <persist/core/page_table.hpp>
 #include <persist/core/storage/memory_storage.hpp>
+#include <persist/core/transaction_manager.hpp>
 
 using namespace persist;
 
@@ -43,30 +49,10 @@ protected:
   const uint64_t maxSize = 2;
   std::unique_ptr<Page> page_1, page_2, page_3;
   std::unique_ptr<MetaData> metadata;
-  std::unique_ptr<PageTable> table;
+  std::unique_ptr<PageTable> pageTable;
   std::unique_ptr<MemoryStorage> storage;
-
-  /**
-   * @brief Session class used for testing page table
-   */
-  class Session {
-  public:
-    PageTable &pageTable;
-    std::set<PageId> staged;
-
-    Session(PageTable &pageTable) : pageTable(pageTable) {}
-
-    void stage(PageId pageId) {
-      staged.insert(pageId);
-      pageTable.mark(pageId);
-    }
-
-    void commit() {
-      for (auto pageId : staged) {
-        pageTable.flush(pageId);
-      }
-    }
-  };
+  std::unique_ptr<LogManager> logManager;
+  std::unique_ptr<TransactionManager> txnManager;
 
   void SetUp() override {
     // setting up pages
@@ -91,13 +77,17 @@ protected:
     storage->write(*metadata);
     storage->close();
 
-    table = std::make_unique<PageTable>(*storage, maxSize);
-    table->open();
+    pageTable = std::make_unique<PageTable>(*storage, maxSize);
+    pageTable->open();
+
+    // Setup transaction manager
+    logManager = std::make_unique<LogManager>();
+    txnManager = std::make_unique<TransactionManager>(*pageTable, *logManager);
   }
 
   void TearDown() override {
     storage->remove();
-    table->close();
+    pageTable->close();
   }
 };
 
@@ -114,7 +104,7 @@ TEST_F(PageTableWithMemoryStorageTestFixture, TestPageTableError) {
 
 TEST_F(PageTableWithMemoryStorageTestFixture, TestGet) {
   PageId pageId = page_1->getId();
-  Page page = table->get(pageId);
+  Page page = pageTable->get(pageId);
 
   ASSERT_EQ(page.getId(), pageId);
   ASSERT_EQ(page.getNextPageId(), page_1->getNextPageId());
@@ -124,7 +114,7 @@ TEST_F(PageTableWithMemoryStorageTestFixture, TestGet) {
 
 TEST_F(PageTableWithMemoryStorageTestFixture, TestGetError) {
   try {
-    Page page = table->get(10);
+    Page page = pageTable->get(10);
     FAIL() << "Expected PageNotFoundError Exception.";
   } catch (PageNotFoundError &err) {
     SUCCEED();
@@ -134,24 +124,25 @@ TEST_F(PageTableWithMemoryStorageTestFixture, TestGetError) {
 }
 
 TEST_F(PageTableWithMemoryStorageTestFixture, TestGetLRUPersist) {
-  Session session(*table);
+  Transaction txn = txnManager->begin();
 
   // Getting the first page and modifying it
-  Page &_page_1 = table->get(1);
+  Page &_page_1 = pageTable->get(1);
   RecordBlock block;
   block.data =
       ByteBuffer(_page_1.freeSpace(true) - sizeof(RecordBlock::Header), 'A');
-  PageSlotId slotId = _page_1.addRecordBlock(block);
-  session.stage(1);
+  PageSlotId slotId = _page_1.addRecordBlock(txn, block).first;
+  txn.stage(1);
+  pageTable->mark(1);
 
   // Filling up page table cache
-  table->get(2);
-  table->get(3); //<- this should persist page 1
+  pageTable->get(2);
+  pageTable->get(3); //<- this should persist page 1
 
-  Page &__page_1 = table->get(1); //<- this will load page from storage
+  Page &__page_1 = pageTable->get(1); //<- this will load page from storage
 
   ASSERT_EQ(__page_1.getId(), 1);
-  ASSERT_EQ(__page_1.getRecordBlock(slotId).data, block.data);
+  ASSERT_EQ(__page_1.getRecordBlock(txn, slotId).data, block.data);
 
   // Checking for update in metadata
   std::unique_ptr<MetaData> _metadata = storage->read();
@@ -162,17 +153,18 @@ TEST_F(PageTableWithMemoryStorageTestFixture, TestGetLRUPersist) {
 }
 
 TEST_F(PageTableWithMemoryStorageTestFixture, TestGetNewLRUPersist) {
-  Session session(*table);
+  Transaction txn = txnManager->begin();
 
   // Getting the new page
-  Page &_page_4 = table->getNew();
-  session.stage(4);
+  Page &_page_4 = pageTable->getNew();
+  txn.stage(4);
+  pageTable->mark(4);
 
   // Filling up page table cache
-  table->get(1);
-  table->get(2); //<- this should persist page 4
+  pageTable->get(1);
+  pageTable->get(2); //<- this should persist page 4
 
-  Page &__page_4 = table->get(4); //<- this will load page from storage
+  Page &__page_4 = pageTable->get(4); //<- this will load page from storage
 
   ASSERT_EQ(__page_4.getId(), 4);
 
@@ -186,48 +178,50 @@ TEST_F(PageTableWithMemoryStorageTestFixture, TestGetNewLRUPersist) {
 
 TEST_F(PageTableWithMemoryStorageTestFixture, TestGetFree) {
   // Getting page with free space
-  Page &_page = table->getFree();
+  Page &_page = pageTable->getFree();
 
   ASSERT_EQ(_page.getId(), 3); //<- returns the last page in free list
 }
 
 TEST_F(PageTableWithMemoryStorageTestFixture, TestGetFreeNew) {
-  Session session(*table);
+  Transaction txn = txnManager->begin();
 
   // Fill all pages
   for (int i = 1; i <= 3; i++) {
-    Page &_page = table->get(i);
+    Page &_page = pageTable->get(i);
     RecordBlock block;
     block.data =
         ByteBuffer(_page.freeSpace(true) - sizeof(RecordBlock::Header), 'A');
-    PageSlotId slotId = _page.addRecordBlock(block);
-    session.stage(i);
+    PageSlotId slotId = _page.addRecordBlock(txn, block).first;
+    txn.stage(i);
+    pageTable->mark(i);
   }
 
   // Getting new page with free space
-  Page &_page = table->getFree();
+  Page &_page = pageTable->getFree();
 
   ASSERT_EQ(_page.getId(), 4);
 }
 
 TEST_F(PageTableWithMemoryStorageTestFixture, TestSessionCommit) {
-  Session session(*table);
+  Transaction txn = txnManager->begin();
 
   // Getting the first page and modifying it
-  Page &_page_1 = table->get(1);
+  Page &_page_1 = pageTable->get(1);
   RecordBlock block;
   block.data =
       ByteBuffer(_page_1.freeSpace(true) - sizeof(RecordBlock::Header), 'A');
-  PageSlotId slotId = _page_1.addRecordBlock(block);
-  session.stage(1);
+  PageSlotId slotId = _page_1.addRecordBlock(txn, block).first;
+  txn.stage(1);
+  pageTable->mark(1);
 
   // Commit
-  session.commit();
+  txnManager->commit(txn);
 
-  Page &__page_1 = table->get(1); //<- this will load page from storage
+  Page &__page_1 = pageTable->get(1); //<- this will load page from storage
 
   ASSERT_EQ(__page_1.getId(), 1);
-  ASSERT_EQ(__page_1.getRecordBlock(slotId).data, block.data);
+  ASSERT_EQ(__page_1.getRecordBlock(txn, slotId).data, block.data);
 
   // Checking for update in metadata
   std::unique_ptr<MetaData> _metadata = storage->read();

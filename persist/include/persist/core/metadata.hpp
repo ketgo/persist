@@ -36,7 +36,6 @@
 #include <unordered_map>
 
 #include <persist/core/defs.hpp>
-#include <persist/core/page.hpp>
 
 namespace persist {
 

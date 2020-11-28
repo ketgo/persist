@@ -32,8 +32,10 @@
 #include <string>
 
 #include <persist/core/exceptions.hpp>
+#include <persist/core/log_manager.hpp>
 #include <persist/core/page.hpp>
 #include <persist/core/storage/file_storage.hpp>
+#include <persist/core/transaction.hpp>
 #include <persist/core/utility.hpp>
 
 using namespace persist;
@@ -50,12 +52,16 @@ protected:
   const std::string writePath = base + "/_write.storage";
   const uint64_t pageSize = 512;
   std::unique_ptr<FileStorage> readStorage, writeStorage;
+  std::unique_ptr<LogManager> logManager;
 
   void SetUp() override {
     readStorage = std::make_unique<FileStorage>(readPath, pageSize);
     readStorage->open();
     writeStorage = std::make_unique<FileStorage>(writePath, pageSize);
     writeStorage->open();
+
+    // Setup log manager
+    logManager = std::make_unique<LogManager>();
   }
 
   void TearDown() override {
@@ -76,11 +82,12 @@ TEST_F(NewFileStorageTestFixture, TestReadBlock) {
 }
 
 TEST_F(NewFileStorageTestFixture, TestWriteBlock) {
+  Transaction txn(*logManager, 0);
   RecordBlock recordBlock;
   recordBlock.data = "testing"_bb;
 
   Page page(1, pageSize);
-  PageSlotId slotId = page.addRecordBlock(recordBlock);
+  PageSlotId slotId = page.addRecordBlock(txn, recordBlock).first;
   writeStorage->write(page);
 
   std::fstream file = file::open(writePath, std::ios::in | std::ios::binary);
@@ -89,7 +96,7 @@ TEST_F(NewFileStorageTestFixture, TestWriteBlock) {
   Page _page(0, pageSize); //<- page ID does not match expected. It should get
                            // overritten after loading from buffer.
   _page.load(Span({buffer.data(), buffer.size()}));
-  RecordBlock &_recordBlock = page.getRecordBlock(slotId);
+  RecordBlock &_recordBlock = page.getRecordBlock(txn, slotId);
 
   ASSERT_EQ(page.getId(), _page.getId());
   ASSERT_EQ(recordBlock.data, _recordBlock.data);
@@ -136,12 +143,16 @@ protected:
   const std::string writePath = base + "/test_write.storage";
   const uint64_t pageSize = 512;
   std::unique_ptr<FileStorage> readStorage, writeStorage;
+  std::unique_ptr<LogManager> logManager;
 
   void SetUp() override {
     readStorage = std::make_unique<FileStorage>(readPath, pageSize);
     readStorage->open();
     writeStorage = std::make_unique<FileStorage>(writePath, pageSize);
     writeStorage->open();
+
+    // Setup log manager
+    logManager = std::make_unique<LogManager>();
   }
 
   void TearDown() override {
@@ -151,19 +162,21 @@ protected:
 };
 
 TEST_F(ExistingFileStorageTestFixture, TestReadBlock) {
+  Transaction txn(*logManager, 0);
   std::unique_ptr<Page> page = readStorage->read(1);
-  RecordBlock &recordBlock = page->getRecordBlock(1);
+  RecordBlock &recordBlock = page->getRecordBlock(txn, 1);
 
   ASSERT_EQ(page->getId(), 1);
   ASSERT_EQ(recordBlock.data, ByteBuffer("testing"_bb));
 }
 
 TEST_F(ExistingFileStorageTestFixture, TestWriteBlock) {
+  Transaction txn(*logManager, 0);
   RecordBlock recordBlock;
   recordBlock.data = "testing"_bb;
 
   Page page(1, pageSize);
-  PageSlotId slotId = page.addRecordBlock(recordBlock);
+  PageSlotId slotId = page.addRecordBlock(txn, recordBlock).first;
   writeStorage->write(page);
 
   std::fstream file = file::open(writePath, std::ios::in | std::ios::binary);
@@ -172,7 +185,7 @@ TEST_F(ExistingFileStorageTestFixture, TestWriteBlock) {
   Page _page(0, pageSize); //<- page ID does not match expected. It should get
                            // overritten after loading from buffer.
   _page.load(Span({buffer.data(), buffer.size()}));
-  RecordBlock &_recordBlock = page.getRecordBlock(slotId);
+  RecordBlock &_recordBlock = page.getRecordBlock(txn, slotId);
 
   ASSERT_EQ(page.getId(), _page.getId());
   ASSERT_EQ(recordBlock.data, _recordBlock.data);

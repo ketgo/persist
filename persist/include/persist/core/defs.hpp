@@ -30,8 +30,8 @@
 #ifndef CORE_DEFS_HPP
 #define CORE_DEFS_HPP
 
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 #ifdef __PERSIST_DEBUG__
@@ -78,6 +78,16 @@ typedef uint64_t PageSlotId;
  * Checksum type
  */
 typedef uint64_t Checksum;
+
+/**
+ * @brief Transaction ID type
+ */
+typedef uint64_t TransactionId;
+
+/**
+ * @brief Log Sequence Number Type
+ */
+typedef uint64_t SeqNumber;
 
 /**
  * @brief Byte buffer type
