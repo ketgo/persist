@@ -22,6 +22,8 @@
  * SOFTWARE.
  */
 
+#include <iostream>
+
 #include <persist/core/exceptions.hpp>
 #include <persist/core/transaction_manager.hpp>
 #include <persist/core/utility.hpp>
@@ -37,6 +39,7 @@ Transaction TransactionManager::begin() {
 
 void TransactionManager::undo(Transaction &txn, LogRecord &logRecord) {
   Page *page;
+  RecordBlock oldValue;
   switch (logRecord.type) {
   case LogRecord::Type::INSERT:
     page = &pageTable.get(logRecord.location.pageId);
@@ -44,13 +47,14 @@ void TransactionManager::undo(Transaction &txn, LogRecord &logRecord) {
     break;
   case LogRecord::Type::DELETE:
     page = &pageTable.get(logRecord.location.pageId);
+    std::cout << logRecord << "\n";
     page->undoRemoveRecordBlock(txn, logRecord.location.slotId,
                                 logRecord.recordBlockA);
     break;
   case LogRecord::Type::UPDATE:
     page = &pageTable.get(logRecord.location.pageId);
-    page->updateRecordBlock(txn, logRecord.location.slotId,
-                            logRecord.recordBlockB);
+    oldValue = logRecord.recordBlockA;
+    page->updateRecordBlock(txn, logRecord.location.slotId, oldValue);
     break;
   default:
     break;

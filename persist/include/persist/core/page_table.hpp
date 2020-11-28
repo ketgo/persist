@@ -152,7 +152,7 @@ public:
   void flush(PageId pageId);
 
   /**
-   * @brief Handle page modifications
+   * @brief Handle page modifications. This method marks the page with given ID.
    */
   void handleModifiedPage(PageId pageId) override;
 };

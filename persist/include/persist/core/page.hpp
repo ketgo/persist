@@ -168,6 +168,17 @@ public:
     PageSlotId createSlot(uint64_t size);
 
     /**
+     * Use up chunk of space of given size from the available free space in the
+     * Page. This operation allocates storage slot with given ID. In case a slot
+     * with given ID already exists then no operation is performed.
+     *
+     * @param slotId the slot ID to use when creating. By default set to 0 in
+     * which case an ID is generated.
+     * @param size amount of space in bytes to occupy
+     */
+    void createSlot(PageSlotId slotId, uint64_t size);
+
+    /**
      * Update size of used chunk of space occupied by slot of given ID.
      *
      * @param slotId identifier of slot to update
@@ -316,6 +327,8 @@ public:
    *
    * @param txn reference to active transaction
    * @param recordBlock RecordBlock object to be added
+   * @param pageSlotId the slot ID where to insert the record block. If set to 0
+   * then the record block is inserted at the back of all the slots.
    * @returns page slot ID where record block is stored and pointer to stored
    * record block
    */
