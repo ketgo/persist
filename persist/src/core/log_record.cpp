@@ -24,6 +24,7 @@
 
 #include <cstring>
 
+#include <persist/core/exceptions.hpp>
 #include <persist/core/log_record.hpp>
 
 namespace persist {
@@ -32,9 +33,37 @@ namespace persist {
  * Log Record Header
  ***********************/
 
-void LogRecord::Header::load(Span input) {}
+void LogRecord::Header::load(Span input) {
+  if (input.size < size()) {
+    throw LogRecordParseError();
+  }
 
-void LogRecord::Header::dump(Span output) {}
+  // Load bytes
+  Byte *pos = input.start;
+  std::memcpy((void *)&seqNumber, (const void *)pos, sizeof(SeqNumber));
+  pos += sizeof(SeqNumber);
+  std::memcpy((void *)&prevSeqNumber, (const void *)pos, sizeof(SeqNumber));
+  pos += sizeof(SeqNumber);
+  std::memcpy((void *)&transactionId, (const void *)pos, sizeof(TransactionId));
+  pos += sizeof(TransactionId);
+  std::memcpy((void *)&checksum, (const void *)pos, sizeof(Checksum));
+}
+
+void LogRecord::Header::dump(Span output) {
+  if (output.size < size()) {
+    throw LogRecordParseError();
+  }
+
+  // Dump bytes
+  Byte *pos = output.start;
+  std::memcpy((void *)pos, (const void *)&seqNumber, sizeof(SeqNumber));
+  pos += sizeof(SeqNumber);
+  std::memcpy((void *)pos, (const void *)&prevSeqNumber, sizeof(SeqNumber));
+  pos += sizeof(SeqNumber);
+  std::memcpy((void *)pos, (const void *)&transactionId, sizeof(TransactionId));
+  pos += sizeof(TransactionId);
+  std::memcpy((void *)pos, (const void *)&checksum, sizeof(Checksum));
+}
 
 /************************
  * Log Record
@@ -66,8 +95,63 @@ Checksum LogRecord::_checksum() {
   return seed;
 }
 
-void LogRecord::load(Span input) {}
+void LogRecord::load(Span input) {
+  if (input.size < size()) {
+    throw LogRecordParseError();
+  }
+  // Load header
+  header.load(input);
 
-void LogRecord::dump(Span output) {}
+  // Load bytes
+  Byte *pos = input.start + header.size();
+  std::memcpy((void *)&type, (const void *)pos, sizeof(Type));
+  pos += sizeof(Type);
+  std::memcpy((void *)&location, (const void *)pos,
+              sizeof(RecordBlock::Location));
+  pos += sizeof(RecordBlock::Location);
+  uint64_t recordBlockASize;
+  std::memcpy((void *)&recordBlockASize, (const void *)pos, sizeof(uint64_t));
+  pos += sizeof(uint64_t);
+  recordBlockA.load(Span(pos, recordBlockASize));
+  pos += recordBlockASize;
+  uint64_t recordBlockBSize;
+  std::memcpy((void *)&recordBlockBSize, (const void *)pos, sizeof(uint64_t));
+  pos += sizeof(uint64_t);
+  recordBlockB.load(Span(pos, recordBlockBSize));
+
+  // Check for corruption by matching checksum
+  if (_checksum() != header.checksum) {
+    throw LogRecordCorruptError();
+  }
+}
+
+void LogRecord::dump(Span output) {
+  if (output.size < size()) {
+    throw LogRecordParseError();
+  }
+
+  // Compute and set checksum
+
+  header.checksum = _checksum();
+  // Dump header
+  header.dump(output);
+
+  // Dump bytes
+  Byte *pos = output.start + header.size();
+  std::memcpy((void *)pos, (const void *)&type, sizeof(Type));
+  pos += sizeof(Type);
+  std::memcpy((void *)pos, (const void *)&location,
+              sizeof(RecordBlock::Location));
+  pos += sizeof(RecordBlock::Location);
+  uint64_t recordBlockASize = recordBlockA.size();
+  std::memcpy((void *)pos, (const void *)&recordBlockASize, sizeof(uint64_t));
+  pos += sizeof(uint64_t);
+  recordBlockA.dump(Span(pos, recordBlockASize));
+  pos += recordBlockASize;
+  uint64_t recordBlockBSize = recordBlockB.size();
+  std::memcpy((void *)pos, (const void *)&recordBlockBSize, sizeof(uint64_t));
+  pos += sizeof(uint64_t);
+  recordBlockB.dump(Span(pos, recordBlockBSize));
+}
 
 } // namespace persist

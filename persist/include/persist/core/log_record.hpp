@@ -87,6 +87,11 @@ public:
           transactionId(transactionId), checksum(0) {}
 
     /**
+     * @brief Get size of the log record header.
+     */
+    uint64_t size() { return sizeof(Header); }
+
+    /**
      * Load record block header from byte string.
      *
      * @param input input buffer span to load
@@ -106,7 +111,7 @@ public:
     bool operator==(const Header &other) const {
       return seqNumber == other.seqNumber &&
              prevSeqNumber == other.prevSeqNumber &&
-             transactionId == other.transactionId && checksum == other.checksum;
+             transactionId == other.transactionId;
     }
 
     /**
@@ -115,7 +120,7 @@ public:
     bool operator!=(const Header &other) const {
       return seqNumber != other.seqNumber ||
              prevSeqNumber != other.prevSeqNumber ||
-             transactionId != other.transactionId || checksum != other.checksum;
+             transactionId != other.transactionId;
     }
 
 #ifdef __PERSIST_DEBUG__
@@ -210,6 +215,21 @@ public:
    * @returns log record sequence number
    */
   SeqNumber getSeqNumber() { return header.seqNumber; }
+
+  /**
+   * @brief Get size of log record.
+   * - sizeof(header)
+   * - sizeof(type)
+   * - sizeof(location)
+   * - sizeof(recordBlockA.size())
+   * - recordBlockA.size()
+   * - sizeof(recordBlockB.size())
+   * - recordBlockB.size()
+   */
+  uint64_t size() {
+    return header.size() + sizeof(type) + sizeof(location) +
+           2 * sizeof(uint64_t) + recordBlockA.size() + recordBlockB.size();
+  }
 
   /**
    * Load log record from byte string.

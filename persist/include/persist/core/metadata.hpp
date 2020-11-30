@@ -49,7 +49,7 @@ namespace persist {
 class MetaData {
   PERSIST_PRIVATE
   /**
-   * @brief Computes checksum for record block.
+   * @brief Computes checksum for metadata.
    */
   Checksum _checksum();
 
