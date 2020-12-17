@@ -146,6 +146,38 @@ public:
 };
 
 /**
+ * Log Record Parsing Error
+ *
+ * This error is thrown if unable to parse log record.
+ */
+class LogRecordParseError : public PersistException {
+private:
+  std::string msg;
+
+public:
+  LogRecordParseError() : msg("Log record parsing error.") {}
+  LogRecordParseError(const char *msg) : msg(msg) {}
+  LogRecordParseError(std::string &msg) : msg(msg) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
+ * Log Record Corrupt Error
+ *
+ * This error is thrown if the loaded log record is corrupt.
+ */
+class LogRecordCorruptError : public CorruptException {
+private:
+  std::string msg;
+
+public:
+  LogRecordCorruptError() : msg("Log record corrupt error.") {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
  * Record Block Parsing Error
  *
  * This error is thrown if unable to parse record block.
