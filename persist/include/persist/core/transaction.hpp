@@ -46,6 +46,7 @@ namespace persist {
  */
 class Transaction {
   friend class Page;
+  friend class SlottedPage;
   friend class TransactionManager;
 
 public:

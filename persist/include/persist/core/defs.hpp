@@ -55,7 +55,7 @@
  */
 // Minimum allowed page size
 #define MINIMUM_PAGE_SIZE 512
-// Default page size
+// Default page size in bytes
 #define DEFAULT_PAGE_SIZE 1024
 // Default cache size in MB
 #define DEFAULT_CACHE_SIZE 1024

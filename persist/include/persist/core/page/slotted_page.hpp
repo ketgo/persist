@@ -1,7 +1,7 @@
 /**
- * page.hpp - Persist
+ * slotted_page.hpp - Persist
  *
- * Copyright 2020 Ketan Goyal
+ * Copyright 2021 Ketan Goyal
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,45 +22,29 @@
  * SOFTWARE.
  */
 
-#ifndef PAGE_HPP
-#define PAGE_HPP
+#ifndef SLOTTED_PAGE_HPP
+#define SLOTTED_PAGE_HPP
 
 #include <cstdint>
-#include <list>
 #include <map>
 #include <unordered_map>
 
-#include <persist/core/defs.hpp>
+#include <persist/core/page/base.hpp>
 #include <persist/core/record_block.hpp>
 #include <persist/core/transaction.hpp>
 
 namespace persist {
 
 /**
- * @brief Page Observer
+ * @brief SlottedPage Class
  *
- * Observes modification on page.
+ * Each slotted page comprises of a header, free space, and stored RecordBlocks.
+ * The page header contains the page unique identifier along with the next and
+ * previous page identifiers in case the page is linked. It also contains
+ * entries of offset values indicating where each record-block in the page is
+ * located.
  */
-class PageObserver {
-public:
-  /**
-   * @brief Handle page modification.
-   *
-   * @param pageId ID of the page modified
-   */
-  virtual void handleModifiedPage(PageId pageId) = 0;
-};
-
-/**
- * Page Class
- *
- * A Page is a logical chunk of space on a backend storage. Each page comprises
- * of a header, free space, and stored RecordBlocks. The page header contains
- * the page unique identifier along with the next and previous page identifiers
- * in case the page is linked. It also contains entries of offset values
- * indicating where each record-block in the page is located.
- */
-class Page {
+class SlottedPage : public PageBase {
 public:
   /**
    * Page Header Class
@@ -240,36 +224,28 @@ public:
   typedef std::unordered_map<PageSlotId, RecordBlock> RecordBlockMap;
   RecordBlockMap recordBlocks;
 
-  /**
-   * @brief List of registered page modification observers
-   */
-  std::list<PageObserver *> observers;
-
-  /**
-   * @brief Notify all registered observers of page modification.
-   */
-  void notifyObservers();
-
 public:
   /**
    * Constructors
    */
-  Page() {}
-  Page(PageId pageId, uint64_t pageSize = DEFAULT_PAGE_SIZE);
-
-  /**
-   * @brief Register page modification observer
-   *
-   * @param observer pointer to page modication observer
-   */
-  void registerObserver(PageObserver *observer);
+  SlottedPage() {}
+  SlottedPage(PageId pageId, uint64_t pageSize = DEFAULT_PAGE_SIZE);
 
   /**
    * Get block ID.
    *
    * @returns block identifier
    */
-  PageId &getId() { return header.pageId; }
+  PageId &getId() override { return header.pageId; }
+
+  /**
+   * Get free space in bytes available in the block.
+   *
+   * @param operation The type of page operation for which free space is
+   * requested. By default this is set to `INSERT.
+   * @returns free space available in page
+   */
+  uint64_t freeSpace(Operation operation = Operation::INSERT) override;
 
   /**
    * Get next page ID. This is the ID for the page block when there is data
@@ -302,16 +278,6 @@ public:
    * @param pageId previous page ID value to set
    */
   void setPrevPageId(PageId pageId);
-
-  /**
-   * Get free space in bytes available in the block.
-   *
-   * @param exclude exclude size of slot in header occupied if a new record
-   * block is inserted. By default this is set to `false` returning the true
-   * free space in the page.
-   * @returns free space available in data block
-   */
-  uint64_t freeSpace(bool exclude = false);
 
   /**
    * Get RecordBlock object at a given slot.
@@ -381,7 +347,7 @@ public:
   /**
    * @brief Write page to output stream
    */
-  friend std::ostream &operator<<(std::ostream &os, const Page &page) {
+  friend std::ostream &operator<<(std::ostream &os, const SlottedPage &page) {
     os << "--------- Page " << page.header.pageId << " ---------\n";
     os << page.header << "\n";
     for (auto element : page.recordBlocks) {
@@ -397,4 +363,4 @@ public:
 
 } // namespace persist
 
-#endif /* PAGE_HPP */
+#endif /* SLOTTED_PAGE_HPP */
