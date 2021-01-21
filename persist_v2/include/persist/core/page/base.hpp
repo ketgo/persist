@@ -52,7 +52,7 @@ public:
  * A Page is a logical chunk of space on a backend storage. The base class
  * exposes interface common to all types of pages.
  */
-class PageBase {
+class Page {
   PERSIST_PROTECTED
 
   /**
@@ -70,6 +70,12 @@ class PageBase {
   }
 
 public:
+  /**
+   * @brief Destroy the Page object
+   *
+   */
+  virtual ~Page() {}
+
   /**
    * @brief Enumerated list of operation that can be performed on page data.
    *
@@ -96,10 +102,24 @@ public:
    * Get free space in bytes available in the page.
    *
    * @param operation The type of page operation for which free space is
-   * requested. By default this is set to `INSERT.
+   * requested.
    * @returns free space available in page
    */
-  virtual uint64_t freeSpace(Operation operation = Operation::INSERT) = 0;
+  virtual uint64_t freeSpace(Operation operation) = 0;
+
+  /**
+   * Load Block object from byte string.
+   *
+   * @param input input buffer span to load
+   */
+  virtual void load(Span input) = 0;
+
+  /**
+   * Dump Block object as byte string.
+   *
+   * @param output output buffer span to dump
+   */
+  virtual void dump(Span output) = 0;
 };
 
 } // namespace persist

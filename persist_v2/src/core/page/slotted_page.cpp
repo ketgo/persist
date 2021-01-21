@@ -72,13 +72,6 @@ Checksum SlottedPage::Header::_checksum() {
   return seed;
 }
 
-uint64_t SlottedPage::Header::tail() {
-  if (slots.empty()) {
-    return pageSize;
-  }
-  return slots.rbegin()->second.offset;
-}
-
 PageSlotId SlottedPage::Header::createSlot(uint64_t size) {
   // Get ID of the last slot
   PageSlotId lastId, newId;
@@ -223,18 +216,6 @@ uint64_t SlottedPage::freeSpace(Operation operation) {
   return size;
 }
 
-void SlottedPage::setNextPageId(PageId pageId) {
-  header.nextPageId = pageId;
-  // Notify observers of modification
-  notifyObservers();
-}
-
-void SlottedPage::setPrevPageId(PageId pageId) {
-  header.prevPageId = pageId;
-  // Notify observers of modification
-  notifyObservers();
-}
-
 RecordBlock &SlottedPage::getRecordBlock(Transaction &txn, PageSlotId slotId) {
   // Check if slot exists
   RecordBlockMap::iterator it = recordBlocks.find(slotId);
@@ -344,7 +325,7 @@ void SlottedPage::dump(Span output) {
   header.dump(span);
   // Dump free space
   span.start += span.size;
-  span.size = freeSpace();
+  span.size = header.tail() - header.size();
   std::memset((void *)span.start, 0, span.size);
   // Dump record blocks
   for (auto element : header.slots) {

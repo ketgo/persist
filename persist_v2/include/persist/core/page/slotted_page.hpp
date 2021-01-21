@@ -44,7 +44,7 @@ namespace persist {
  * entries of offset values indicating where each record-block in the page is
  * located.
  */
-class SlottedPage : public PageBase {
+class SlottedPage : public Page {
 public:
   /**
    * Page Header Class
@@ -140,7 +140,12 @@ public:
      *
      * @returns free space ending offset
      */
-    uint64_t tail();
+    uint64_t tail() {
+      if (slots.empty()) {
+        return pageSize;
+      }
+      return slots.rbegin()->second.offset;
+    }
 
     /**
      * Use up chunk of space of given size from the available free space in the
@@ -242,10 +247,10 @@ public:
    * Get free space in bytes available in the block.
    *
    * @param operation The type of page operation for which free space is
-   * requested. By default this is set to `INSERT.
+   * requested.
    * @returns free space available in page
    */
-  uint64_t freeSpace(Operation operation = Operation::INSERT) override;
+  uint64_t freeSpace(Operation operation) override;
 
   /**
    * Get next page ID. This is the ID for the page block when there is data
@@ -261,7 +266,11 @@ public:
    *
    * @param pageId next page ID value to set
    */
-  void setNextPageId(PageId pageId);
+  void setNextPageId(PageId pageId) {
+    header.nextPageId = pageId;
+    // Notify observers of modification
+    notifyObservers();
+  }
 
   /**
    * Get previous page ID. This is the ID for the previous page when there is
@@ -277,7 +286,11 @@ public:
    *
    * @param pageId previous page ID value to set
    */
-  void setPrevPageId(PageId pageId);
+  void setPrevPageId(PageId pageId) {
+    header.prevPageId = pageId;
+    // Notify observers of modification
+    notifyObservers();
+  }
 
   /**
    * Get RecordBlock object at a given slot.
@@ -334,14 +347,14 @@ public:
    *
    * @param input input buffer span to load
    */
-  void load(Span input);
+  void load(Span input) override;
 
   /**
    * Dump Block object as byte string.
    *
    * @param output output buffer span to dump
    */
-  void dump(Span output);
+  void dump(Span output) override;
 
 #ifdef __PERSIST_DEBUG__
   /**
