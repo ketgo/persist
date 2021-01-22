@@ -36,11 +36,13 @@
         - NO-STEAL: Page modified by a transaction that is still active, i.e. yet to commit, should not be written to disk
         - STEAL: Page modified by a transaction that is still active, i.e. yet to commit, can still be written to disk
 
-4. Approaches for handling Free Space Map:-
+4. Approaches for handling Free Space Map (FSM):-
 
-    - [v0.1] Keep it in-memory and never persist. The drawback of this approach is after a system failure or a restart, we will lose track of all the pages with free space. This implies that any following insert operations will use new pages. We can partially resolve this problem by updating the FSM on every `getPage` method call. In this way when a page with free space is accessed, the FSM will get notified and start tracking that page.
+    - Keep it in-memory always and never persist. The drawback of this approach is after a system failure or a restart, we will lose track of all the pages with free space. This implies that any following insert operations will use new pages. We can partially resolve this problem by updating the FSM on every `getPage` method call. In this way when a page with free space is accessed, the FSM will get notified and start tracking that page.
 
     - Persist FSM when the destructor of the buffer manager is called. In this approach the FSM will be updated only when a persistent collection is closed. This ensures the FSM is up to date after a graceful restart of the system. On such grantee is there on system failures.
+
+    - [v0.1]Persist FSM on every flush call, i.e. when writing any modified page to storage. This method results in poor performance due to high frequency of IO.
 
     - Persist FSM on every transaction commit, i.e. after a commit log of a transaction is written. Note we persist the FSM irrespective of the mode of the buffer manager.
 
