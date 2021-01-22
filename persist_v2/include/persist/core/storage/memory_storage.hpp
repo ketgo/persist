@@ -37,7 +37,7 @@ namespace persist {
  * In memory backend storage to store data in RAM. Note that this is a volatile
  * storage and should be used accordingly.
  */
-class MemoryStorage : public Storage {
+template <class PageType> class MemoryStorage : public Storage<PageType> {
 private:
   uint64_t pageSize;                           //<- page block size
   MetaData metadata;                           //<- storage metadata
@@ -47,28 +47,32 @@ public:
   /**
    * Constructor
    */
-  MemoryStorage();
-  MemoryStorage(uint64_t pageSize);
+  MemoryStorage() : pageSize(DEFAULT_PAGE_SIZE) {}
+  MemoryStorage(uint64_t pageSize) : pageSize(pageSize) {}
 
   /**
    * @brief Open memory storage. No operation is performed.
    */
-  void open() override;
+  void open() override {}
 
   /**
    * Check if memory storage is open. Always returns `true`.
    */
-  bool is_open() override;
+  bool is_open() override { return true; }
 
   /**
    * Close memory storage. No operation is performed.
    */
-  void close() override;
+  void close() override {}
 
   /**
    * Remove storage. Data is cleared.
    */
-  void remove() override;
+  void remove() override {
+    metadata.freePages.clear();
+    metadata.numPages = 0;
+    data.clear();
+  }
 
   /**
    * Read storage metadata information. In case no metadata information is
@@ -76,14 +80,22 @@ public:
    *
    * @return pointer to MetaData object
    */
-  std::unique_ptr<MetaData> read() override;
+  std::unique_ptr<MetaData> read() override {
+    std::unique_ptr<MetaData> _metadata = std::make_unique<MetaData>(metadata);
+
+    return _metadata;
+  }
 
   /**
    * Write MetaData object to storage.
    *
    * @param metadata reference to MetaData object to be written
    */
-  void write(MetaData &metadata) override;
+  void write(MetaData &metadata) override {
+    this->metadata.pageSize = metadata.pageSize;
+    this->metadata.numPages = metadata.numPages;
+    this->metadata.freePages = metadata.freePages;
+  }
 
   /**
    * Read Page with given identifier from storage.
@@ -91,14 +103,26 @@ public:
    * @param pageId page identifier
    * @returns pointer to Page object
    */
-  std::unique_ptr<SlottedPage> read(PageId pageId) override;
+  std::unique_ptr<PageType> read(PageId pageId) override {
+    if (data.find(pageId) == data.end()) {
+      throw PageNotFoundError(pageId);
+    }
+    std::unique_ptr<PageType> page = std::make_unique<PageType>(0, pageSize);
+    page->load(Span(data.at(pageId)));
+
+    return page;
+  }
 
   /**
    * Write Page object to storage.
    *
    * @param page reference to Page object to be written
    */
-  void write(SlottedPage &page) override;
+  void write(PageType &page) override {
+    PageId pageId = page.getId();
+    data[pageId] = ByteBuffer(pageSize);
+    page.dump(Span(data.at(pageId)));
+  }
 };
 
 } // namespace persist

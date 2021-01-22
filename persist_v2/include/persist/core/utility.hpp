@@ -30,6 +30,8 @@
 #define UTILITY_HPP
 
 #include <fstream>
+#include <limits>
+#include <random>
 
 #include <persist/core/defs.hpp>
 
@@ -41,53 +43,16 @@ namespace uuid {
  *
  * @returns 64 bit unique identifier.
  */
-uint64_t generate();
+static uint64_t generate() {
+  std::random_device rd;
+  std::mt19937_64 e2(rd());
+  std::uniform_int_distribution<uint64_t> dist(
+      0, std::numeric_limits<uint64_t>::max());
+
+  return dist(e2);
+}
+
 } // namespace uuid
-
-namespace file {
-
-/**
- * Cross-platform method to open file while creating non-existing
- * directories in the given path.
- *
- * @param path path of the file to open
- * @param mode open mode
- * @returns opened file stream object
- */
-std::fstream open(std::string path, std::ios_base::openmode mode);
-
-/**
- * Get content size of the file
- *
- * @param file opened file stream object
- * @returns size of the file
- */
-uint64_t size(std::fstream &file);
-
-/**
- * Read file content starting at given postion into a ByteBuffer. The amount of
- * data read is determined by the size of the passed ByteBuffer.
- *
- * Note:
- * - If the size of the ByteBuffer is zero then no data will be read.
- * - The content of the ByteBuffer will be overwritten
- *
- * @param file opened file stream object
- * @param buffer reference to the ByteBuffer where read data is stored
- * @param offset offset within the file from where to start reading
- */
-void read(std::fstream &file, ByteBuffer &buffer, std::streampos offset);
-
-/**
- * Write given ByteBuffer to file starting at specifed offset.
- *
- * @param file opened file stream object
- * @param buffer reference to the ByteBuffer from which data is stored
- * @param offset offset within the file from where to start writing
- */
-void write(std::fstream &file, ByteBuffer &buffer, std::streampos offset);
-
-} // namespace file
 
 } // namespace persist
 

@@ -1,7 +1,7 @@
 /**
- * storage/base.cpp - Persist
+ * factory.hpp - Persist
  *
- * Copyright 2020 Ketan Goyal
+ * Copyright 2021 Ketan Goyal
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,22 +22,14 @@
  * SOFTWARE.
  */
 
-/**
- * @brief Contains factory method implementation.
- */
+#ifndef STORAGE_FACTORY_HPP
+#define STORAGE_FACTORY_HPP
 
 #include <persist/core/storage/base.hpp>
 #include <persist/core/storage/file_storage.hpp>
 #include <persist/core/storage/memory_storage.hpp>
 
 namespace persist {
-
-/**
- * @brief Supported Backend Storages
- */
-enum class StorageType { FILE, MEMORY };
-const std::unordered_map<std::string, StorageType> StorageTypeMap = {
-    {"file", StorageType::FILE}, {"memory", StorageType::MEMORY}};
 
 /**
  * Connection String Class
@@ -83,16 +75,36 @@ public:
 
 const std::string ConnectionString::storageTypeSep = "://";
 
-std::unique_ptr<Storage> Storage::create(std::string connectionString) {
+/************************************************************************/
+
+/**
+ * @brief Supported Backend Storages
+ */
+enum class StorageType { FILE, MEMORY };
+const std::unordered_map<std::string, StorageType> StorageTypeMap = {
+    {"file", StorageType::FILE}, {"memory", StorageType::MEMORY}};
+
+/**
+ * @brief Factory method to create backend storage object
+ *
+ * @param connectionString url containing the type of storage backend and its
+ * arguments. The url schema is `<type>://<host>/<path>?<args>`. For example a
+ * file storage url looks like `file:///myCollection.db` where the backend
+ * uses the file `myCollection.db` in the root folder `/` to store data.
+ */
+template <class PageType>
+static std::unique_ptr<Storage<PageType>>
+createStorage(std::string connectionString) {
   ConnectionString _connectionString(connectionString);
 
   switch (StorageTypeMap.at(_connectionString.type)) {
   case StorageType::FILE:
-    return std::make_unique<FileStorage>(_connectionString.path);
+    return std::make_unique<FileStorage<PageType>>(_connectionString.path);
     break;
   case StorageType::MEMORY:
-    return std::make_unique<MemoryStorage>();
+    return std::make_unique<MemoryStorage<PageType>>();
   }
 }
 
 } // namespace persist
+#endif /* STORAGE_FACTORY_HPP */

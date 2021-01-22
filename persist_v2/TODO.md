@@ -22,20 +22,22 @@
  SOFTWARE.
 -->
 
-1. Serialization and de-serialization of polymorphic page objects
+# TODO List
 
-2. Backend storage
+1. Refactor backend storage
+    - covert to template with PageType as parameter
     - add allocate and de-allocate methods
     - refactor metadata object to FSM
     - refactor read and write methods for metadata to that for FSM.
 
-3. Refactor buffer manager to
+2. Refactor buffer manager to
     - use replacers for page replacement policy
     - create a new page when FSM is empty using allocate method of backend storage
     - implement the FORCE, NO-FORCE, STEAL and NO-STEAL mode of operations for buffer manager
 
 
 3. [NOT SURE NEEDED] Implement FreeSpaceManager class to manage:
+    - Serialization and de-serialization of polymorphic page objects
     - use free space map (FSM) to track pages with free space
     - create a new page when FSM is empty using allocate method of backend storage
     - remove completely empty pages using the de-allocate method of backend storage
@@ -53,6 +55,6 @@
 
 6. Implement List collection
 
-6. Create Concurrency Control Manager:
+7. Create Concurrency Control Manager:
     - Design manager class. The design should be extendable to support different concurrency control protocols
     - Implement different types of page locks for buffer manager needed by the manager

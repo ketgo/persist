@@ -38,16 +38,21 @@
 #include <memory>
 
 #include <persist/core/metadata.hpp>
-#include <persist/core/page/slotted_page.hpp>
+#include <persist/core/page/base.hpp>
 
 namespace persist {
 
 /**
- * Storage Abstract Class
+ * @brief Storage Abstract Class
  *
  * Exposes interface to open and close a backend storage.
+ *
+ * @tparam PageType type of page to store
  */
-class Storage {
+template <class PageType> class Storage {
+  //static_assert(std::is_base_of<PageType, Page>::value,
+  //              "PageType must be derived from Page class.");
+
 public:
   virtual ~Storage() {} //<- Virtual destructor
 
@@ -92,24 +97,14 @@ public:
    * @param pageId page identifier
    * @returns pointer to Page object
    */
-  virtual std::unique_ptr<SlottedPage> read(PageId pageId) = 0;
+  virtual std::unique_ptr<PageType> read(PageId pageId) = 0;
 
   /**
    * Write Page object to storage.
    *
    * @param page reference to Page object to be written
    */
-  virtual void write(SlottedPage &page) = 0;
-
-  /**
-   * @brief Factory method to create backend storage object
-   *
-   * @param connectionString url containing the type of storage backend and its
-   * arguments. The url schema is `<type>://<host>/<path>?<args>`. For example a
-   * file storage url looks like `file:///myCollection.db` where the backend
-   * uses the file `myCollection.db` in the root folder `/` to store data.
-   */
-  static std::unique_ptr<Storage> create(std::string connectionString);
+  virtual void write(PageType &page) = 0;
 };
 
 } // namespace persist

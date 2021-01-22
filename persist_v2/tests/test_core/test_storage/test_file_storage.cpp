@@ -36,7 +36,6 @@
 #include <persist/core/page/slotted_page.hpp>
 #include <persist/core/storage/file_storage.hpp>
 #include <persist/core/transaction.hpp>
-#include <persist/core/utility.hpp>
 
 using namespace persist;
 
@@ -51,13 +50,15 @@ protected:
   const std::string readPath = base + "/_read.storage";
   const std::string writePath = base + "/_write.storage";
   const uint64_t pageSize = 512;
-  std::unique_ptr<FileStorage> readStorage, writeStorage;
+  std::unique_ptr<FileStorage<SlottedPage>> readStorage, writeStorage;
   std::unique_ptr<LogManager> logManager;
 
   void SetUp() override {
-    readStorage = std::make_unique<FileStorage>(readPath, pageSize);
+    readStorage =
+        std::make_unique<FileStorage<SlottedPage>>(readPath, pageSize);
     readStorage->open();
-    writeStorage = std::make_unique<FileStorage>(writePath, pageSize);
+    writeStorage =
+        std::make_unique<FileStorage<SlottedPage>>(writePath, pageSize);
     writeStorage->open();
 
     // Setup log manager
@@ -143,13 +144,15 @@ protected:
   const std::string readPath = base + "/test_read.storage";
   const std::string writePath = base + "/test_write.storage";
   const uint64_t pageSize = 512;
-  std::unique_ptr<FileStorage> readStorage, writeStorage;
+  std::unique_ptr<FileStorage<SlottedPage>> readStorage, writeStorage;
   std::unique_ptr<LogManager> logManager;
 
   void SetUp() override {
-    readStorage = std::make_unique<FileStorage>(readPath, pageSize);
+    readStorage =
+        std::make_unique<FileStorage<SlottedPage>>(readPath, pageSize);
     readStorage->open();
-    writeStorage = std::make_unique<FileStorage>(writePath, pageSize);
+    writeStorage =
+        std::make_unique<FileStorage<SlottedPage>>(writePath, pageSize);
     writeStorage->open();
 
     // Setup log manager

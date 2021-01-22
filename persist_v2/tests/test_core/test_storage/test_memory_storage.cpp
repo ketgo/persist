@@ -43,11 +43,11 @@ using namespace persist;
 class MemoryStorageTestFixture : public ::testing::Test {
 protected:
   const uint64_t pageSize = 512;
-  std::unique_ptr<MemoryStorage> storage;
+  std::unique_ptr<MemoryStorage<SlottedPage>> storage;
   std::unique_ptr<LogManager> logManager;
 
   void SetUp() override {
-    storage = std::make_unique<MemoryStorage>(pageSize);
+    storage = std::make_unique<MemoryStorage<SlottedPage>>(pageSize);
     storage->open();
 
     // Setup log manager

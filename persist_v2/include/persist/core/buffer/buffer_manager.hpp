@@ -71,7 +71,7 @@ class BufferManager : public PageObserver {
     bool modified;
   };
 
-  Storage &storage;                   //<- backend storage
+  Storage<PageType> &storage;         //<- backend storage
   std::unique_ptr<MetaData> metadata; //<- storage metadata
   uint64_t maxSize;                   //<- maximum size of buffer
 
@@ -101,7 +101,8 @@ public:
    *  - pinning slots with pages in use
    *  - multi-threaded and multi-process access control
    */
-  BufferManager(Storage &storage, uint64_t maxSize = DEFAULT_CACHE_SIZE);
+  BufferManager(Storage<PageType> &storage,
+                uint64_t maxSize = DEFAULT_CACHE_SIZE);
 
   /**
    * @brief Open page table. The method opens the backend storage and sets up
