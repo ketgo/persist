@@ -50,7 +50,7 @@ namespace persist {
  * @tparam PageType type of page to store
  */
 template <class PageType> class Storage {
-  //static_assert(std::is_base_of<PageType, Page>::value,
+  // static_assert(std::is_base_of<PageType, Page>::value,
   //              "PageType must be derived from Page class.");
 
 public:
@@ -105,6 +105,21 @@ public:
    * @param page reference to Page object to be written
    */
   virtual void write(PageType &page) = 0;
+
+  /**
+   * @brief Allocate a new page in storage. The identifier of the newly created
+   * page is returned.
+   *
+   * @returns identifier of the newly allocated page
+   */
+  virtual PageId allocate() = 0;
+
+  /**
+   * @brief Deallocate page with given identifier.
+   *
+   * @param pageId identifier of the page to deallocate
+   */
+  virtual void deallocate(PageId pageId) = 0;
 };
 
 } // namespace persist

@@ -39,7 +39,8 @@ namespace persist {
  */
 template <class PageType> class MemoryStorage : public Storage<PageType> {
 private:
-  uint64_t pageSize;                           //<- page block size
+  uint64_t pageSize;                           //<- page size
+  uint64_t pageCount;                          //<- Number of pages in storage
   MetaData metadata;                           //<- storage metadata
   std::unordered_map<PageId, ByteBuffer> data; //<- pages stored as map
 
@@ -47,8 +48,8 @@ public:
   /**
    * Constructor
    */
-  MemoryStorage() : pageSize(DEFAULT_PAGE_SIZE) {}
-  MemoryStorage(uint64_t pageSize) : pageSize(pageSize) {}
+  MemoryStorage() : pageSize(DEFAULT_PAGE_SIZE), pageCount(0) {}
+  MemoryStorage(uint64_t pageSize) : pageSize(pageSize), pageCount(0) {}
 
   /**
    * @brief Open memory storage. No operation is performed.
@@ -122,6 +123,28 @@ public:
     PageId pageId = page.getId();
     data[pageId] = ByteBuffer(pageSize);
     page.dump(Span(data.at(pageId)));
+  }
+
+  /**
+   * @brief Allocate a new page in storage. The identifier of the newly created
+   * page is returned.
+   *
+   * @returns identifier of the newly allocated page
+   */
+  PageId allocate() override {
+    // Increase page count by 1. No need to write an empty page to storage since
+    // it will be automatically handled by buffer manager.
+    pageCount += 1;
+    return pageCount;
+  }
+
+  /**
+   * @brief Deallocate page with given identifier.
+   *
+   * @param pageId identifier of the page to deallocate
+   */
+  void deallocate(PageId pageId) override {
+    // TODO: No operation performed for now
   }
 };
 

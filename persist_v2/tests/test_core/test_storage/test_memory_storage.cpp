@@ -38,6 +38,8 @@
 #include <persist/core/storage/memory_storage.hpp>
 #include <persist/core/transaction.hpp>
 
+// TODO: Create a RawPage page type and use that for testing storages
+
 using namespace persist;
 
 class MemoryStorageTestFixture : public ::testing::Test {
@@ -82,6 +84,10 @@ TEST_F(MemoryStorageTestFixture, TestReadWritePage) {
 
   ASSERT_EQ(page.getId(), _page->getId());
   ASSERT_EQ(recordBlock.data, _recordBlock.data);
+}
+
+TEST_F(MemoryStorageTestFixture, TestAllocate) {
+  ASSERT_EQ(storage->allocate(), 1);
 }
 
 TEST_F(MemoryStorageTestFixture, TestReadWriteMetaData) {

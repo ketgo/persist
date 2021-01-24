@@ -32,9 +32,8 @@
 
 2. Refactor buffer manager to
     - use replacers for page replacement policy
-    - create a new page when FSM is empty using allocate method of backend storage
-    - implement the FORCE, NO-FORCE, STEAL and NO-STEAL mode of operations for buffer manager
-
+    - new page creation using allocate method of backend storage
+    - implement the STEAL and NO-STEAL mode of operations
 
 3. [NOT SURE NEEDED] Implement FreeSpaceManager class to manage:
     - Serialization and de-serialization of polymorphic page objects
@@ -49,12 +48,14 @@
     - use buffer manager for loading pages of log records in log manager
     - log manager to persist pages using the flush method of buffer manager
 
-5. Create collection metadata manager:
+5. Implement FORCE and NO-FORCE mode of operations of transaction manager. 
+
+6. Create collection metadata manager:
     - handles metadata containing the starting location, ending location and number of records in a collection
     - writes metadata to the first record block of the collection
 
-6. Implement List collection
+7. Implement List collection
 
-7. Create Concurrency Control Manager:
+8. Create Concurrency Control Manager:
     - Design manager class. The design should be extendable to support different concurrency control protocols
     - Implement different types of page locks for buffer manager needed by the manager

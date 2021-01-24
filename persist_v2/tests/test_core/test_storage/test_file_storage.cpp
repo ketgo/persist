@@ -37,6 +37,8 @@
 #include <persist/core/storage/file_storage.hpp>
 #include <persist/core/transaction.hpp>
 
+// TODO: Create a RawPage page type and use that for testing storages
+
 using namespace persist;
 
 const std::string base = "persist_v2/tests/data";
@@ -71,7 +73,25 @@ protected:
   }
 };
 
-TEST_F(NewFileStorageTestFixture, TestReadBlock) {
+TEST_F(NewFileStorageTestFixture, TestOpen) {
+  ByteBuffer buffer;
+  FileHeader header;
+  std::fstream writeFile =
+      file::open(writePath, std::ios::in | std::ios::binary);
+  std::fstream readFile = file::open(readPath, std::ios::in | std::ios::binary);
+
+  buffer.resize(writeStorage->headerSize);
+  file::read(writeFile, buffer, 0);
+  header.load(buffer);
+  ASSERT_EQ(header.pageSize, pageSize);
+
+  buffer.resize(readStorage->headerSize);
+  file::read(readFile, buffer, 0);
+  header.load(buffer);
+  ASSERT_EQ(header.pageSize, pageSize);
+}
+
+TEST_F(NewFileStorageTestFixture, TestReadPage) {
   try {
     std::unique_ptr<SlottedPage> page = readStorage->read(1);
     FAIL() << "Expected PageNotFoundError Exception.";
@@ -82,7 +102,7 @@ TEST_F(NewFileStorageTestFixture, TestReadBlock) {
   }
 }
 
-TEST_F(NewFileStorageTestFixture, TestWriteBlock) {
+TEST_F(NewFileStorageTestFixture, TestWritePage) {
   Transaction txn(*logManager, 0);
   RecordBlock recordBlock;
   recordBlock.data = "testing"_bb;
@@ -93,15 +113,19 @@ TEST_F(NewFileStorageTestFixture, TestWriteBlock) {
 
   std::fstream file = file::open(writePath, std::ios::in | std::ios::binary);
   ByteBuffer buffer(pageSize);
-  file::read(file, buffer, 0);
-  SlottedPage _page(
-      0, pageSize); //<- page ID does not match expected. It should get
-                    // overritten after loading from buffer.
-  _page.load(Span({buffer.data(), buffer.size()}));
+  file::read(file, buffer, writeStorage->headerSize);
+  SlottedPage _page(0,
+                    pageSize); //<- page ID does not match expected. It should
+                               // get overritten after loading from buffer.
+  _page.load(Span(buffer));
   RecordBlock &_recordBlock = page.getRecordBlock(txn, slotId);
 
   ASSERT_EQ(page.getId(), _page.getId());
   ASSERT_EQ(recordBlock.data, _recordBlock.data);
+}
+
+TEST_F(NewFileStorageTestFixture, TestAllocate) {
+  ASSERT_EQ(readStorage->allocate(), 1);
 }
 
 TEST_F(NewFileStorageTestFixture, TestReadMetaData) {
@@ -165,7 +189,25 @@ protected:
   }
 };
 
-TEST_F(ExistingFileStorageTestFixture, TestReadBlock) {
+TEST_F(ExistingFileStorageTestFixture, TestOpen) {
+  ByteBuffer buffer;
+  FileHeader header;
+  std::fstream writeFile =
+      file::open(writePath, std::ios::in | std::ios::binary);
+  std::fstream readFile = file::open(readPath, std::ios::in | std::ios::binary);
+
+  buffer.resize(writeStorage->headerSize);
+  file::read(writeFile, buffer, 0);
+  header.load(buffer);
+  ASSERT_EQ(header.pageSize, pageSize);
+
+  buffer.resize(readStorage->headerSize);
+  file::read(readFile, buffer, 0);
+  header.load(buffer);
+  ASSERT_EQ(header.pageSize, pageSize);
+}
+
+TEST_F(ExistingFileStorageTestFixture, TestReadPage) {
   Transaction txn(*logManager, 0);
   std::unique_ptr<SlottedPage> page = readStorage->read(1);
   RecordBlock &recordBlock = page->getRecordBlock(txn, 1);
@@ -174,7 +216,7 @@ TEST_F(ExistingFileStorageTestFixture, TestReadBlock) {
   ASSERT_EQ(recordBlock.data, ByteBuffer("testing"_bb));
 }
 
-TEST_F(ExistingFileStorageTestFixture, TestWriteBlock) {
+TEST_F(ExistingFileStorageTestFixture, TestWritePage) {
   Transaction txn(*logManager, 0);
   RecordBlock recordBlock;
   recordBlock.data = "testing"_bb;
@@ -185,7 +227,7 @@ TEST_F(ExistingFileStorageTestFixture, TestWriteBlock) {
 
   std::fstream file = file::open(writePath, std::ios::in | std::ios::binary);
   ByteBuffer buffer(pageSize);
-  file::read(file, buffer, 0);
+  file::read(file, buffer, writeStorage->headerSize);
   SlottedPage _page(
       0, pageSize); //<- page ID does not match expected. It should get
                     // overritten after loading from buffer.
@@ -194,6 +236,10 @@ TEST_F(ExistingFileStorageTestFixture, TestWriteBlock) {
 
   ASSERT_EQ(page.getId(), _page.getId());
   ASSERT_EQ(recordBlock.data, _recordBlock.data);
+}
+
+TEST_F(ExistingFileStorageTestFixture, TestAllocate) {
+  ASSERT_EQ(readStorage->allocate(), 2);
 }
 
 TEST_F(ExistingFileStorageTestFixture, TestReadMetaData) {

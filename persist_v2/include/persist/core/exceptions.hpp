@@ -55,7 +55,14 @@ class PersistException : public std::exception {};
 class CorruptException : public PersistException {};
 
 /**
- * @brief Not found error base excpetion class.
+ * @brief Data parsing base exception class
+ *
+ * Use this to capture all parsing exceptions.
+ */
+class ParseException : public PersistException {};
+
+/**
+ * @brief Not found error base excpetion class
  *
  * Use this to capture all not found exceptions.
  */
@@ -66,6 +73,38 @@ class NotFoundException : public PersistException {};
 // --------------------------------------------------
 // Derived Exception Classes
 // --------------------------------------------------
+
+/**
+ * Free Space List Parsing Error
+ *
+ * This error is thrown if unable to parse free space list.
+ */
+class FSLParseError : public ParseException {
+private:
+  std::string msg;
+
+public:
+  FSLParseError() : msg("FSL parsing error.") {}
+  FSLParseError(const char *msg) : msg(msg) {}
+  FSLParseError(std::string &msg) : msg(msg) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
+ * Free Space List Corrupt Error
+ *
+ * This error is thrown if the loaded free space list is corrupt.
+ */
+class FSLCorruptError : public CorruptException {
+private:
+  std::string msg;
+
+public:
+  FSLCorruptError() : msg("FSL corrupt error.") {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
 
 /**
  * Record Not Found Error
@@ -150,7 +189,7 @@ public:
  *
  * This error is thrown if unable to parse log record.
  */
-class LogRecordParseError : public PersistException {
+class LogRecordParseError : public ParseException {
 private:
   std::string msg;
 
@@ -182,7 +221,7 @@ public:
  *
  * This error is thrown if unable to parse record block.
  */
-class RecordBlockParseError : public PersistException {
+class RecordBlockParseError : public ParseException {
 private:
   std::string msg;
 
@@ -233,7 +272,7 @@ public:
  *
  * This error is thrown if unable to parse page.
  */
-class PageParseError : public PersistException {
+class PageParseError : public ParseException {
 private:
   std::string msg;
 
@@ -288,7 +327,7 @@ private:
 
 public:
   PageSizeError(uint64_t &pageSize)
-      : msg(std::string("Data Block size '") + std::to_string(pageSize) +
+      : msg(std::string("Page size '") + std::to_string(pageSize) +
             std::string("' less then minimum required size of '") +
             std::to_string(MINIMUM_PAGE_SIZE) + std::string("'.")) {}
 
@@ -300,7 +339,7 @@ public:
  *
  * This error is thrown if unable to parse storage metadata.
  */
-class MetaDataParseError : public PersistException {
+class MetaDataParseError : public ParseException {
 private:
   std::string msg;
 
@@ -332,7 +371,7 @@ public:
  *
  * This error is thrown if unable to parse storage metadata delta.
  */
-class MetaDataDeltaParseError : public PersistException {
+class MetaDataDeltaParseError : public ParseException {
 private:
   std::string msg;
 
