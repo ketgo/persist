@@ -49,8 +49,8 @@ const std::string base = "persist_v2/tests/data";
 
 class NewFileStorageTestFixture : public ::testing::Test {
 protected:
-  const std::string readPath = base + "/_read.storage";
-  const std::string writePath = base + "/_write.storage";
+  const std::string readPath = base + "/_read";
+  const std::string writePath = base + "/_write";
   const uint64_t pageSize = 512;
   std::unique_ptr<FileStorage<SlottedPage>> readStorage, writeStorage;
   std::unique_ptr<LogManager> logManager;
@@ -77,8 +77,11 @@ TEST_F(NewFileStorageTestFixture, TestOpen) {
   ByteBuffer buffer;
   FileHeader header;
   std::fstream writeFile =
-      file::open(writePath, std::ios::in | std::ios::binary);
-  std::fstream readFile = file::open(readPath, std::ios::in | std::ios::binary);
+      file::open(writePath + FILE_STORAGE_DATA_FILE_EXTENTION,
+                 std::ios::in | std::ios::binary);
+  std::fstream readFile =
+      file::open(readPath + FILE_STORAGE_DATA_FILE_EXTENTION,
+                 std::ios::in | std::ios::binary);
 
   buffer.resize(writeStorage->headerSize);
   file::read(writeFile, buffer, 0);
@@ -111,7 +114,8 @@ TEST_F(NewFileStorageTestFixture, TestWritePage) {
   PageSlotId slotId = page.addRecordBlock(txn, recordBlock).first;
   writeStorage->write(page);
 
-  std::fstream file = file::open(writePath, std::ios::in | std::ios::binary);
+  std::fstream file = file::open(writePath + FILE_STORAGE_DATA_FILE_EXTENTION,
+                                 std::ios::in | std::ios::binary);
   ByteBuffer buffer(pageSize);
   file::read(file, buffer, writeStorage->headerSize);
   SlottedPage _page(0,
@@ -128,35 +132,30 @@ TEST_F(NewFileStorageTestFixture, TestAllocate) {
   ASSERT_EQ(readStorage->allocate(), 1);
 }
 
-TEST_F(NewFileStorageTestFixture, TestReadMetaData) {
-  std::unique_ptr<MetaData> metadata = readStorage->read();
+TEST_F(NewFileStorageTestFixture, TestReadFSL) {
+  std::unique_ptr<FSL> fsl = readStorage->read();
 
-  ASSERT_EQ(metadata->pageSize, pageSize);
-  ASSERT_EQ(metadata->numPages, 0);
-  ASSERT_EQ(metadata->freePages.size(), 0);
+  ASSERT_EQ(fsl->freePages.size(), 0);
 }
 
-TEST_F(NewFileStorageTestFixture, TestWriteMetaData) {
-  MetaData metadata;
-  metadata.pageSize = pageSize;
-  metadata.freePages = {1, 2, 3};
+TEST_F(NewFileStorageTestFixture, TestWriteFSL) {
+  FSL fsl;
+  fsl.freePages = {1, 2, 3};
 
-  writeStorage->write(metadata);
+  writeStorage->write(fsl);
 
   // Read written file
-  std::fstream file = file::open(writePath + ".metadata",
+  std::fstream file = file::open(writePath + FILE_STORAGE_FSL_FILE_EXTENTION,
                                  std::fstream::in | std::fstream::binary);
   uint64_t fileSize = file::size(file);
   ByteBuffer buffer;
   buffer.resize(fileSize);
   file::read(file, buffer, 0);
 
-  MetaData _metadata;
-  _metadata.load(Span({buffer.data(), buffer.size()}));
+  FSL _fsl;
+  _fsl.load(Span(buffer));
 
-  ASSERT_EQ(metadata.freePages, _metadata.freePages);
-  ASSERT_EQ(metadata.numPages, _metadata.numPages);
-  ASSERT_EQ(metadata.pageSize, _metadata.pageSize);
+  ASSERT_EQ(fsl.freePages, _fsl.freePages);
 }
 
 /********************************
@@ -165,8 +164,8 @@ TEST_F(NewFileStorageTestFixture, TestWriteMetaData) {
 
 class ExistingFileStorageTestFixture : public ::testing::Test {
 protected:
-  const std::string readPath = base + "/test_read.storage";
-  const std::string writePath = base + "/test_write.storage";
+  const std::string readPath = base + "/test_read";
+  const std::string writePath = base + "/test_write";
   const uint64_t pageSize = 512;
   std::unique_ptr<FileStorage<SlottedPage>> readStorage, writeStorage;
   std::unique_ptr<LogManager> logManager;
@@ -193,8 +192,11 @@ TEST_F(ExistingFileStorageTestFixture, TestOpen) {
   ByteBuffer buffer;
   FileHeader header;
   std::fstream writeFile =
-      file::open(writePath, std::ios::in | std::ios::binary);
-  std::fstream readFile = file::open(readPath, std::ios::in | std::ios::binary);
+      file::open(writePath + FILE_STORAGE_DATA_FILE_EXTENTION,
+                 std::ios::in | std::ios::binary);
+  std::fstream readFile =
+      file::open(readPath + FILE_STORAGE_DATA_FILE_EXTENTION,
+                 std::ios::in | std::ios::binary);
 
   buffer.resize(writeStorage->headerSize);
   file::read(writeFile, buffer, 0);
@@ -225,7 +227,8 @@ TEST_F(ExistingFileStorageTestFixture, TestWritePage) {
   PageSlotId slotId = page.addRecordBlock(txn, recordBlock).first;
   writeStorage->write(page);
 
-  std::fstream file = file::open(writePath, std::ios::in | std::ios::binary);
+  std::fstream file = file::open(writePath + FILE_STORAGE_DATA_FILE_EXTENTION,
+                                 std::ios::in | std::ios::binary);
   ByteBuffer buffer(pageSize);
   file::read(file, buffer, writeStorage->headerSize);
   SlottedPage _page(
@@ -242,38 +245,30 @@ TEST_F(ExistingFileStorageTestFixture, TestAllocate) {
   ASSERT_EQ(readStorage->allocate(), 2);
 }
 
-TEST_F(ExistingFileStorageTestFixture, TestReadMetaData) {
-  std::unique_ptr<MetaData> metadata = readStorage->read();
-  MetaData _metadata;
-  _metadata.pageSize = 1024; // Page in saved metadata
-  _metadata.numPages = 10;
-  _metadata.freePages = {1, 2, 3};
+TEST_F(ExistingFileStorageTestFixture, TestReadFSL) {
+  std::unique_ptr<FSL> fsl = readStorage->read();
+  FSL _fsl;
+  _fsl.freePages = {1, 2, 3};
 
-  ASSERT_EQ(metadata->pageSize, _metadata.pageSize);
-  ASSERT_EQ(metadata->numPages, _metadata.numPages);
-  ASSERT_EQ(metadata->freePages, _metadata.freePages);
+  ASSERT_EQ(fsl->freePages, _fsl.freePages);
 }
 
-TEST_F(ExistingFileStorageTestFixture, TestWriteMetaData) {
-  MetaData metadata;
-  metadata.pageSize = 1024;
-  metadata.numPages = 10;
-  metadata.freePages = {1, 2, 3};
+TEST_F(ExistingFileStorageTestFixture, TestWriteFSL) {
+  FSL fsl;
+  fsl.freePages = {1, 2, 3};
 
-  writeStorage->write(metadata);
+  writeStorage->write(fsl);
 
   // Read written file
-  std::fstream file = file::open(writePath + ".metadata",
+  std::fstream file = file::open(writePath + FILE_STORAGE_FSL_FILE_EXTENTION,
                                  std::fstream::in | std::fstream::binary);
   uint64_t fileSize = file::size(file);
   ByteBuffer buffer;
   buffer.resize(fileSize);
   file::read(file, buffer, 0);
 
-  MetaData _metadata;
-  _metadata.load(Span({buffer.data(), buffer.size()}));
+  FSL _fsl;
+  _fsl.load(Span(buffer));
 
-  ASSERT_EQ(metadata.freePages, _metadata.freePages);
-  ASSERT_EQ(metadata.numPages, _metadata.numPages);
-  ASSERT_EQ(metadata.pageSize, _metadata.pageSize);
+  ASSERT_EQ(fsl.freePages, _fsl.freePages);
 }

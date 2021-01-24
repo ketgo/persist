@@ -41,7 +41,7 @@ template <class PageType> class MemoryStorage : public Storage<PageType> {
 private:
   uint64_t pageSize;                           //<- page size
   uint64_t pageCount;                          //<- Number of pages in storage
-  MetaData metadata;                           //<- storage metadata
+  FSL fsl;                                     //<- free space list
   std::unordered_map<PageId, ByteBuffer> data; //<- pages stored as map
 
 public:
@@ -70,33 +70,29 @@ public:
    * Remove storage. Data is cleared.
    */
   void remove() override {
-    metadata.freePages.clear();
-    metadata.numPages = 0;
+    fsl.freePages.clear();
     data.clear();
+    pageCount = 0;
   }
 
   /**
-   * Read storage metadata information. In case no metadata information is
-   * available a pointer to new metadata object is returned.
+   * Read free space list from storage. If no free list is found then pointer to
+   * an empty FSL object is returned.
    *
-   * @return pointer to MetaData object
+   * @return pointer to FSL object
    */
-  std::unique_ptr<MetaData> read() override {
-    std::unique_ptr<MetaData> _metadata = std::make_unique<MetaData>(metadata);
+  std::unique_ptr<FSL> read() override {
+    std::unique_ptr<FSL> _fsl = std::make_unique<FSL>(fsl);
 
-    return _metadata;
+    return _fsl;
   }
 
   /**
-   * Write MetaData object to storage.
+   * Write FSL object to storage.
    *
-   * @param metadata reference to MetaData object to be written
+   * @param fsl reference to FSL object to be written
    */
-  void write(MetaData &metadata) override {
-    this->metadata.pageSize = metadata.pageSize;
-    this->metadata.numPages = metadata.numPages;
-    this->metadata.freePages = metadata.freePages;
-  }
+  void write(FSL &fsl) override { this->fsl.freePages = fsl.freePages; }
 
   /**
    * Read Page with given identifier from storage.

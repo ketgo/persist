@@ -37,6 +37,9 @@
 #include <persist/core/exceptions.hpp>
 #include <persist/core/storage/base.hpp>
 
+#define FILE_STORAGE_DATA_FILE_EXTENTION ".stg"
+#define FILE_STORAGE_FSL_FILE_EXTENTION ".fsl"
+
 namespace persist {
 
 /*************************************************************
@@ -184,10 +187,11 @@ struct FileHeader {
  */
 template <class PageType> class FileStorage : public Storage<PageType> {
   PERSIST_PRIVATE
-  uint64_t pageSize;  //<- page block size
-  uint64_t pageCount; //<- number of pages in the storage file
-  std::string path;   //<- storage file name with path
-  std::fstream file;  //<- IO stream for file
+  uint64_t pageSize;     //<- page block size
+  uint64_t pageCount;    //<- number of pages in the storage file
+  std::string path;      //<- storage files name with path
+  std::fstream dataFile; //<- IO file stream for data
+  std::fstream fslFile;  //<- IO file stream for free space list
 
 public:
   static const uint64_t headerSize =
@@ -230,16 +234,19 @@ public:
    * Opens storage file.
    */
   void open() override {
-    file = file::open(path, std::ios::binary | std::ios::in | std::ios::out);
+    dataFile = file::open(path + FILE_STORAGE_DATA_FILE_EXTENTION,
+                          std::ios::binary | std::ios::in | std::ios::out);
+    fslFile = file::open(path + FILE_STORAGE_FSL_FILE_EXTENTION,
+                         std::ios::binary | std::ios::in | std::ios::out);
 
     // If file is not empty then set the page size and count using data from
     // file header else write a new file header
-    uint64_t size = file::size(file);
+    uint64_t size = file::size(dataFile);
     FileHeader header;
     ByteBuffer buffer(headerSize);
     if (size != 0) {
       // Load header
-      file::read(file, buffer, 0);
+      file::read(dataFile, buffer, 0);
       header.load(Span(buffer));
       // Set page size value to that obtained from file header
       // TODO: Maybe we need to log warning or throw exception for incompatible
@@ -255,14 +262,14 @@ public:
       // Write header
       header.pageSize = pageSize;
       header.dump(Span(buffer));
-      file::write(file, buffer, 0);
+      file::write(dataFile, buffer, 0);
     }
   }
 
   /**
    * Checks if storage file is open
    */
-  bool is_open() override { return file.is_open(); }
+  bool is_open() override { return dataFile.is_open() && fslFile.is_open(); }
 
   /**
    * Closes opened storage file. No operation is performed if
@@ -270,9 +277,9 @@ public:
    */
   void close() override {
     // Close storage file if opened
-    if (file.is_open()) {
-      file.close();
-    }
+    dataFile.close();
+    // Close FSL file if opened
+    fslFile.close();
   }
 
   /**
@@ -280,74 +287,45 @@ public:
    */
   void remove() override {
     close();
-    std::remove(path.c_str());
-    std::string metadataPath = path + ".metadata";
-    std::remove(metadataPath.c_str());
+    std::remove((path + FILE_STORAGE_DATA_FILE_EXTENTION).c_str());
+    std::remove((path + FILE_STORAGE_FSL_FILE_EXTENTION).c_str());
   }
 
   /**
-   * Read metadata information from storage file
+   * Read free space list from storage. If no free list is found then pointer to
+   * an empty FSL object is returned.
    *
-   * @return pointer to MetaData object
+   * @return pointer to FSL object
    */
-  std::unique_ptr<MetaData> read() override {
-    // Open metadata file
-    std::fstream metadataFile;
-    std::string metadataPath = path + ".metadata";
-    std::unique_ptr<MetaData> metadataPtr = std::make_unique<MetaData>();
-    // Set page size value in metadata. This gets updated once the content of
-    // the saved metadata is loaded. If not saved metadata is found then this
-    // value is used.
-    metadataPtr->pageSize = pageSize;
-
-    metadataFile = file::open(metadataPath, std::ios::in | std::ios::binary);
-
-    // Read the binary metadata file and check for content size. If no content
-    // found then return pointer to an empty metadata object otherwise return a
+  std::unique_ptr<FSL> read() override {
+    // Read the binary FSL file and check for content size. If no content
+    // found then return pointer to an empty FSL object otherwise return a
     // serialize MetaData object.
 
-    // Stop eating new lines in binary mode!!!
-    file.unsetf(std::ios::skipws);
-    // get its size:
-    uint64_t fileSize = file::size(metadataFile);
+    std::unique_ptr<FSL> fslPtr = std::make_unique<FSL>();
+    uint64_t size = file::size(fslFile);
+
     // Check if the file is emtpy
-    if (fileSize == 0) {
-      return metadataPtr;
+    if (size != 0) {
+      // Load FSL object
+      ByteBuffer buffer;
+      buffer.resize(size);
+      file::read(fslFile, buffer, 0);
+      fslPtr->load(Span(buffer));
     }
 
-    ByteBuffer buffer;
-    buffer.resize(fileSize);
-    file::read(metadataFile, buffer, 0);
-
-    // Load MetaData object
-    metadataPtr->load(Span(buffer));
-    pageSize = metadataPtr->pageSize;
-
-    // Close metadata file
-    metadataFile.close();
-
-    return metadataPtr;
+    return fslPtr;
   }
 
   /**
-   * Write MetaData object to storage file.
+   * Write FSL object to storage.
    *
-   * @param metadata reference to MetaData object to be written
+   * @param fsl reference to FSL object to be written
    */
-  void write(MetaData &metadata) override {
-    ByteBuffer buffer(metadata.size());
-    metadata.dump(Span(buffer));
-
-    // Open metadata file
-    std::fstream metadataFile;
-    std::string metadataPath = path + ".metadata";
-
-    metadataFile = file::open(metadataPath, std::ios::out | std::ios::trunc |
-                                                std::ios::binary);
-    file::write(metadataFile, buffer, 0);
-
-    // Close metadata file
-    metadataFile.close();
+  void write(FSL &fsl) override {
+    ByteBuffer buffer(fsl.size());
+    fsl.dump(Span(buffer));
+    file::write(fslFile, buffer, 0);
   }
 
   /**
@@ -369,14 +347,12 @@ public:
 
     ByteBuffer buffer;
     buffer.resize(pageSize);
-    std::unique_ptr<PageType> page =
-        std::make_unique<PageType>(pageId, pageSize);
-
-    // Load data block from file
-    file::read(file, buffer, offset);
+    file::read(dataFile, buffer, offset);
 
     // TODO: Needs more selective exception handling. The page not found error
     // should be thrown only if the offset exceeds EOF
+    std::unique_ptr<PageType> page =
+        std::make_unique<PageType>(pageId, pageSize);
     try {
       page->load(Span(buffer));
     } catch (...) {
@@ -404,7 +380,7 @@ public:
 
     ByteBuffer buffer(pageSize);
     page.dump(Span(buffer));
-    file::write(file, buffer, offset);
+    file::write(dataFile, buffer, offset);
   }
 
   /**

@@ -90,15 +90,12 @@ TEST_F(MemoryStorageTestFixture, TestAllocate) {
   ASSERT_EQ(storage->allocate(), 1);
 }
 
-TEST_F(MemoryStorageTestFixture, TestReadWriteMetaData) {
-  MetaData metadata;
-  metadata.pageSize = pageSize;
-  metadata.freePages = {1, 2, 3};
-  storage->write(metadata);
+TEST_F(MemoryStorageTestFixture, TestReadWriteFSL) {
+  FSL fsl;
+  fsl.freePages = {1, 2, 3};
+  storage->write(fsl);
 
-  std::unique_ptr<MetaData> _metadata = storage->read();
+  std::unique_ptr<FSL> _fsl = storage->read();
 
-  ASSERT_EQ(metadata.freePages, _metadata->freePages);
-  ASSERT_EQ(metadata.numPages, _metadata->numPages);
-  ASSERT_EQ(metadata.pageSize, _metadata->pageSize);
+  ASSERT_EQ(fsl.freePages, _fsl->freePages);
 }

@@ -25,6 +25,7 @@
 #ifndef FSL_HPP
 #define FSL_HPP
 
+#include <cstring>
 #include <set>
 
 #include <persist/core/defs.hpp>

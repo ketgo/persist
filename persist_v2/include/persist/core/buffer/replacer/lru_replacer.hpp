@@ -70,14 +70,25 @@ public:
    *
    * @param pageId page identifer to remember
    */
-  void track(PageId pageId) override;
+  void track(PageId pageId) override {
+    // Check if pageId exists in cache
+    if (position.find(pageId) == position.end()) {
+      // Insert value in cache
+      cache.push_front({pageId, 0});
+      // Save position of value in cache
+      position[pageId] = cache.begin();
+    }
+  }
 
   /**
    * @brief Forget page ID for detecting victum page.
    *
    * @param pageId page identifer to forget
    */
-  void forget(PageId pageId) override;
+  void forget(PageId pageId) override {
+    cache.erase(position.at(pageId));
+    position.erase(pageId);
+  }
 
   /**
    * @brief Get the Victum page Id. This is the page that can be replaced by the
@@ -85,7 +96,15 @@ public:
    *
    * @return PageId identifier of the victum page
    */
-  PageId getVictumId() override;
+  PageId getVictumId() override {
+    // Looks for LRU page ID having 0 valued pin count
+    for (auto i = cache.rbegin(); i != cache.rend(); ++i) {
+      if (i->pinCount == 0) {
+        return i->pageId;
+      }
+    }
+    return 0;
+  }
 
   /**
    * @brief Pin page ID. A pinned ID indicates the associated page is being
@@ -94,7 +113,13 @@ public:
    *
    * @param pageId page identifer to pin
    */
-  void pin(PageId pageId) override;
+  void pin(PageId pageId) override {
+    // Increase reference count for page ID
+    position.at(pageId)->pinCount += 1;
+    // Move the frame for given page ID to front in accordance with LRU strategy
+    cache.splice(cache.begin(), cache, position.at(pageId));
+  }
+
   /**
    * @brief Unpin page ID. This notifies the replacer that the page with given
    * ID is not being referenced by an external process anymore. Note that the
@@ -104,7 +129,7 @@ public:
    *
    * @param pageId page identifer to unpin
    */
-  void unpin(PageId pageId) override;
+  void unpin(PageId pageId) override { position.at(pageId)->pinCount -= 1; }
 };
 
 } // namespace persist

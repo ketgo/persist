@@ -37,7 +37,7 @@
 #include <list>
 #include <memory>
 
-#include <persist/core/metadata.hpp>
+#include <persist/core/fsl.hpp>
 #include <persist/core/page/base.hpp>
 
 namespace persist {
@@ -77,19 +77,19 @@ public:
   virtual void remove() = 0;
 
   /**
-   * Read storage metadata information. In case no metadata information is
-   * available a pointer to new metadata object is returned.
+   * Read free space list from storage. If no free list is found then pointer to
+   * an empty FSL object is returned.
    *
-   * @return pointer to MetaData object
+   * @return pointer to FSL object
    */
-  virtual std::unique_ptr<MetaData> read() = 0;
+  virtual std::unique_ptr<FSL> read() = 0;
 
   /**
-   * Write MetaData object to storage.
+   * Write FSL object to storage.
    *
-   * @param metadata reference to MetaData object to be written
+   * @param fsl reference to FSL object to be written
    */
-  virtual void write(MetaData &metadata) = 0;
+  virtual void write(FSL &fsl) = 0;
 
   /**
    * Read Page with given identifier from storage.

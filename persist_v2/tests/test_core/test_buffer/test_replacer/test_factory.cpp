@@ -1,5 +1,5 @@
 /**
- * replacer/base.cpp - Persist
+ * test_factory.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,17 +22,22 @@
  * SOFTWARE.
  */
 
-#include <persist/core/buffer/replacer/base.hpp>
-#include <persist/core/buffer/replacer/lru_replacer.hpp>
+/**
+ * @brief Replacer factory class test.
+ */
 
-namespace persist {
+#include <gtest/gtest.h>
 
-std::unique_ptr<Replacer> Replacer::create(ReplacerType replacerType) {
-  switch (replacerType) {
-  case ReplacerType::LRU:
-    return std::make_unique<LRUReplacer>();
-    break;
-  }
-}
+#include <memory>
+#include <typeinfo>
 
+#include <persist/core/buffer/replacer/factory.hpp>
+
+using namespace persist;
+
+TEST(ReplacerFactoryTest, TestCreateLRUReplacer) {
+  std::unique_ptr<Replacer> replacer = createReplacer(ReplacerType::LRU);
+  Replacer *ptr = replacer.get();
+  std::string className = typeid(*ptr).name();
+  ASSERT_TRUE(className.find("LRUReplacer") != std::string::npos);
 }

@@ -32,7 +32,7 @@
 
 #include <persist/core/buffer/replacer/base.hpp>
 #include <persist/core/defs.hpp>
-#include <persist/core/metadata.hpp>
+#include <persist/core/fsl.hpp>
 #include <persist/core/page/base.hpp>
 #include <persist/core/storage/base.hpp>
 
@@ -67,13 +67,12 @@ class BufferManager : public PageObserver {
    */
   struct PageSlot {
     std::unique_ptr<PageType> page;
-    std::unique_ptr<MetaDataDelta> metaDelta;
     bool modified;
   };
 
-  Storage<PageType> &storage;         //<- backend storage
-  std::unique_ptr<MetaData> metadata; //<- storage metadata
-  uint64_t maxSize;                   //<- maximum size of buffer
+  Storage<PageType> &storage; //<- backend storage
+  std::unique_ptr<FSL> fsl;   //<- free space list
+  uint64_t maxSize;           //<- maximum size of buffer
 
   std::list<PageSlot> buffer; //<- buffer of page slots
   typedef typename std::list<PageSlot>::iterator PageSlotPosition;

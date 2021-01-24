@@ -32,12 +32,6 @@
 namespace persist {
 
 /**
- * @brief Enumerated list of replacer types
- *
- */
-enum class ReplacerType { LRU };
-
-/**
  * @brief Replacer Base Class
  *
  * The class exposes interface for page replacer. Replacer is responsible for
@@ -93,14 +87,6 @@ public:
    * @param pageId page identifer to unpin
    */
   virtual void unpin(PageId pageId) = 0;
-
-  /**
-   * @brief Factory method to create replacer of given type.
-   *
-   * @param replacerType type of replacer to create
-   * @returns unique pointer to created replacer object
-   */
-  static std::unique_ptr<Replacer> create(ReplacerType replacerType);
 };
 
 } // namespace persist
