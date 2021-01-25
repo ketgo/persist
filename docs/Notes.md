@@ -32,7 +32,7 @@
 
     a. TransactionManager:
         - FORCE: When a transaction commits, all modified pages by that transaction will be written.
-        - NO-FORCE: Allows a transaction to commit without enforcing all the modified pages to be written. The pages will automatically be written upon page replacement protocol of the buffer manager. Note that all modified pages are flushed to the storage when the destructor of the buffer manager is called.
+        - NO-FORCE: Allows a transaction to commit without enforcing all the modified pages to be written. The pages will automatically be written during the page replacement process of the buffer manager. Note that all modified pages are flushed to the storage when the destructor of the buffer manager is called.
 
     b. BufferManager:
         - NO-STEAL: Page modified by a transaction that is still active, i.e. yet to commit, should not be written to disk
@@ -52,6 +52,8 @@
 
         - [v0.2] Store FSM in pages and let the buffer manager persist those pages during page replacement. This approach will also ensure that the FSM is stored on every commit if the buffer manager is in FORCE mode. Note that changes in FSM pages are not logged for recovery to ensure fast performance.
 
-5. Add storage manager which allocates and de-allocates pages. The total number of pages in storage can be computes from file(s) size. This implies that no metadata object is needed for lower level disk IO. Note the storage manager can be removed and its functionality can be moved to the implementation of the backend Storage.
+5. Add storage manager which allocates and de-allocates pages. The total number of pages in storage can be computes from file(s) size. This implies that no metadata object is needed for the lower level disk IO. Note the storage manager can be removed and its functionality can be moved to the implementation of the backend Storage.
 
-6. Add interface to get file size in `Storage` class. This is used by the storage manager/storage class itself to figure out the total number of pages. The total number of pages is needed in order to implement the `allocation` and `deallocate` methods, and to set correct page ID when creating new pages.
+6. Add interface to get file size in the `Storage` class. This is used by the storage manager/storage class itself to figure out the total number of pages. The total number of pages is needed in order to implement the `allocation` and `de-allocate` methods, and to set the correct page ID when creating new pages.
+
+7. The log records can have different levels of granularity: Page-level and Record-level. A Record-level log can comprise of a single or multiple Page-level logs. This is because a large record, i.e. one that does not fit into a single page, is split into multiple parts so that it can be stored in multiple pages.

@@ -30,12 +30,14 @@
 #include <set>
 #include <unordered_map>
 
-#include <persist/core/buffer/replacer/base.hpp>
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
 #include <persist/core/fsl.hpp>
 #include <persist/core/page/base.hpp>
 #include <persist/core/storage/base.hpp>
+
+#include <persist/core/buffer/page_handle.hpp>
+#include <persist/core/buffer/replacer/base.hpp>
 
 // TODO: Thread safety for concurrent transactions
 
@@ -43,51 +45,6 @@
 #define MINIMUM_BUFFER_SIZE 2
 
 namespace persist {
-
-/**
- * @brief Page Handle Class
- *
- * Page handles are objects used to safely access loaded pages in the buffer.
- * Internally, a page handle object holds a reference to the desired page and
- * performs the pinning and unpinning operation upon construction and
- * destruction respectively. The page can be accessed using the -> operator.
- *
- * @tparam PageType type of page handled by the class
- */
-template <class PageType> class PageHandle {
-  static_assert(std::is_base_of<Page, PageType>::value,
-                "PageType must be derived from Page class.");
-
-  PERSIST_PRIVATE
-
-  PageType &page;     //<- reference to loaded page in buffer
-  Replacer &replacer; //<- reference to page replacer
-
-public:
-  /**
-   * @brief Construct a new Page Handle object
-   *
-   */
-  PageHandle(PageType &page, Replacer &replacer)
-      : page(page), replacer(replacer) {
-    // Pin page
-    replacer.pin(page.getId());
-  }
-
-  /**
-   * @brief Destroy the Page Handle object
-   *
-   */
-  ~PageHandle() {
-    // Unpin page
-    replacer.unpin(page.getId());
-  }
-
-  /**
-   * @brief Page access operator
-   */
-  PageType &operator->() { return page; }
-};
 
 /**
  * @brief Buffer Manager
@@ -277,7 +234,7 @@ public:
     }
 
     // Create and return page handle object
-    return PageHandle<PageType>(*(buffer.at(pageId).page), replacer);
+    return PageHandle<PageType>(buffer.at(pageId).page.get(), *replacer);
   }
 
   /**

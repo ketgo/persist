@@ -38,7 +38,6 @@
 
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
-#include <persist/core/log_manager.hpp>
 #include <persist/core/page/slotted_page.hpp>
 
 using namespace persist;
