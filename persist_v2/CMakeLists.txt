@@ -56,13 +56,11 @@ target_include_directories(
 if (${CMAKE_BUILD_TYPE} MATCHES Debug)
 target_link_libraries(
     ${LIB} 
-    nlohmann_json::nlohmann_json
     loguru::loguru
 )
 else()
 target_link_libraries(
     ${LIB} 
-    nlohmann_json::nlohmann_json
 )
 endif()
 

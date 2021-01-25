@@ -81,6 +81,17 @@ TEST_F(LRUReplacerTestFixture, TestPin) {
   ASSERT_EQ(replacer->position[2]->pinCount, 2);
 }
 
+TEST_F(LRUReplacerTestFixture, TestIsPinned) {
+  replacer->track(2);
+
+  ASSERT_EQ(replacer->position[2]->pinCount, 0);
+  replacer->pin(2);
+  ASSERT_EQ(replacer->position[2]->pinCount, 1);
+  ASSERT_TRUE(replacer->isPinned(2));
+  replacer->unpin(2);
+  ASSERT_TRUE(!replacer->isPinned(2));
+}
+
 TEST_F(LRUReplacerTestFixture, TestUnPin) {
   replacer->track(2);
   replacer->pin(2);

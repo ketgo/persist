@@ -24,31 +24,31 @@
 
 # TODO List
 
-1. Refactor backend storage
+1. [DONE] Refactor backend storage
     - covert to template with PageType as parameter
     - add allocate and de-allocate methods
     - refactor metadata object to FSM
     - refactor read and write methods for metadata to that for FSM.
 
-2. Refactor buffer manager to
-    - use replacers for page replacement policy
+2. [IN-PROGRESS] Refactor buffer manager to
+    - use replacers for the page replacement policy
     - new page creation using allocate method of backend storage
     - implement the STEAL and NO-STEAL mode of operations
 
 3. [NOT SURE NEEDED] Implement FreeSpaceManager class to manage:
     - Serialization and de-serialization of polymorphic page objects
-    - use free space map (FSM) to track pages with free space
+    - use the free space map (FSM) to track pages with free space
     - create a new page when FSM is empty using allocate method of backend storage
     - remove completely empty pages using the de-allocate method of backend storage
-    - use FreeSpaceManager in buffer manager
-    - remove read and write methods for metadata objects in Storage class
+    - use FreeSpaceManager in the buffer manager
+    - remove read and write methods for metadata objects in the Storage class
 
 4. Implement a persistent log file for transaction logging:
     - create page class for storing log records
-    - use buffer manager for loading pages of log records in log manager
+    - use buffer manager for loading pages of log records in the log manager
     - log manager to persist pages using the flush method of buffer manager
 
-5. Implement FORCE and NO-FORCE mode of operations of transaction manager. 
+5. Implement the FORCE and NO-FORCE mode of operations of the transaction manager.
 
 6. Create collection metadata manager:
     - handles metadata containing the starting location, ending location and number of records in a collection

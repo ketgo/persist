@@ -71,7 +71,7 @@ public:
    * @param pageId page identifer to remember
    */
   void track(PageId pageId) override {
-    // Check if pageId exists in cache
+    // Check if pageId does not exist in cache
     if (position.find(pageId) == position.end()) {
       // Insert value in cache
       cache.push_front({pageId, 0});
@@ -118,6 +118,10 @@ public:
     position.at(pageId)->pinCount += 1;
     // Move the frame for given page ID to front in accordance with LRU strategy
     cache.splice(cache.begin(), cache, position.at(pageId));
+  }
+
+  bool isPinned(PageId pageId) override {
+    return position.at(pageId)->pinCount > 0;
   }
 
   /**

@@ -169,17 +169,17 @@ public:
 };
 
 /**
- * Page Table Error
+ * Buffer Manager Error
  *
- * This error is thrown by the page table.
+ * This error is thrown by the buffer manager.
  */
-class PageTableError : public PersistException {
+class BufferManagerError : public PersistException {
 private:
   std::string msg;
 
 public:
-  PageTableError(const char *msg) : msg(msg) {}
-  PageTableError(std::string &msg) : msg(msg) {}
+  BufferManagerError(const char *msg) : msg(msg) {}
+  BufferManagerError(std::string &msg) : msg(msg) {}
 
   const char *what() const throw() { return msg.c_str(); }
 };

@@ -54,7 +54,6 @@ public:
  */
 class Page {
   PERSIST_PROTECTED
-
   /**
    * @brief List of registered page modification observers
    */
@@ -71,16 +70,16 @@ class Page {
 
 public:
   /**
-   * @brief Destroy the Page object
-   *
-   */
-  virtual ~Page() {}
-
-  /**
    * @brief Enumerated list of operation that can be performed on page data.
    *
    */
   enum class Operation { INSERT, UPDATE, DELETE };
+
+  /**
+   * @brief Destroy the Page object
+   *
+   */
+  virtual ~Page() {}
 
   /**
    * @brief Register page modification observer

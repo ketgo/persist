@@ -76,6 +76,13 @@ public:
   }
 
   /**
+   * @brief Get page size.
+   *
+   * @returns page size used in storage
+   */
+  uint64_t getPageSize() override { return pageSize; }
+
+  /**
    * Read free space list from storage. If no free list is found then pointer to
    * an empty FSL object is returned.
    *

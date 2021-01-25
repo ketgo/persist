@@ -369,7 +369,7 @@ public:
   SlottedPage() {}
   SlottedPage(PageId pageId, uint64_t pageSize = DEFAULT_PAGE_SIZE)
       : header(pageId, pageSize) {
-    // Check block size greater than minimum size
+    // Check page size greater than minimum size
     if (pageSize < MINIMUM_PAGE_SIZE) {
       throw PageSizeError(pageSize);
     }

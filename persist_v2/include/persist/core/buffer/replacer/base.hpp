@@ -78,6 +78,14 @@ public:
   virtual void pin(PageId pageId) = 0;
 
   /**
+   * @brief Check if page is pinned
+   *
+   * @param pageId page identifier
+   * @returns true if pinned else false
+   */
+  virtual bool isPinned(PageId pageId) = 0;
+
+  /**
    * @brief Unpin page ID. This notifies the replacer that the page with given
    * ID is not being referenced by an external process anymore. Note that the
    * page can still be referenced by some other external process in
