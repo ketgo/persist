@@ -34,9 +34,10 @@ namespace persist {
  * @brief Page Handle Class
  *
  * Page handles are objects used to safely access loaded pages in the buffer.
- * Internally, a page handle object holds a reference to the desired page and
- * performs the pinning and unpinning operation upon construction and
- * destruction respectively. The page can be accessed using the -> operator.
+ * They are essentially pointers. Internally, a page handle object holds a
+ * raw pointer to a loaded page and performs the pinning and unpinning
+ * operation upon construction and destruction respectively. The page can be
+ * accessed using the standard -> operator.
  *
  * @tparam PageType type of page handled by the class
  */

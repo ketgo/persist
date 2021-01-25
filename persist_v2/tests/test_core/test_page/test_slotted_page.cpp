@@ -48,7 +48,7 @@ using ::testing::Return;
  * Slotted Page Header Unit Tests
  **********************************************/
 
-class PageHeaderTestFixture : public ::testing::Test {
+class SlottedPageHeaderTestFixture : public ::testing::Test {
 protected:
   ByteBuffer input;
   ByteBuffer extra;
@@ -80,7 +80,7 @@ protected:
   }
 };
 
-TEST_F(PageHeaderTestFixture, TestLoad) {
+TEST_F(SlottedPageHeaderTestFixture, TestLoad) {
   SlottedPage::Header _header;
   ByteBuffer _input;
   _input.insert(_input.end(), input.begin(), input.end());
@@ -100,7 +100,7 @@ TEST_F(PageHeaderTestFixture, TestLoad) {
   }
 }
 
-TEST_F(PageHeaderTestFixture, TestLoadError) {
+TEST_F(SlottedPageHeaderTestFixture, TestLoadError) {
   try {
     ByteBuffer _input;
     SlottedPage::Header _header;
@@ -113,7 +113,7 @@ TEST_F(PageHeaderTestFixture, TestLoadError) {
   }
 }
 
-TEST_F(PageHeaderTestFixture, TestLoadCorruptErrorInvalidChecksum) {
+TEST_F(SlottedPageHeaderTestFixture, TestLoadCorruptErrorInvalidChecksum) {
   try {
     ByteBuffer _input = input;
     _input.back() = 0;
@@ -127,7 +127,7 @@ TEST_F(PageHeaderTestFixture, TestLoadCorruptErrorInvalidChecksum) {
   }
 }
 
-TEST_F(PageHeaderTestFixture, TestLoadCorruptErrorInvalidSlotsCount) {
+TEST_F(SlottedPageHeaderTestFixture, TestLoadCorruptErrorInvalidSlotsCount) {
   try {
     ByteBuffer _input = input;
     _input[24] = 9; //<- sets the slot count located at 24th byte to 9
@@ -141,18 +141,18 @@ TEST_F(PageHeaderTestFixture, TestLoadCorruptErrorInvalidSlotsCount) {
   }
 }
 
-TEST_F(PageHeaderTestFixture, TestDump) {
+TEST_F(SlottedPageHeaderTestFixture, TestDump) {
   ByteBuffer output(header->size());
   header->dump(Span(output));
 
   ASSERT_EQ(input, output);
 }
 
-TEST_F(PageHeaderTestFixture, TestSize) {
+TEST_F(SlottedPageHeaderTestFixture, TestSize) {
   ASSERT_EQ(header->size(), input.size());
 }
 
-TEST_F(PageHeaderTestFixture, TestCreateSlot) {
+TEST_F(SlottedPageHeaderTestFixture, TestCreateSlot) {
   uint64_t size = 100;
   uint64_t tail = header->tail();
   PageSlotId slotId = header->createSlot(size);
@@ -163,7 +163,7 @@ TEST_F(PageHeaderTestFixture, TestCreateSlot) {
   ASSERT_EQ(header->slots.rbegin()->second.size, size);
 }
 
-TEST_F(PageHeaderTestFixture, TestUpdateSlot) {
+TEST_F(SlottedPageHeaderTestFixture, TestUpdateSlot) {
   uint64_t oldSize = header->slots.at(2).size;
   uint64_t newSize = 100;
   uint64_t tail = header->tail();
@@ -189,7 +189,7 @@ TEST_F(PageHeaderTestFixture, TestUpdateSlot) {
   ASSERT_EQ(header->slots.at(3).size, 3);
 }
 
-TEST_F(PageHeaderTestFixture, TestFreeSlot) {
+TEST_F(SlottedPageHeaderTestFixture, TestFreeSlot) {
   uint64_t tail = header->tail();
   SlottedPage::Header::Slots::iterator it = header->slots.begin();
   ++it;
@@ -358,13 +358,13 @@ TEST_F(SlottedPageTestFixture, TestFreeSpace) {
   SlottedPage::Header header(pageId, pageSize);
   header.nextPageId = nextPageId;
   header.prevPageId = prevPageId;
-  SlottedPage _block(pageId, pageSize);
-  _block.setNextPageId(nextPageId);
-  _block.setPrevPageId(prevPageId);
+  SlottedPage _page(pageId, pageSize);
+  _page.setNextPageId(nextPageId);
+  _page.setPrevPageId(prevPageId);
 
-  ASSERT_EQ(_block.freeSpace(SlottedPage::Operation::UPDATE),
+  ASSERT_EQ(_page.freeSpace(SlottedPage::Operation::UPDATE),
             pageSize - header.size());
-  ASSERT_EQ(_block.freeSpace(SlottedPage::Operation::INSERT),
+  ASSERT_EQ(_page.freeSpace(SlottedPage::Operation::INSERT),
             pageSize - header.size() - sizeof(SlottedPage::Header::Slot));
 }
 
@@ -478,19 +478,19 @@ TEST_F(SlottedPageTestFixture, TestRemoveRecordBlockError) {
 }
 
 TEST_F(SlottedPageTestFixture, TestLoad) {
-  SlottedPage _block;
-  _block.load(Span(input));
+  SlottedPage _page;
+  _page.load(Span(input));
 
-  ASSERT_EQ(_block.getId(), page->getId());
+  ASSERT_EQ(_page.getId(), page->getId());
 
   Transaction txn(*logManager, 0);
 
-  RecordBlock &_recordBlock_1 = _block.getRecordBlock(txn, slotId_1);
+  RecordBlock &_recordBlock_1 = _page.getRecordBlock(txn, slotId_1);
   ASSERT_EQ(_recordBlock_1.data, recordBlockData_1);
   ASSERT_TRUE(_recordBlock_1.nextLocation().isNull());
   ASSERT_TRUE(_recordBlock_1.prevLocation().isNull());
 
-  RecordBlock &_recordBlock_2 = _block.getRecordBlock(txn, slotId_2);
+  RecordBlock &_recordBlock_2 = _page.getRecordBlock(txn, slotId_2);
   ASSERT_EQ(_recordBlock_2.data, recordBlockData_2);
   ASSERT_TRUE(_recordBlock_2.nextLocation().isNull());
   ASSERT_TRUE(_recordBlock_2.prevLocation().isNull());
@@ -498,14 +498,14 @@ TEST_F(SlottedPageTestFixture, TestLoad) {
 
 TEST_F(SlottedPageTestFixture, TestLoadError) {
   try {
-    ByteBuffer _input;
-    RecordBlock _block;
-    _block.load(Span(_input));
-    FAIL() << "Expected RecordBlockParseError Exception.";
-  } catch (RecordBlockParseError &err) {
+    ByteBuffer _input(pageSize);
+    SlottedPage _page;
+    _page.load(Span(_input));
+    FAIL() << "Expected PageCorruptError Exception.";
+  } catch (PageCorruptError &err) {
     SUCCEED();
   } catch (...) {
-    FAIL() << "Expected RecordBlockParseError Exception.";
+    FAIL() << "Expected PageCorruptError Exception.";
   }
 }
 

@@ -228,13 +228,13 @@ public:
     // Check if page not present in buffer
     if (buffer.find(pageId) == buffer.end()) {
       // Load page from storage
-      std::unique_ptr<Page> page = storage.read(pageId);
+      std::unique_ptr<PageType> page = storage.read(pageId);
       // Insert page in buffer in accordance with LRU strategy
       put(page);
     }
 
     // Create and return page handle object
-    return PageHandle<PageType>(buffer.at(pageId).page.get(), *replacer);
+    return PageHandle<PageType>(buffer.at(pageId).page.get(), &replacer);
   }
 
   /**

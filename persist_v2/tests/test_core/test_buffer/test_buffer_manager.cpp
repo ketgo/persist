@@ -104,3 +104,25 @@ TEST_F(BufferManagerTestFixture, TestBufferManagerError) {
     FAIL() << "Expected BufferManagerError Exception.";
   }
 }
+
+TEST_F(BufferManagerTestFixture, TestGet) {
+  PageId pageId = page_1->getId();
+  auto page = bufferManager->get(pageId);
+
+  ASSERT_EQ(page->getId(), pageId);
+  ASSERT_EQ(page->getNextPageId(), page_1->getNextPageId());
+  ASSERT_EQ(page->getPrevPageId(), page_1->getPrevPageId());
+  ASSERT_EQ(page->freeSpace(Page::Operation::INSERT),
+            page_1->freeSpace(Page::Operation::INSERT));
+}
+
+TEST_F(BufferManagerTestFixture, TestGetError) {
+  try {
+    auto page = bufferManager->get(10);
+    FAIL() << "Expected PageNotFoundError Exception.";
+  } catch (PageNotFoundError &err) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected PageNotFoundError Exception.";
+  }
+}

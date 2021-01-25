@@ -34,6 +34,7 @@
     - use replacers for the page replacement policy
     - new page creation using allocate method of backend storage
     - implement the STEAL and NO-STEAL mode of operations
+    - implement thread safety
 
 3. [NOT SURE NEEDED] Implement FreeSpaceManager class to manage:
     - Serialization and de-serialization of polymorphic page objects

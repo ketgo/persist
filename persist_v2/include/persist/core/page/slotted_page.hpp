@@ -25,8 +25,6 @@
 #ifndef SLOTTED_PAGE_HPP
 #define SLOTTED_PAGE_HPP
 
-#include <cstdint>
-#include <cstring>
 #include <map>
 #include <unordered_map>
 
@@ -366,8 +364,7 @@ public:
   /**
    * Constructors
    */
-  SlottedPage() {}
-  SlottedPage(PageId pageId, uint64_t pageSize = DEFAULT_PAGE_SIZE)
+  SlottedPage(PageId pageId = 0, uint64_t pageSize = DEFAULT_PAGE_SIZE)
       : header(pageId, pageSize) {
     // Check page size greater than minimum size
     if (pageSize < MINIMUM_PAGE_SIZE) {
