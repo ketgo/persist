@@ -22,4 +22,85 @@
  * SOFTWARE.
  */
 
+/**
+ * Buffer Manager Unit Tests
+ */
+
+#include <gtest/gtest.h>
+
+#include <memory>
+
+/**
+ * Enabled intrusive testing
+ */
+#define PERSIST_INTRUSIVE_TESTING
+
 #include <persist/core/buffer/buffer_manager.hpp>
+#include <persist/core/buffer/replacer/lru_replacer.hpp>
+#include <persist/core/page/slotted_page.hpp>
+#include <persist/core/storage/factory.hpp>
+
+using namespace persist;
+
+class BufferManagerTestFixture : public ::testing::Test {
+protected:
+  const uint64_t pageSize = DEFAULT_PAGE_SIZE;
+  const uint64_t maxSize = 2;
+  const char *file = "file://test_buffer_manager";
+  std::unique_ptr<SlottedPage> page_1, page_2, page_3;
+  std::unique_ptr<FSL> fsl;
+  typedef BufferManager<SlottedPage, LRUReplacer> BufferManager;
+  std::unique_ptr<BufferManager> bufferManager;
+  std::unique_ptr<Storage<SlottedPage>> storage;
+  std::unique_ptr<LogManager> logManager;
+
+  void SetUp() override {
+    // setting up pages
+    page_1 = std::make_unique<SlottedPage>(1, pageSize);
+    page_2 = std::make_unique<SlottedPage>(2, pageSize);
+    page_3 = std::make_unique<SlottedPage>(3, pageSize);
+
+    // setting up free space list
+    fsl = std::make_unique<FSL>();
+    fsl->freePages = {1, 2, 3};
+
+    // setting up storage
+    storage = createStorage<SlottedPage>(file);
+    insert();
+
+    bufferManager = std::make_unique<BufferManager>(*storage, maxSize);
+    bufferManager->start();
+
+    // Setup log manager
+    logManager = std::make_unique<LogManager>();
+  }
+
+  void TearDown() override {
+    storage->remove();
+    bufferManager->stop();
+  }
+
+private:
+  /**
+   * @brief Insert test data
+   */
+  void insert() {
+    storage->open();
+    storage->write(*page_1);
+    storage->write(*page_2);
+    storage->write(*page_3);
+    storage->write(*fsl);
+    storage->close();
+  }
+};
+
+TEST_F(BufferManagerTestFixture, TestBufferManagerError) {
+  try {
+    BufferManager manager(*storage, 1); //<- invalid max size value
+    FAIL() << "Expected BufferManagerError Exception.";
+  } catch (BufferManagerError &err) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected BufferManagerError Exception.";
+  }
+}

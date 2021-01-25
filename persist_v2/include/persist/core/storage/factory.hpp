@@ -29,6 +29,11 @@
 #include <persist/core/storage/file_storage.hpp>
 #include <persist/core/storage/memory_storage.hpp>
 
+/**
+ * Storage type seperator in connection string
+ */
+#define STORAGE_TYPE_SEPERATOR "://"
+
 namespace persist {
 
 /**
@@ -54,12 +59,6 @@ namespace persist {
  *  - Exception for incorrectly formated connection string.
  */
 class ConnectionString {
-  PERSIST_PRIVATE
-  /**
-   * Storage type seperator in connection string
-   */
-  static const std::string storageTypeSep;
-
 public:
   std::string raw;
   std::string type;
@@ -67,13 +66,12 @@ public:
 
   // Constructor
   ConnectionString(std::string connectionString) : raw(connectionString) {
-    std::string::size_type loc = raw.find(storageTypeSep);
+    std::string seperator = STORAGE_TYPE_SEPERATOR;
+    std::string::size_type loc = raw.find(seperator);
     type = raw.substr(0, loc);
-    path = raw.substr(loc + storageTypeSep.size());
+    path = raw.substr(loc + seperator.size());
   }
 };
-
-const std::string ConnectionString::storageTypeSep = "://";
 
 /************************************************************************/
 

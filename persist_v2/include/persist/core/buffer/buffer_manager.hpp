@@ -37,6 +37,8 @@
 #include <persist/core/page/base.hpp>
 #include <persist/core/storage/base.hpp>
 
+// TODO: Thread safety for concurrent transactions
+
 // At the minimum 2 pages are needed in memory by record manager.
 #define MINIMUM_BUFFER_SIZE 2
 
@@ -129,6 +131,7 @@ class BufferManager : public PageObserver {
   ReplacerType replacer; //<- page replacer
   typedef typename std::unordered_map<PageId, PageSlot> Buffer;
   Buffer buffer; //<- buffer of page slots
+  bool started;  //<- flag indicating buffer manager started
 
   /**
    * Add page to buffer.
@@ -150,9 +153,9 @@ class BufferManager : public PageObserver {
 
     PageId pageId = page->getId();
     // Upsert page to buffer
-    buffer[pageId]->page = std::move(page);
+    buffer[pageId].page = std::move(page);
     // Register buffer manager as observer to inserted page
-    buffer[pageId]->page->registerObserver(this);
+    buffer[pageId].page->registerObserver(this);
     // Replacer starts tracking page for victum page discovery
     replacer.track(pageId);
   }
@@ -165,26 +168,55 @@ public:
    * @param maxSize maximum buffer size. If set to 0 then no maximum limit is
    * set.
    *
-   * TODO:
-   *  - multi-threaded and multi-process access control
    */
   BufferManager(Storage<PageType> &storage,
                 uint64_t maxSize = DEFAULT_BUFFER_SIZE)
-      : storage(storage), maxSize(maxSize) {
+      : storage(storage), maxSize(maxSize), started(false) {
     // Check buffer size value
     if (maxSize != 0 && maxSize < MINIMUM_BUFFER_SIZE) {
       throw BufferManagerError("Invalid value for max buffer size. The max "
                                "size can be 0 or greater than 2.");
     }
-    // Load free space list
-    fsl = storage->read();
   }
 
   /**
    * @brief Destroy the Buffer Manager object
    *
    */
-  ~BufferManager() { buffer.clear(); }
+  ~BufferManager() {}
+
+  /**
+   * @brief Start buffer manager.
+   *
+   */
+  void start() {
+    if (!started) {
+      // Start backend storage
+      storage.open();
+      // Load free space list
+      fsl = storage.read();
+      // Set state to started
+      started = true;
+    }
+  }
+
+  /**
+   * @brief Stop buffer manager.
+   *
+   * All the modified pages loaded onto the buffer are flushed to backend
+   * storage before stopping the manager.
+   *
+   */
+  void stop() {
+    if (started) {
+      // Flush all loaded pages
+      flushAll();
+      // Close backend storage
+      storage.close();
+      // Set state to closed
+      started = false;
+    }
+  }
 
   /**
    * Get a new page. The method creates a new page and loads it into buffer.
@@ -245,7 +277,7 @@ public:
     }
 
     // Create and return page handle object
-    return PageHandle<PageType>(*(buffer.at(pageId)->page), replacer);
+    return PageHandle<PageType>(*(buffer.at(pageId).page), replacer);
   }
 
   /**
@@ -259,14 +291,14 @@ public:
     typedef typename Buffer::iterator BufferPosition;
     BufferPosition it = buffer.find(pageId);
     // Save page if found, modified, and not pinned
-    if (it != buffer.end() && it->second->modified &&
+    if (it != buffer.end() && it->second.modified &&
         !replacer.isPinned(pageId)) {
       // Persist FSL
       storage.write(*fsl);
       // Persist page
-      storage.write(*(buffer.at(pageId)->page));
+      storage.write(*(it->second.page));
       // Since the page has been saved it is now considered as un-modified
-      buffer.at(pageId)->modified = false;
+      it->second.modified = false;
     }
   }
 
@@ -276,19 +308,19 @@ public:
    */
   void flushAll() {
     // Flush all pages in buffer
-    for (auto pageId : buffer) {
-      flush(pageId);
+    for (const auto &element : buffer) {
+      flush(element.first);
     }
   }
 
   /**
    * @brief Handle page modifications. This method marks the page slot for given
-   * ID as modified and updates the free space list.
+   * page ID as modified and updates the free space list.
    *
    * @param pageId page identifier
    */
   void handleModifiedPage(PageId pageId) override {
-    buffer.at(pageId)->modified = true;
+    buffer.at(pageId).modified = true;
 
     // TODO: The below logic of adding page to FSL should be part of free space
     // manager.
@@ -296,7 +328,7 @@ public:
     // Check if page has free space and update free space list accordingly. Note
     // that since FSL is used to get pages with free space for INSERT page
     // operation, free space for only INSERT is checked.
-    if (buffer.at(pageId)->page->freeSpace(Page::Operation::INSERT) > 0) {
+    if (buffer.at(pageId).page->freeSpace(Page::Operation::INSERT) > 0) {
       // Note: FSL uses set which takes care of duplicates so no need to check
       fsl->freePages.insert(pageId);
     } else {
