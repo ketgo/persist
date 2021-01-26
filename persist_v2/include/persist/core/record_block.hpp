@@ -25,12 +25,16 @@
 #ifndef RECORD_HPP
 #define RECORD_HPP
 
-#include <cstdint>
-#include <string>
-
 #include <persist/core/defs.hpp>
+#include <persist/core/exceptions.hpp>
 
 namespace persist {
+
+// ----------------------------------------------------------------------------
+// TODO:
+//  - Little and Big Eddien mismatch during serialization. Maybe this is not
+//  even needed.
+// ----------------------------------------------------------------------------
 
 /**
  * Record Block Class
@@ -66,7 +70,7 @@ public:
     /**
      * @brief Check if location is NULL
      */
-    bool isNull() { return pageId == 0; }
+    bool isNull() const { return pageId == 0; }
 
     /**
      * @brief Set the location to NULL
@@ -140,14 +144,27 @@ public:
      *
      * @param input input buffer span to load
      */
-    void load(Span input);
+    void load(Span input) {
+      if (input.size < size()) {
+        throw RecordBlockParseError();
+      }
+
+      // Load bytes
+      std::memcpy((void *)this, (const void *)input.start, size());
+    }
 
     /**
      * Dump record block header as byte string.
      *
      * @param output output buffer span to dump
      */
-    void dump(Span output);
+    void dump(Span output) {
+      if (output.size < size()) {
+        throw RecordBlockParseError();
+      }
+      // Dump bytes
+      std::memcpy((void *)output.start, (const void *)this, size());
+    }
 
     /**
      * @brief Equality comparision operator.
@@ -189,7 +206,27 @@ public:
   /**
    * @brief Computes checksum for record block.
    */
-  Checksum _checksum();
+  Checksum _checksum() {
+
+    // Implemented hash function based on comment in
+    // https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
+
+    Checksum seed = size();
+
+    seed = std::hash<PageId>()(header.nextLocation.pageId) + 0x9e3779b9 +
+           (seed << 6) + (seed >> 2);
+    seed ^= std::hash<PageSlotId>()(header.nextLocation.slotId) + 0x9e3779b9 +
+            (seed << 6) + (seed >> 2);
+    seed ^= std::hash<PageId>()(header.prevLocation.slotId) + 0x9e3779b9 +
+            (seed << 6) + (seed >> 2);
+    seed ^= std::hash<PageSlotId>()(header.prevLocation.slotId) + 0x9e3779b9 +
+            (seed << 6) + (seed >> 2);
+    for (auto &i : data) {
+      seed ^= i + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    }
+
+    return seed;
+  }
 
 public:
   ByteBuffer data; //<- data contained in the record block
@@ -210,28 +247,71 @@ public:
    *
    * @return Location reference to the next record block
    */
-  Location &nextLocation();
+  const Location &getNextLocation() const { return header.nextLocation; }
+
+  /**
+   * @brief Set the next RecordBlock location object
+   *
+   * @param location reference to the location of the next record block
+   */
+  void setNextLocation(Location &location) { header.nextLocation = location; }
 
   /**
    * @brief Get the previous RecordBlock location object
    *
    * @return Location reference to the previous record block
    */
-  Location &prevLocation();
+  const Location &getPrevLocation() const { return header.prevLocation; }
+
+  /**
+   * @brief Set the previous RecordBlock location object
+   *
+   * @param location reference to the location of the previous record block
+   */
+  void setPrevLocation(Location &location) { header.prevLocation = location; }
 
   /**
    * Load RecordBlock object from byte string.
    *
    * @param input input buffer span to load
    */
-  void load(Span input);
+  void load(Span input) {
+    if (input.size < size()) {
+      throw RecordBlockParseError();
+    }
+    // Load header
+    header.load(input);
+    // Load data
+    size_t dataSize = input.size - header.size();
+    data.resize(dataSize);
+    std::memcpy((void *)data.data(),
+                (const void *)(input.start + header.size()), dataSize);
+
+    // Check for corruption by matching checksum
+    if (_checksum() != header.checksum) {
+      throw RecordBlockCorruptError();
+    }
+  }
 
   /**
    * Dump RecordBlock object as byte string.
    *
    * @param output output buffer span to dump
    */
-  void dump(Span output);
+  void dump(Span output) {
+    if (output.size < size()) {
+      throw RecordBlockParseError();
+    }
+
+    // Compute and set checksum
+    header.checksum = _checksum();
+
+    // Dump header
+    header.dump(output);
+    // Dump data
+    std::memcpy((void *)(output.start + header.size()),
+                (const void *)data.data(), data.size());
+  }
 
   /**
    * @brief Equality comparision operator.

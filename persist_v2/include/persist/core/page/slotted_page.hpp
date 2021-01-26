@@ -377,7 +377,7 @@ public:
    *
    * @returns block identifier
    */
-  PageId &getId() override { return header.pageId; }
+  const PageId &getId() const override { return header.pageId; }
 
   /**
    * Get free space in bytes available in the block.
@@ -407,7 +407,7 @@ public:
    *
    * @returns next page identifier
    */
-  PageId &getNextPageId() { return header.nextPageId; }
+  const PageId &getNextPageId() const { return header.nextPageId; }
 
   /**
    * Set next page ID. This is the ID for the next page when there is data
@@ -427,7 +427,7 @@ public:
    *
    * @returns previous page identifier
    */
-  PageId &getPrevPageId() { return header.prevPageId; }
+  const PageId &getPrevPageId() const { return header.prevPageId; }
 
   /**
    * Set previous page ID. This is the ID for the previous page when there is
@@ -448,9 +448,9 @@ public:
    * @param slotId slot identifier
    * @returns reference to RecordBlock object
    */
-  RecordBlock &getRecordBlock(Transaction &txn, PageSlotId slotId) {
+  const RecordBlock &getRecordBlock(Transaction &txn, PageSlotId slotId) const {
     // Check if slot exists
-    RecordBlockMap::iterator it = recordBlocks.find(slotId);
+    RecordBlockMap::const_iterator it = recordBlocks.find(slotId);
     if (it == recordBlocks.end()) {
       throw RecordBlockNotFoundError(header.pageId, slotId);
     }

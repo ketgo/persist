@@ -95,7 +95,7 @@ public:
    *
    * @returns page identifier
    */
-  virtual PageId &getId() = 0;
+  virtual const PageId &getId() const = 0;
 
   /**
    * Get free space in bytes available in the page.

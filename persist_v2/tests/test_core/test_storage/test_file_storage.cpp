@@ -98,7 +98,8 @@ TEST_F(NewFileStorageTestFixture, TestReadPage) {
 
 TEST_F(NewFileStorageTestFixture, TestWritePage) {
   SimplePage page(1, pageSize);
-  page.record = "testing"_bb;
+  ByteBuffer record = "testing"_bb;
+  page.setRecord(record);
 
   writeStorage->write(page);
 
@@ -110,7 +111,7 @@ TEST_F(NewFileStorageTestFixture, TestWritePage) {
   _page.load(Span(buffer));
 
   ASSERT_EQ(page.getId(), _page.getId());
-  ASSERT_EQ(page.record, _page.record);
+  ASSERT_EQ(page.getRecord(), _page.getRecord());
 }
 
 TEST_F(NewFileStorageTestFixture, TestAllocate) {
@@ -193,12 +194,13 @@ TEST_F(ExistingFileStorageTestFixture, TestReadPage) {
   std::unique_ptr<SimplePage> page = readStorage->read(1);
 
   ASSERT_EQ(page->getId(), 1);
-  ASSERT_EQ(page->record, "testing"_bb);
+  ASSERT_EQ(page->getRecord(), "testing"_bb);
 }
 
 TEST_F(ExistingFileStorageTestFixture, TestWritePage) {
   SimplePage page(1, pageSize);
-  page.record = "testing"_bb;
+  ByteBuffer record = "testing"_bb;
+  page.setRecord(record);
 
   writeStorage->write(page);
 
@@ -210,7 +212,7 @@ TEST_F(ExistingFileStorageTestFixture, TestWritePage) {
   _page.load(Span(buffer));
 
   ASSERT_EQ(page.getId(), _page.getId());
-  ASSERT_EQ(page.record, _page.record);
+  ASSERT_EQ(page.getRecord(), _page.getRecord());
 }
 
 TEST_F(ExistingFileStorageTestFixture, TestAllocate) {

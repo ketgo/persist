@@ -216,12 +216,27 @@ TEST_F(SimplePageTestFixture, TestFreeSpace) {
                 sizeof(size_t));
 }
 
+TEST_F(SimplePageTestFixture, TestGetRecord) {
+  ASSERT_EQ(page->getRecord(), record);
+}
+
+TEST_F(SimplePageTestFixture, TestSetRecord) {
+  ByteBuffer record_ = "testing_set"_bb;
+
+  // Current free space in block
+  page->registerObserver(&observer);
+  EXPECT_CALL(observer, handleModifiedPage(page->getId())).Times(AtLeast(1));
+  page->setRecord(record_);
+
+  ASSERT_EQ(page->getRecord(), record_);
+}
+
 TEST_F(SimplePageTestFixture, TestLoad) {
   SimplePage _page;
   _page.load(Span(input));
 
   ASSERT_EQ(_page.getId(), page->getId());
-  ASSERT_EQ(_page.record, page->record);
+  ASSERT_EQ(_page.getRecord(), page->getRecord());
 }
 
 TEST_F(SimplePageTestFixture, TestLoadError) {

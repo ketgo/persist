@@ -64,12 +64,14 @@ TEST_F(MemoryStorageTestFixture, TestReadPageError) {
 
 TEST_F(MemoryStorageTestFixture, TestReadWritePage) {
   SimplePage page(1, pageSize);
-  page.record = "testing"_bb;
+  ByteBuffer record = "testing"_bb;
+  page.setRecord(record);
+
   storage->write(page);
   std::unique_ptr<SimplePage> _page = storage->read(1);
 
   ASSERT_EQ(page.getId(), _page->getId());
-  ASSERT_EQ(page.record, _page->record);
+  ASSERT_EQ(page.getRecord(), _page->getRecord());
 }
 
 TEST_F(MemoryStorageTestFixture, TestAllocate) {

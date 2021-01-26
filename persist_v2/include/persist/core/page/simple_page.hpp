@@ -153,13 +153,13 @@ public:
    */
   Header header;
 
-public:
   /**
    * @brief Record stored as bytes in page.
    *
    */
   ByteBuffer record;
 
+public:
   /**
    * Constructors
    */
@@ -176,7 +176,7 @@ public:
    *
    * @returns page identifier
    */
-  PageId &getId() override { return header.pageId; }
+  const PageId &getId() const override { return header.pageId; }
 
   /**
    * Get free space in bytes available in the page.
@@ -195,6 +195,24 @@ public:
     }
 
     return header.pageSize - dataSize;
+  }
+
+  /**
+   * @brief Get data record
+   *
+   * @returns reference to stored record
+   */
+  const ByteBuffer &getRecord() const { return record; }
+
+  /**
+   * @brief Set data record
+   *
+   * @param record reference to data record to be stored
+   */
+  void setRecord(ByteBuffer &record) {
+    this->record = record;
+    // Notify all observers of page modification
+    notifyObservers();
   }
 
   /**
