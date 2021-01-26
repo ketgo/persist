@@ -33,27 +33,19 @@
 #include <vector>
 
 #include <persist/core/exceptions.hpp>
-#include <persist/core/log_manager.hpp>
-#include <persist/core/page/slotted_page.hpp>
+#include <persist/core/page/simple_page.hpp>
 #include <persist/core/storage/memory_storage.hpp>
-#include <persist/core/transaction.hpp>
-
-// TODO: Create a RawPage page type and use that for testing storages
 
 using namespace persist;
 
 class MemoryStorageTestFixture : public ::testing::Test {
 protected:
   const uint64_t pageSize = 512;
-  std::unique_ptr<MemoryStorage<SlottedPage>> storage;
-  std::unique_ptr<LogManager> logManager;
+  std::unique_ptr<MemoryStorage<SimplePage>> storage;
 
   void SetUp() override {
-    storage = std::make_unique<MemoryStorage<SlottedPage>>(pageSize);
+    storage = std::make_unique<MemoryStorage<SimplePage>>(pageSize);
     storage->open();
-
-    // Setup log manager
-    logManager = std::make_unique<LogManager>();
   }
 
   void TearDown() override { storage->close(); }
@@ -71,19 +63,13 @@ TEST_F(MemoryStorageTestFixture, TestReadPageError) {
 }
 
 TEST_F(MemoryStorageTestFixture, TestReadWritePage) {
-  Transaction txn(*logManager, 0);
-  RecordBlock recordBlock;
-  recordBlock.data = "testing"_bb;
-
-  SlottedPage page(1, pageSize);
-  PageSlotId slotId = page.addRecordBlock(txn, recordBlock).first;
+  SimplePage page(1, pageSize);
+  page.record = "testing"_bb;
   storage->write(page);
-
-  std::unique_ptr<SlottedPage> _page = storage->read(1);
-  RecordBlock &_recordBlock = _page->getRecordBlock(txn, slotId);
+  std::unique_ptr<SimplePage> _page = storage->read(1);
 
   ASSERT_EQ(page.getId(), _page->getId());
-  ASSERT_EQ(recordBlock.data, _recordBlock.data);
+  ASSERT_EQ(page.record, _page->record);
 }
 
 TEST_F(MemoryStorageTestFixture, TestAllocate) {

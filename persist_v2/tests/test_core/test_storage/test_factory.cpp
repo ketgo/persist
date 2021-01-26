@@ -32,26 +32,26 @@
 #include <typeinfo>
 
 #include <persist/core/defs.hpp>
-#include <persist/core/page/slotted_page.hpp>
+#include <persist/core/page/simple_page.hpp>
 #include <persist/core/storage/base.hpp>
 #include <persist/core/storage/factory.hpp>
 
 using namespace persist;
 
 TEST(StorageFactoryTest, TestCreateMemoryStorage) {
-  std::unique_ptr<Storage<SlottedPage>> storage =
-      createStorage<SlottedPage>("memory://");
-  Storage<SlottedPage> *ptr = storage.get();
+  std::unique_ptr<Storage<SimplePage>> storage =
+      createStorage<SimplePage>("memory://");
+  Storage<SimplePage> *ptr = storage.get();
   std::string className = typeid(*ptr).name();
   ASSERT_TRUE(className.find("MemoryStorage") != std::string::npos);
 }
 
 TEST(StorageFactoryTest, TestCreateFileStorage) {
-  std::unique_ptr<Storage<SlottedPage>> storage =
-      createStorage<SlottedPage>("file://storage.db");
-  Storage<SlottedPage> *ptr = storage.get();
+  std::unique_ptr<Storage<SimplePage>> storage =
+      createStorage<SimplePage>("file://storage.db");
+  Storage<SimplePage> *ptr = storage.get();
   std::string className = typeid(*ptr).name();
   ASSERT_TRUE(className.find("FileStorage") != std::string::npos);
-  ASSERT_EQ(static_cast<FileStorage<SlottedPage> *>(ptr)->getPath(),
+  ASSERT_EQ(static_cast<FileStorage<SimplePage> *>(ptr)->getPath(),
             "storage.db");
 }

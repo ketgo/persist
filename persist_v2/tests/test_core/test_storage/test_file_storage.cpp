@@ -32,12 +32,8 @@
 #include <string>
 
 #include <persist/core/exceptions.hpp>
-#include <persist/core/log_manager.hpp>
-#include <persist/core/page/slotted_page.hpp>
+#include <persist/core/page/simple_page.hpp>
 #include <persist/core/storage/file_storage.hpp>
-#include <persist/core/transaction.hpp>
-
-// TODO: Create a RawPage page type and use that for testing storages
 
 using namespace persist;
 
@@ -52,19 +48,14 @@ protected:
   const std::string readPath = base + "/_read";
   const std::string writePath = base + "/_write";
   const uint64_t pageSize = 512;
-  std::unique_ptr<FileStorage<SlottedPage>> readStorage, writeStorage;
-  std::unique_ptr<LogManager> logManager;
+  std::unique_ptr<FileStorage<SimplePage>> readStorage, writeStorage;
 
   void SetUp() override {
-    readStorage =
-        std::make_unique<FileStorage<SlottedPage>>(readPath, pageSize);
+    readStorage = std::make_unique<FileStorage<SimplePage>>(readPath, pageSize);
     readStorage->open();
     writeStorage =
-        std::make_unique<FileStorage<SlottedPage>>(writePath, pageSize);
+        std::make_unique<FileStorage<SimplePage>>(writePath, pageSize);
     writeStorage->open();
-
-    // Setup log manager
-    logManager = std::make_unique<LogManager>();
   }
 
   void TearDown() override {
@@ -96,7 +87,7 @@ TEST_F(NewFileStorageTestFixture, TestOpen) {
 
 TEST_F(NewFileStorageTestFixture, TestReadPage) {
   try {
-    std::unique_ptr<SlottedPage> page = readStorage->read(1);
+    std::unique_ptr<SimplePage> page = readStorage->read(1);
     FAIL() << "Expected PageNotFoundError Exception.";
   } catch (PageNotFoundError &err) {
     SUCCEED();
@@ -106,26 +97,20 @@ TEST_F(NewFileStorageTestFixture, TestReadPage) {
 }
 
 TEST_F(NewFileStorageTestFixture, TestWritePage) {
-  Transaction txn(*logManager, 0);
-  RecordBlock recordBlock;
-  recordBlock.data = "testing"_bb;
+  SimplePage page(1, pageSize);
+  page.record = "testing"_bb;
 
-  SlottedPage page(1, pageSize);
-  PageSlotId slotId = page.addRecordBlock(txn, recordBlock).first;
   writeStorage->write(page);
 
   std::fstream file = file::open(writePath + FILE_STORAGE_DATA_FILE_EXTENTION,
                                  std::ios::in | std::ios::binary);
   ByteBuffer buffer(pageSize);
   file::read(file, buffer, writeStorage->headerSize);
-  SlottedPage _page(0,
-                    pageSize); //<- page ID does not match expected. It should
-                               // get overritten after loading from buffer.
+  SimplePage _page(0, pageSize);
   _page.load(Span(buffer));
-  RecordBlock &_recordBlock = page.getRecordBlock(txn, slotId);
 
   ASSERT_EQ(page.getId(), _page.getId());
-  ASSERT_EQ(recordBlock.data, _recordBlock.data);
+  ASSERT_EQ(page.record, _page.record);
 }
 
 TEST_F(NewFileStorageTestFixture, TestAllocate) {
@@ -167,19 +152,14 @@ protected:
   const std::string readPath = base + "/test_read";
   const std::string writePath = base + "/test_write";
   const uint64_t pageSize = 512;
-  std::unique_ptr<FileStorage<SlottedPage>> readStorage, writeStorage;
-  std::unique_ptr<LogManager> logManager;
+  std::unique_ptr<FileStorage<SimplePage>> readStorage, writeStorage;
 
   void SetUp() override {
-    readStorage =
-        std::make_unique<FileStorage<SlottedPage>>(readPath, pageSize);
+    readStorage = std::make_unique<FileStorage<SimplePage>>(readPath, pageSize);
     readStorage->open();
     writeStorage =
-        std::make_unique<FileStorage<SlottedPage>>(writePath, pageSize);
+        std::make_unique<FileStorage<SimplePage>>(writePath, pageSize);
     writeStorage->open();
-
-    // Setup log manager
-    logManager = std::make_unique<LogManager>();
   }
 
   void TearDown() override {
@@ -210,35 +190,27 @@ TEST_F(ExistingFileStorageTestFixture, TestOpen) {
 }
 
 TEST_F(ExistingFileStorageTestFixture, TestReadPage) {
-  Transaction txn(*logManager, 0);
-  std::unique_ptr<SlottedPage> page = readStorage->read(1);
-  RecordBlock &recordBlock = page->getRecordBlock(txn, 1);
+  std::unique_ptr<SimplePage> page = readStorage->read(1);
 
   ASSERT_EQ(page->getId(), 1);
-  ASSERT_EQ(recordBlock.data, ByteBuffer("testing"_bb));
+  ASSERT_EQ(page->record, "testing"_bb);
 }
 
 TEST_F(ExistingFileStorageTestFixture, TestWritePage) {
-  Transaction txn(*logManager, 0);
-  RecordBlock recordBlock;
-  recordBlock.data = "testing"_bb;
+  SimplePage page(1, pageSize);
+  page.record = "testing"_bb;
 
-  SlottedPage page(1, pageSize);
-  PageSlotId slotId = page.addRecordBlock(txn, recordBlock).first;
   writeStorage->write(page);
 
   std::fstream file = file::open(writePath + FILE_STORAGE_DATA_FILE_EXTENTION,
                                  std::ios::in | std::ios::binary);
   ByteBuffer buffer(pageSize);
   file::read(file, buffer, writeStorage->headerSize);
-  SlottedPage _page(
-      0, pageSize); //<- page ID does not match expected. It should get
-                    // overritten after loading from buffer.
-  _page.load(Span({buffer.data(), buffer.size()}));
-  RecordBlock &_recordBlock = page.getRecordBlock(txn, slotId);
+  SimplePage _page(0, pageSize);
+  _page.load(Span(buffer));
 
   ASSERT_EQ(page.getId(), _page.getId());
-  ASSERT_EQ(recordBlock.data, _recordBlock.data);
+  ASSERT_EQ(page.record, _page.record);
 }
 
 TEST_F(ExistingFileStorageTestFixture, TestAllocate) {

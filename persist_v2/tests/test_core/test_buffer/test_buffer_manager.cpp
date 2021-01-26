@@ -37,7 +37,7 @@
 
 #include <persist/core/buffer/buffer_manager.hpp>
 #include <persist/core/buffer/replacer/lru_replacer.hpp>
-#include <persist/core/page/slotted_page.hpp>
+#include <persist/core/page/simple_page.hpp>
 #include <persist/core/storage/factory.hpp>
 
 using namespace persist;
@@ -47,32 +47,28 @@ protected:
   const uint64_t pageSize = DEFAULT_PAGE_SIZE;
   const uint64_t maxSize = 2;
   const char *file = "file://test_buffer_manager";
-  std::unique_ptr<SlottedPage> page_1, page_2, page_3;
+  std::unique_ptr<SimplePage> page_1, page_2, page_3;
   std::unique_ptr<FSL> fsl;
-  typedef BufferManager<SlottedPage, LRUReplacer> BufferManager;
+  typedef BufferManager<SimplePage, LRUReplacer> BufferManager;
   std::unique_ptr<BufferManager> bufferManager;
-  std::unique_ptr<Storage<SlottedPage>> storage;
-  std::unique_ptr<LogManager> logManager;
+  std::unique_ptr<Storage<SimplePage>> storage;
 
   void SetUp() override {
     // setting up pages
-    page_1 = std::make_unique<SlottedPage>(1, pageSize);
-    page_2 = std::make_unique<SlottedPage>(2, pageSize);
-    page_3 = std::make_unique<SlottedPage>(3, pageSize);
+    page_1 = std::make_unique<SimplePage>(1, pageSize);
+    page_2 = std::make_unique<SimplePage>(2, pageSize);
+    page_3 = std::make_unique<SimplePage>(3, pageSize);
 
     // setting up free space list
     fsl = std::make_unique<FSL>();
     fsl->freePages = {1, 2, 3};
 
     // setting up storage
-    storage = createStorage<SlottedPage>(file);
+    storage = createStorage<SimplePage>(file);
     insert();
 
     bufferManager = std::make_unique<BufferManager>(*storage, maxSize);
     bufferManager->start();
-
-    // Setup log manager
-    logManager = std::make_unique<LogManager>();
   }
 
   void TearDown() override {
@@ -110,8 +106,6 @@ TEST_F(BufferManagerTestFixture, TestGet) {
   auto page = bufferManager->get(pageId);
 
   ASSERT_EQ(page->getId(), pageId);
-  ASSERT_EQ(page->getNextPageId(), page_1->getNextPageId());
-  ASSERT_EQ(page->getPrevPageId(), page_1->getPrevPageId());
   ASSERT_EQ(page->freeSpace(Page::Operation::INSERT),
             page_1->freeSpace(Page::Operation::INSERT));
 }

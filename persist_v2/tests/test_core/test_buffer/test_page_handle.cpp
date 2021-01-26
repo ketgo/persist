@@ -37,7 +37,7 @@
 
 #include <persist/core/buffer/page_handle.hpp>
 #include <persist/core/buffer/replacer/lru_replacer.hpp>
-#include <persist/core/page/slotted_page.hpp>
+#include <persist/core/page/simple_page.hpp>
 
 using namespace persist;
 
@@ -45,13 +45,13 @@ class PageHandleTestFixture : public ::testing::Test {
 protected:
   const PageId pageId = 1;
   const uint64_t pageSize = DEFAULT_PAGE_SIZE;
-  std::unique_ptr<SlottedPage> page;
+  std::unique_ptr<SimplePage> page;
   std::unique_ptr<LRUReplacer> replacer;
-  typedef PageHandle<SlottedPage> PageHandle;
+  typedef PageHandle<SimplePage> PageHandle;
 
   void SetUp() override {
     // setting up pages
-    page = std::make_unique<SlottedPage>(pageId, pageSize);
+    page = std::make_unique<SimplePage>(pageId, pageSize);
 
     // setting up replacer
     replacer = std::make_unique<LRUReplacer>();
