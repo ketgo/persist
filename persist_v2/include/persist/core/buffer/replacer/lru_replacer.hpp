@@ -129,7 +129,7 @@ public:
    * ID is not being referenced by an external process anymore. Note that the
    * page can still be referenced by some other external process in
    * multi-threaded settings. The replacer is free to select the ID as victum
-   * only when all the external processeses stop referencing the page.
+   * only when all the external processeses stopped referencing the page.
    *
    * @param pageId page identifer to unpin
    */

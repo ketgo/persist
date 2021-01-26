@@ -30,12 +30,6 @@
 
 namespace persist {
 
-// ----------------------------------------------------------------------------
-// TODO:
-//  - Little and Big Eddien mismatch during serialization. Maybe this is not
-//  even needed.
-// ----------------------------------------------------------------------------
-
 /**
  * Record Block Class
  *

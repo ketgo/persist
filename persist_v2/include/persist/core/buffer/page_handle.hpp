@@ -25,6 +25,8 @@
 #ifndef PAGE_HANDLE_HPP
 #define PAGE_HANDLE_HPP
 
+#include <iostream>
+
 #include <persist/core/buffer/replacer/base.hpp>
 #include <persist/core/page/base.hpp>
 
@@ -47,8 +49,8 @@ template <class PageType> class PageHandle {
 
   PERSIST_PRIVATE
 
-  PageType *page;     //<- reference to loaded page in buffer
-  Replacer *replacer; //<- reference to page replacer
+  PageType *page;     //<- pinter to loaded page in buffer
+  Replacer *replacer; //<- pointer to page replacer
 
 public:
   /**

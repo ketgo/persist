@@ -30,11 +30,6 @@
 
 #include <memory>
 
-/**
- * Enabled intrusive testing
- */
-#define PERSIST_INTRUSIVE_TESTING
-
 #include <persist/core/buffer/page_handle.hpp>
 #include <persist/core/buffer/replacer/lru_replacer.hpp>
 #include <persist/core/page/simple_page.hpp>
@@ -61,7 +56,7 @@ protected:
   void TearDown() override {}
 };
 
-TEST_F(PageHandleTestFixture, TestPageHandle) {
+TEST_F(PageHandleTestFixture, TestLifeCycle) {
   ASSERT_TRUE(!replacer->isPinned(pageId));
 
   {

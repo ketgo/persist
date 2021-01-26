@@ -183,12 +183,12 @@ public:
    */
   PageHandle<PageType> getNew() {
     // Allocate space for new page
-    PageId pageId = storage->allocate();
+    PageId pageId = storage.allocate();
     // Create entry for new page in free space list
     fsl->freePages.insert(pageId);
     // Create an empty page
     std::unique_ptr<PageType> page =
-        std::make_unique<PageType>(pageId, storage->getPageSize());
+        std::make_unique<PageType>(pageId, storage.getPageSize());
     // Load the new page in buffer
     put(page);
 
@@ -239,7 +239,7 @@ public:
 
   /**
    * Save a single page to backend storage. The page will be stored only
-   * if it is marked as modified.
+   * if it is marked as modified and is unpinned.
    *
    * @param pageId page identifer
    */
@@ -252,7 +252,7 @@ public:
         !replacer.isPinned(pageId)) {
       // Persist FSL
       storage.write(*fsl);
-      // Persist page
+      // Persist page on backend storage
       storage.write(*(it->second.page));
       // Since the page has been saved it is now considered as un-modified
       it->second.modified = false;
@@ -260,7 +260,7 @@ public:
   }
 
   /**
-   * @brief Save all modified pages to backend storage.
+   * @brief Save all modified and unpinned pages to backend storage.
    *
    */
   void flushAll() {
@@ -279,8 +279,8 @@ public:
   void handleModifiedPage(PageId pageId) override {
     buffer.at(pageId).modified = true;
 
-    // TODO: The below logic of adding page to FSL should be part of free space
-    // manager.
+    // TODO: The following logic of adding page to FSL should be part of free
+    // space manager.
 
     // Check if page has free space and update free space list accordingly. Note
     // that since FSL is used to get pages with free space for INSERT page
