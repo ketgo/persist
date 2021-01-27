@@ -1,15 +1,85 @@
 @startuml
 scale 2
 
-interface RecordManager<<PageType, ReplacerType>> {
-    + read(RecordLocation)
-    + read(RecordLocation, Txn)
-    + insert(ByteBuffer)
-    + insert(ByteBuffer, Txn)
+
+interface RecordManager <Page, Replacer, FSM> {
+    + read(RecordLocation): ByteBuffer
+    + read(RecordLocation, Txn): ByteBuffer
+    + insert(ByteBuffer): RecordLocation
+    + insert(ByteBuffer, Txn): RecordLocation
     + update(RecordLocation, ByteBuffer)
     + update(RecordLocation, ByteBuffer, Txn)
     + delete(RecordLocation)
     + delete(RecordLocation, Txn)
 }
+
+class TransactionManager <ConcurencyManager> {
+}
+
+
+enum Operation {
+    + READ
+    + INSERT
+    + UPDATE
+    + DELETE
+}
+
+interface Page {
+    - observers: PageObserver []
+    ---
+    - notifyObservers()
+    + registerObserver(PageObserver)
+    ..
+    + getId(): PageId
+    + getFreeSpace(Operation): uint64_t
+    + load(ByteBuffer)
+    + dump(ByteBuffer)
+}
+
+interface PageObserver {
+    + handleModifiedPage(PageId)
+}
+
+abstract class Storage <Page> {
+    + read(Page): Page
+    + write(Page)
+    + allocate(): PageId
+    + deallocate(PageId)
+}
+
+interface Replacer {
+    + track(PageId)
+    + forget(PageId)
+    + pin(PageId)
+    + isPinned(PageId): bool
+    + unpin(PageId)
+}
+
+class BufferManager <Page, Replacer, FSM> {
+    - buffer: Page []
+    - replacer: Replacer
+    - storage: Storage
+    ---
+    - put(Page)
+    + handleModifiedPage(PageId)
+    ..
+    + start()
+    + stop()
+    + get(PageId): PageHandle<Page>
+    + getNew(): PageHandle<Page>
+    + getFree(): PageHandle<Page>
+    + flush(PageId)
+    + flushAll()
+}
+
+Page ..|> Operation
+Page "1" o-- "n" PageObserver
+
+Storage ..|> Page
+
+BufferManager --|> PageObserver : inherits
+BufferManager "1" o-- "n" Page
+BufferManager --|> Replacer
+BufferManager --|> Storage
 
 @enduml
