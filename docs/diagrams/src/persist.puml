@@ -1,0 +1,15 @@
+@startuml
+scale 2
+
+interface RecordManager<<PageType, ReplacerType>> {
+    + read(RecordLocation)
+    + read(RecordLocation, Txn)
+    + insert(ByteBuffer)
+    + insert(ByteBuffer, Txn)
+    + update(RecordLocation, ByteBuffer)
+    + update(RecordLocation, ByteBuffer, Txn)
+    + delete(RecordLocation)
+    + delete(RecordLocation, Txn)
+}
+
+@enduml

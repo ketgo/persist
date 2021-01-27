@@ -25,24 +25,23 @@
 # TODO List
 
 1. [DONE] Refactor backend storage
-    - covert to template with PageType as parameter
-    - add allocate and de-allocate methods
-    - refactor metadata object to FSM
-    - refactor read and write methods for metadata to that for FSM.
+    - [DONE] covert to template with PageType as parameter
+    - [DONE] add allocate and de-allocate methods
+    - [DONE] refactor metadata object to FSL
+    - [DONE] refactor read and write methods for metadata to that for FSL.
 
 2. [IN-PROGRESS] Refactor buffer manager to
-    - use replacers for the page replacement policy
-    - new page creation using allocate method of backend storage
-    - implement the STEAL and NO-STEAL mode of operations
+    - [DONE] use replacers for the page replacement policy
+    - [DONE] new page creation using allocate method of the backend storage
     - implement thread safety
 
-3. [NOT SURE NEEDED] Implement FreeSpaceManager class to manage:
-    - Serialization and de-serialization of polymorphic page objects
-    - use the free space map (FSM) to track pages with free space
-    - create a new page when FSM is empty using allocate method of backend storage
-    - remove completely empty pages using the de-allocate method of backend storage
-    - use FreeSpaceManager in the buffer manager
-    - remove read and write methods for metadata objects in the Storage class
+3. [LOW-PRIORITY] Create a FreeSpaceManager for efficient detection and handling of pages with free space
+    - refactor `getFree` method of buffer manager to take sizeHint parameter as an argument. This parameter provides a hint to the free space manager about the amount of free space requested. Note that this parameter is treated only as a hint as the FreeSpaceManager is free to return a page with less available free space.
+    - create an interface for FreeSpaceManager to allow for different FreeSpaceManager implementations
+    - implement a basic FreeSpaceManager
+    - refactor buffer manager to use FreeSpaceManager
+    - remove the FSL and the read and write method of backend storage
+    - FreeSpaceManager should use Pages obtained from the buffer manager to persist FSL
 
 4. Implement a persistent log file for transaction logging:
     - create page class for storing log records
@@ -52,7 +51,7 @@
 5. Implement the FORCE and NO-FORCE mode of operations of the transaction manager.
 
 6. Create collection metadata manager:
-    - handles metadata containing the starting location, ending location and number of records in a collection
+    - handles metadata containing the starting location, ending location, and number of records in a collection
     - writes metadata to the first record block of the collection
 
 7. Implement List collection

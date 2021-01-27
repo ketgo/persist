@@ -36,7 +36,9 @@
 
     b. BufferManager:
         - NO-STEAL: Page modified by a transaction that is still active, i.e. yet to commit, should not be written to disk
-        - STEAL: Page modified by a transaction that is still active, i.e. yet to commit, can still be written to disk
+        - STEAL: Page modified by a transaction that is still active, i.e. yet to commit, can be written to disk
+
+    Persist implements the STEAL mode for buffer manager as it results in better memory management, and supports both FORCE and NO-FORCE modes for transactions.
 
 4. Approaches for handling Free Space Map (FSM):-
 

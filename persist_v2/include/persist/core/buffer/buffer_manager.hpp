@@ -27,6 +27,7 @@
 
 #include <list>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <unordered_map>
 
@@ -89,6 +90,8 @@ class BufferManager : public PageObserver {
   typedef typename std::unordered_map<PageId, PageSlot> Buffer;
   Buffer buffer; //<- buffer of page slots
   bool started;  //<- flag indicating buffer manager started
+
+  std::mutex lock; //<- lock for achieving thread safety via mutual exclusion
 
   /**
    * Add page to buffer.
