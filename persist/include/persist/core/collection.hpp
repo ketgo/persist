@@ -39,6 +39,22 @@
 namespace persist {
 
 /**
+ * Collection MetaData Class
+ *
+ * The collection metadata containing state information of a collection.
+ */
+class CollectionMetaData {};
+
+/**
+ * Collection MetaData Manager
+ *
+ * The manager is responsible for persisting collection of records and state
+ * information on backend storage. It is used by the different types of
+ * collections to store data.
+ */
+class CollectionManager {};
+
+/**
  * Collection Base Class
  *
  * The collection base class contains data members and methods common for all

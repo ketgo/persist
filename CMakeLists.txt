@@ -12,4 +12,5 @@ enable_testing()
 include(GitSubmodules)
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/third_party)
-add_subdirectory(${PROJECT_SOURCE_DIR}/persist)
+#add_subdirectory(${PROJECT_SOURCE_DIR}/persist)
+add_subdirectory(${PROJECT_SOURCE_DIR}/persist_v2)

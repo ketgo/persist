@@ -53,12 +53,13 @@
 /**
  * Global Constants
  */
-// Minimum allowed page size
+// Minimum allowed page size in bytes
 #define MINIMUM_PAGE_SIZE 512
 // Default page size in bytes
 #define DEFAULT_PAGE_SIZE 1024
-// Default cache size in MB
-#define DEFAULT_CACHE_SIZE 1024
+// Default buffer size. This is the maximum number of pages the buffer can
+// load in-memory.
+#define DEFAULT_BUFFER_SIZE 1024
 
 namespace persist {
 
