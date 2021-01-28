@@ -40,8 +40,6 @@
 #include <persist/core/buffer/page_handle.hpp>
 #include <persist/core/buffer/replacer/base.hpp>
 
-// TODO: Thread safety for concurrent transactions
-
 // At the minimum 2 pages are needed in memory by record manager.
 #define MINIMUM_BUFFER_SIZE 2
 
@@ -91,7 +89,10 @@ class BufferManager : public PageObserver {
   Buffer buffer; //<- buffer of page slots
   bool started;  //<- flag indicating buffer manager started
 
-  std::mutex lock; //<- lock for achieving thread safety via mutual exclusion
+  // TODO: Need granular locking
+  std::recursive_mutex
+      lock; //<- lock for achieving thread safety via mutual exclusion
+  typedef typename std::lock_guard<std::recursive_mutex> LockGuard;
 
   /**
    * Add page to buffer.
@@ -99,6 +100,8 @@ class BufferManager : public PageObserver {
    * @param page pointer reference to page
    */
   void put(std::unique_ptr<PageType> &page) {
+    LockGuard guard(lock);
+
     // If buffer is full then remove the victum page
     if (maxSize != 0 && buffer.size() == maxSize) {
       // Get victum page ID from replacer
@@ -150,6 +153,8 @@ public:
    *
    */
   void start() {
+    LockGuard guard(lock);
+
     if (!started) {
       // Start backend storage
       storage.open();
@@ -168,6 +173,8 @@ public:
    *
    */
   void stop() {
+    LockGuard guard(lock);
+
     if (started) {
       // Flush all loaded pages
       flushAll();
@@ -185,6 +192,8 @@ public:
    * @returns page handle object
    */
   PageHandle<PageType> getNew() {
+    LockGuard guard(lock);
+
     // Allocate space for new page
     PageId pageId = storage.allocate();
     // Create entry for new page in free space list
@@ -206,6 +215,8 @@ public:
    * @returns page handle object
    */
   PageHandle<PageType> getFree() {
+    LockGuard guard(lock);
+
     // Create new page if no page with free space is available
     if (fsl->freePages.empty()) {
       return getNew();
@@ -228,6 +239,8 @@ public:
    * @returns page handle object
    */
   PageHandle<PageType> get(PageId pageId) {
+    LockGuard guard(lock);
+
     // Check if page not present in buffer
     if (buffer.find(pageId) == buffer.end()) {
       // Load page from storage
@@ -247,6 +260,8 @@ public:
    * @param pageId page identifer
    */
   void flush(PageId pageId) {
+    LockGuard guard(lock);
+
     // Find page in buffer
     typedef typename Buffer::iterator BufferPosition;
     BufferPosition it = buffer.find(pageId);
@@ -267,6 +282,8 @@ public:
    *
    */
   void flushAll() {
+    LockGuard guard(lock);
+
     // Flush all pages in buffer
     for (const auto &element : buffer) {
       flush(element.first);
@@ -280,6 +297,8 @@ public:
    * @param pageId page identifier
    */
   void handleModifiedPage(PageId pageId) override {
+    LockGuard guard(lock);
+
     buffer.at(pageId).modified = true;
 
     // TODO: The following logic of adding page to FSL should be part of free

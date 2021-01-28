@@ -33,7 +33,7 @@
 2. [IN-PROGRESS] Refactor buffer manager to
     - [DONE] use replacers for the page replacement policy
     - [DONE] new page creation using allocate method of the backend storage
-    - implement thread safety
+    - [DONE] implement very basic thread-safety by applying a recursive mutex to each method call
 
 3. [LOW-PRIORITY] Create a FreeSpaceManager for efficient detection and handling of pages with free space
     - refactor `getFree` method of buffer manager to take sizeHint parameter as an argument. This parameter provides a hint to the free space manager about the amount of free space requested. Note that this parameter is treated only as a hint as the FreeSpaceManager is free to return a page with less available free space.
@@ -43,19 +43,29 @@
     - remove the FSL and the read and write method of backend storage
     - FreeSpaceManager should use Pages obtained from the buffer manager to persist FSL
 
-4. Implement a persistent log file for transaction logging:
+4. [IN-PROGRESS] Implement a persistent log file for transaction logging:
     - create page class for storing log records
     - use buffer manager for loading pages of log records in the log manager
     - log manager to persist pages using the flush method of buffer manager
 
 5. Implement the FORCE and NO-FORCE mode of operations of the transaction manager.
 
-6. Create collection metadata manager:
+6. Implement PAGE-LEVEL and SLOT-LEVEL granularity of atomic operations for thread safety:
+    - refactor buffer manager for PAGE-LEVEL granularity
+        - implement and use no lock concurrent hash map for page buffer
+        - implement and use no lock concurrent replacer
+        - implement and use no lock concurrent FreeSpaceManager
+    - create a new thread-safe slotted page implementation for SLOT-LEVEL granularity
+
+7. Create collection metadata manager:
     - handles metadata containing the starting location, ending location, and number of records in a collection
     - writes metadata to the first record block of the collection
 
-7. Implement List collection
+8. Implement List collection
+    - implement record manager for list collection
+    - implement list collection class
 
-8. Create Concurrency Control Manager:
+9. Create Concurrency Control Manager:
     - Design manager class. The design should be extendable to support different concurrency control protocols
-    - Implement different types of page locks for buffer manager needed by the manager
+    - Implement different types of concurrency control policies
+    - Implement RECORD-LEVEL atomic operations
