@@ -26,6 +26,7 @@
 #define LRU_REPLACER_HPP
 
 #include <list>
+#include <mutex>
 #include <unordered_map>
 
 #include <persist/core/buffer/replacer/base.hpp>
@@ -64,6 +65,11 @@ class LRUReplacer : public Replacer {
   typedef std::list<Frame>::iterator Position;
   std::unordered_map<PageId, Position> position;
 
+  // TODO: Need granular locking
+  std::recursive_mutex
+      lock; //<- lock for achieving thread safety via mutual exclusion
+  typedef typename std::lock_guard<std::recursive_mutex> LockGuard;
+
 public:
   /**
    * @brief Track page ID for detecting victum page.
@@ -71,6 +77,8 @@ public:
    * @param pageId page identifer to remember
    */
   void track(PageId pageId) override {
+    LockGuard guard(lock);
+
     // Check if pageId does not exist in cache
     if (position.find(pageId) == position.end()) {
       // Insert value in cache
@@ -86,6 +94,8 @@ public:
    * @param pageId page identifer to forget
    */
   void forget(PageId pageId) override {
+    LockGuard guard(lock);
+
     cache.erase(position.at(pageId));
     position.erase(pageId);
   }
@@ -97,6 +107,8 @@ public:
    * @return PageId identifier of the victum page
    */
   PageId getVictumId() override {
+    LockGuard guard(lock);
+
     // Looks for LRU page ID having 0 valued pin count
     for (auto i = cache.rbegin(); i != cache.rend(); ++i) {
       if (i->pinCount == 0) {
@@ -114,6 +126,8 @@ public:
    * @param pageId page identifer to pin
    */
   void pin(PageId pageId) override {
+    LockGuard guard(lock);
+
     // Increase reference count for page ID
     position.at(pageId)->pinCount += 1;
     // Move the frame for given page ID to front in accordance with LRU strategy
@@ -133,7 +147,11 @@ public:
    *
    * @param pageId page identifer to unpin
    */
-  void unpin(PageId pageId) override { position.at(pageId)->pinCount -= 1; }
+  void unpin(PageId pageId) override {
+    LockGuard guard(lock);
+    
+    position.at(pageId)->pinCount -= 1;
+  }
 };
 
 } // namespace persist
