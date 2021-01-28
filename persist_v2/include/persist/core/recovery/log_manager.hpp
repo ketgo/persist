@@ -28,7 +28,7 @@
 #include <unordered_map>
 
 #include <persist/core/defs.hpp>
-#include <persist/core/log_record.hpp>
+#include <persist/core/recovery/log_record.hpp>
 
 namespace persist {
 
@@ -65,7 +65,13 @@ public:
    * @param logRecord reference to the log record object to add
    * @returns sequence number of the added log record
    */
-  SeqNumber add(LogRecord &logRecord);
+  SeqNumber add(LogRecord &logRecord) {
+    seqNumber++;
+    logRecord.header.seqNumber = seqNumber;
+    buffer.insert(std::pair<SeqNumber, LogRecord>(seqNumber, logRecord));
+
+    return seqNumber;
+  }
 
   /**
    * @brief Get Log record of given sequence number.
@@ -73,7 +79,7 @@ public:
    * @param seqNumber sequence number of the log record to get
    * @returns reference to the log record
    */
-  LogRecord &get(SeqNumber seqNumber);
+  LogRecord &get(SeqNumber seqNumber) { return buffer[seqNumber]; }
 
   /**
    * @brief Get sequence number.

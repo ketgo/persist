@@ -37,7 +37,7 @@
 #include <list>
 #include <memory>
 
-#include <persist/core/fsl.hpp>
+#include <persist/core/buffer/fsl.hpp>
 #include <persist/core/page/base.hpp>
 
 namespace persist {

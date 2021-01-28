@@ -33,11 +33,11 @@
 
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
-#include <persist/core/fsl.hpp>
 #include <persist/core/page/base.hpp>
 #include <persist/core/storage/base.hpp>
 
 #include <persist/core/buffer/page_handle.hpp>
+#include <persist/core/buffer/fsl.hpp>
 #include <persist/core/buffer/replacer/base.hpp>
 
 // At the minimum 2 pages are needed in memory by record manager.

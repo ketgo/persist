@@ -36,8 +36,7 @@
  */
 #define PERSIST_INTRUSIVE_TESTING
 
-#include <persist/core/defs.hpp>
-#include <persist/core/log_manager.hpp>
+#include <persist/core/recovery/log_manager.hpp>
 
 using namespace persist;
 
