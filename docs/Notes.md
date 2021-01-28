@@ -59,3 +59,10 @@
 6. Add interface to get file size in the `Storage` class. This is used by the storage manager/storage class itself to figure out the total number of pages. The total number of pages is needed in order to implement the `allocation` and `de-allocate` methods, and to set the correct page ID when creating new pages.
 
 7. The log records can have different levels of granularity: Page-level and Record-level. A Record-level log can comprise of a single or multiple Page-level logs. This is because a large record, i.e. one that does not fit into a single page, is split into multiple parts so that it can be stored in multiple pages.
+
+8. Concurrency control is slightly different from thread safety. It refers to preventing two or more active transactions from inappropriately influencing each other. Thus the ConcurrencyControlManager can be unit tested without multi-threading.
+
+9. In multi-threaded settings, there are different levels of granularity of atomic operations to be implemented for thread safety:
+    - Page-Level: needed for concurrent access of pages --> Implemented in the BufferManager class
+    - Slot-Level: needed for concurrent access of slots within a page --> Implemented in the SlottedPage class
+    - Record-Level: needed for concurrent operations on a record. A record is comprised of multiple slots and thus in-turn pages. --> Implemented in the ConcurrencyControlManager.
