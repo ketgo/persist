@@ -41,19 +41,19 @@ using namespace persist;
 
 class LogRecordTestFixture : public ::testing::Test {
 protected:
-  RecordBlock recordBlockA, recordBlockB;
+  PageSlot pageSlotA, pageSlotB;
   const TransactionId txnId = 432;
-  const RecordBlock::Location location = {10, 1};
+  const PageSlot::Location location = {10, 1};
   const SeqNumber seqNumber = 5, prevSeqNumber = 3;
   std::unique_ptr<LogRecord> logRecord;
   ByteBuffer input;
 
   void SetUp() override {
-    recordBlockA.data = "testing-A"_bb;
-    recordBlockB.data = "testing-B"_bb;
+    pageSlotA.data = "testing-A"_bb;
+    pageSlotB.data = "testing-B"_bb;
     logRecord = std::make_unique<LogRecord>(txnId, prevSeqNumber,
                                             LogRecord::Type::UPDATE, location,
-                                            recordBlockA, recordBlockB);
+                                            pageSlotA, pageSlotB);
     logRecord->header.seqNumber = seqNumber;
 
     input = {5,   0,   0,   0,   0,   0,   0,   0,   3,   0,   0,   0,   0,

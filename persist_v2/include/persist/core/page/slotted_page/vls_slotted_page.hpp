@@ -1,5 +1,5 @@
 /**
- * slotted_page.hpp - Persist
+ * vls_slotted_page.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,29 +22,28 @@
  * SOFTWARE.
  */
 
-#ifndef SLOTTED_PAGE_HPP
-#define SLOTTED_PAGE_HPP
+#ifndef VLS_SLOTTED_PAGE_HPP
+#define VLS_SLOTTED_PAGE_HPP
 
 #include <map>
 #include <unordered_map>
 
 #include <persist/core/exceptions.hpp>
-#include <persist/core/page/base.hpp>
-#include <persist/core/record_block.hpp>
-#include <persist/core/transaction.hpp>
+#include <persist/core/page/slotted_page/base.hpp>
 
 namespace persist {
-
 /**
- * @brief SlottedPage Class
+ * @brief Variable Length Slots Slotted Page Class
  *
- * Each slotted page comprises of a header, free space, and stored RecordBlocks.
- * The page header contains the page unique identifier along with the next and
- * previous page identifiers in case the page is linked. It also contains
- * entries of offset values indicating where each record-block in the page is
+ * The variable length slots (VLS) slotted page stores page slots of variable
+ * lengths. This page can be used in collections which store variable length
+ * records. Each VLS slotted page comprises of a header, free space, and stored
+ * page slots. The page header contains the page unique identifier along with
+ * the next and previous page identifiers in case the page is linked. It also
+ * contains entries of offset values indicating where each slot in the page is
  * located.
  */
-class SlottedPage : public Page {
+class VLSSlottedPage : public SlottedPageBase {
 public:
   /**
    * Page Header Class
@@ -75,7 +74,7 @@ public:
       seed ^= std::hash<size_t>()(slots.size()) + 0x9e3779b9 + (seed << 6) +
               (seed >> 2);
       for (auto element : slots) {
-        Slot &slot = element.second;
+        HeaderSlot &slot = element.second;
         seed ^= std::hash<PageSlotId>()(slot.id) + 0x9e3779b9 + (seed << 6) +
                 (seed >> 2);
         seed ^= std::hash<uint64_t>()(slot.offset) + 0x9e3779b9 + (seed << 6) +
@@ -109,20 +108,20 @@ public:
     uint64_t pageSize;
 
     /**
-     * Page Slots
+     * Page Header Slot Class
      *
      * Contains offset, size and ID of storage slots in the page.
      */
-    struct Slot {
+    struct HeaderSlot {
       PageSlotId id;   //<- slot identifier
       uint64_t offset; //<- location offset from end of block
       uint64_t size;   //<- size of stored data
     };
-    typedef std::map<PageSlotId, Slot> Slots;
+    typedef typename std::map<PageSlotId, HeaderSlot> HeaderSlotMap;
     /**
      * @brief Page slots
      */
-    Slots slots;
+    HeaderSlotMap slots;
 
     /**
      * @brief Checksum to detect page corruption
@@ -159,10 +158,10 @@ public:
      *
      * NOTE: Page size is not stored as its part of the metadata.
      */
-    uint64_t size() { return fixedSize + sizeof(Slot) * slots.size(); }
+    uint64_t size() { return fixedSize + sizeof(HeaderSlot) * slots.size(); }
 
     /**
-     * Ending offset of the free space in the block.
+     * Ending offset of the free space in the page.
      *
      * @returns free space ending offset
      */
@@ -175,7 +174,7 @@ public:
 
     /**
      * Use up chunk of space of given size from the available free space in the
-     * Page. This operation allocates storage slot.
+     * page. This operation allocates storage slot.
      *
      * @param size amount of space in bytes to occupy
      * @returns ID of the new slot
@@ -191,15 +190,15 @@ public:
       // Create slot and add it to the list of slots
       newId = lastId + 1;
 
-      slots.insert(
-          std::pair<PageSlotId, Slot>(newId, {newId, tail() - size, size}));
+      slots.insert(std::pair<PageSlotId, HeaderSlot>(
+          newId, {newId, tail() - size, size}));
 
       return newId;
     }
 
     /**
      * Use up chunk of space of given size from the available free space in the
-     * Page. This operation allocates storage slot with given ID. In case a slot
+     * page. This operation allocates storage slot with given ID. In case a slot
      * with given ID already exists then no operation is performed.
      *
      * @param slotId the slot ID to use when creating. By default set to 0 in
@@ -213,7 +212,8 @@ public:
       } else {
         prevOffset = slots.at(slotId - 1).offset;
       }
-      auto emplaced = slots.emplace(slotId, Slot{slotId, prevOffset - size, 0});
+      auto emplaced =
+          slots.emplace(slotId, HeaderSlot{slotId, prevOffset - size, 0});
       updateSlot(slotId, size);
     }
 
@@ -229,7 +229,7 @@ public:
       // Update targeted slot size
       slots.at(slotId).size = size;
       // Adjsut offsets of rest of the slots
-      Slots::iterator it = slots.find(slotId);
+      HeaderSlotMap::iterator it = slots.find(slotId);
       while (it != slots.end()) {
         it->second.offset += delta;
         ++it;
@@ -244,7 +244,7 @@ public:
     void freeSlot(PageSlotId slotId) {
       // Adjust slot offsets
       uint64_t size = slots.at(slotId).size;
-      Slots::iterator it = std::next(slots.find(slotId));
+      HeaderSlotMap::iterator it = std::next(slots.find(slotId));
       while (it != slots.end()) {
         it->second.offset += size;
         ++it;
@@ -275,15 +275,15 @@ public:
       size_t slotsCount;
       std::memcpy((void *)&slotsCount, (const void *)pos, sizeof(size_t));
       // Check if slots count value is valid
-      size_t maxSlotsCount = (input.size - fixedSize) / sizeof(Slot);
+      size_t maxSlotsCount = (input.size - fixedSize) / sizeof(HeaderSlot);
       if (slotsCount > maxSlotsCount) {
         throw PageCorruptError();
       }
       pos += sizeof(size_t);
       while (slotsCount > 0) {
-        Slot slot;
-        std::memcpy((void *)&slot, (const void *)pos, sizeof(Slot));
-        pos += sizeof(Slot);
+        HeaderSlot slot;
+        std::memcpy((void *)&slot, (const void *)pos, sizeof(HeaderSlot));
+        pos += sizeof(HeaderSlot);
         slots[slot.id] = slot;
         --slotsCount;
       }
@@ -320,9 +320,9 @@ public:
       std::memcpy((void *)pos, (const void *)&slotsCount, sizeof(size_t));
       pos += sizeof(size_t);
       for (auto element : slots) {
-        Slot &slot = element.second;
-        std::memcpy((void *)pos, (const void *)&slot, sizeof(Slot));
-        pos += sizeof(Slot);
+        HeaderSlot &slot = element.second;
+        std::memcpy((void *)pos, (const void *)&slot, sizeof(HeaderSlot));
+        pos += sizeof(HeaderSlot);
       }
       std::memcpy((void *)pos, (const void *)&checksum, sizeof(Checksum));
     }
@@ -355,16 +355,19 @@ public:
   Header header;
 
   /**
-   * @brief Collection of record blocks mapped to their slots in page header
+   * @brief Collection of page slots mapped to their slotIds in page header
    */
-  typedef std::unordered_map<PageSlotId, RecordBlock> RecordBlockMap;
-  RecordBlockMap recordBlocks;
+  typedef typename std::unordered_map<PageSlotId, PageSlot> PageSlotMap;
+  PageSlotMap pageSlots;
 
 public:
   /**
-   * Constructors
+   * @brief Construct a new VLSSlottedPage object
+   *
+   * @param pageId page identifer
+   * @param pageSize page storage size
    */
-  SlottedPage(PageId pageId = 0, uint64_t pageSize = DEFAULT_PAGE_SIZE)
+  VLSSlottedPage(PageId pageId = 0, uint64_t pageSize = DEFAULT_PAGE_SIZE)
       : header(pageId, pageSize) {
     // Check page size greater than minimum size
     if (pageSize < MINIMUM_PAGE_SIZE) {
@@ -373,14 +376,14 @@ public:
   }
 
   /**
-   * Get block ID.
+   * Get page ID.
    *
    * @returns block identifier
    */
   const PageId &getId() const override { return header.pageId; }
 
   /**
-   * Get free space in bytes available in the block.
+   * Get free space in bytes available in the page.
    *
    * @param operation The type of page operation for which free space is
    * requested.
@@ -391,8 +394,8 @@ public:
     // Compute size for INSERT operation
     if (operation == Operation::INSERT) {
       // Check if free space size is greater than header slot size
-      if (size > sizeof(Header::Slot)) {
-        size -= sizeof(Header::Slot);
+      if (size > sizeof(Header::HeaderSlot)) {
+        size -= sizeof(Header::HeaderSlot);
       } else {
         size = 0;
       }
@@ -402,7 +405,7 @@ public:
   }
 
   /**
-   * Get next page ID. This is the ID for the page block when there is data
+   * Get next page ID. This is the ID of the next linked page when there is data
    * overflow. A value of `0` means there is no next page.
    *
    * @returns next page identifier
@@ -410,8 +413,8 @@ public:
   const PageId &getNextPageId() const { return header.nextPageId; }
 
   /**
-   * Set next page ID. This is the ID for the next page when there is data
-   * overflow. A value of `0` means there is no next page.
+   * Set next page ID. This is the ID for the next linked page when there is
+   * data overflow. A value of `0` means there is no next page.
    *
    * @param pageId next page ID value to set
    */
@@ -422,16 +425,16 @@ public:
   }
 
   /**
-   * Get previous page ID. This is the ID for the previous page when there is
-   * data overflow. A value of 0 means there is no previous page.
+   * Get previous page ID. This is the ID for the previous linked page when
+   * there is data overflow. A value of 0 means there is no previous page.
    *
    * @returns previous page identifier
    */
   const PageId &getPrevPageId() const { return header.prevPageId; }
 
   /**
-   * Set previous page ID. This is the ID for the previous page when there is
-   * data overflow. A value of 0 means there is no previous page.
+   * Set previous page ID. This is the ID for the previous linked page when
+   * there is data overflow. A value of 0 means there is no previous page.
    *
    * @param pageId previous page ID value to set
    */
@@ -442,68 +445,73 @@ public:
   }
 
   /**
-   * Get RecordBlock object at a given slot.
+   * Get page slot of given identifier within the page.
    *
-   * @param txn reference to active transaction
-   * @param slotId slot identifier
-   * @returns reference to RecordBlock object
+   * @param slotId Slot identifier
+   * @param txn Reference to active transaction
+   * @returns Constant reference to the PageSlot object if found
+   * @throws PageSlotNotFoundError
    */
-  const RecordBlock &getRecordBlock(Transaction &txn, PageSlotId slotId) const {
+  const PageSlot &getPageSlot(PageSlotId slotId,
+                              Transaction &txn) const override {
     // Check if slot exists
-    RecordBlockMap::const_iterator it = recordBlocks.find(slotId);
-    if (it == recordBlocks.end()) {
-      throw RecordBlockNotFoundError(header.pageId, slotId);
+    PageSlotMap::const_iterator it = pageSlots.find(slotId);
+    if (it == pageSlots.end()) {
+      throw PageSlotNotFoundError(header.pageId, slotId);
     }
     return it->second;
   }
 
   /**
-   * Add RecordBlock object to the page.
+   * Insert page slot to the page.
    *
-   * @param txn reference to active transaction
-   * @param recordBlock RecordBlock object to be added
-   * @param pageSlotId the slot ID where to insert the record block. If set to 0
-   * then the record block is inserted at the back of all the slots.
-   * @returns page slot ID where record block is stored and pointer to stored
-   * record block
+   * @param pageSlot Reference to the PageSlot object to insert
+   * @param txn Reference to active transaction
+   * @returns SlotId and pointer to the inserted PageSlot
    */
-  std::pair<PageSlotId, RecordBlock *>
-  addRecordBlock(Transaction &txn, RecordBlock &recordBlock) {
+  std::pair<PageSlotId, PageSlot *> insertPageSlot(PageSlot &pageSlot,
+                                                   Transaction &txn) override {
     // Create slot for record block
-    PageSlotId slotId = header.createSlot(recordBlock.size());
+    PageSlotId slotId = header.createSlot(pageSlot.size());
 
     // Log insert operation
-    RecordBlock::Location location(header.pageId, slotId);
-    txn.logInsertOp(location, recordBlock);
+    PageSlot::Location location(header.pageId, slotId);
+    txn.logInsertOp(location, pageSlot);
 
     // Insert record block at slot
-    auto inserted = recordBlocks.emplace(slotId, recordBlock);
+    auto inserted = pageSlots.emplace(slotId, pageSlot);
     // Stage current page
     txn.stage(header.pageId);
     // Notify observers of modification
     notifyObservers();
 
-    return std::pair<PageSlotId, RecordBlock *>(slotId,
-                                                &inserted.first->second);
+    return std::pair<PageSlotId, PageSlot *>(slotId, &inserted.first->second);
   }
 
   /**
-   * Update record block in the page.
+   * Update page slot in the page.
    *
-   * @param txn reference to active transaction
-   * @param slotId slot ID of the record being updated
-   * @param recordBlock updated record block
+   * @param slotId Identifier of the slot to update
+   * @param pageSlot Reference to updated page slot
+   * @param txn Reference to active transaction
+   * @throws PageSlotNotFoundError
    */
-  void updateRecordBlock(Transaction &txn, PageSlotId slotId,
-                         RecordBlock &recordBlock) {
+  virtual void updatePageSlot(PageSlotId slotId, PageSlot &pageSlot,
+                              Transaction &txn) override {
+    // Check if slot exists
+    PageSlotMap::iterator it = pageSlots.find(slotId);
+    if (it == pageSlots.end()) {
+      throw PageSlotNotFoundError(header.pageId, slotId);
+    }
+
     // Log update operation
-    RecordBlock::Location location(header.pageId, slotId);
-    txn.logUpdateOp(location, recordBlocks.at(slotId), recordBlock);
+    PageSlot::Location location(header.pageId, slotId);
+    txn.logUpdateOp(location, it->second, pageSlot);
 
     // Update slot for record block
-    header.updateSlot(slotId, recordBlock.size());
+    header.updateSlot(slotId, pageSlot.size());
     // Update record block at slot
-    recordBlocks.at(slotId) = std::move(recordBlock);
+    it->second = std::move(pageSlot);
     // Stage current page
     txn.stage(header.pageId);
     // Notify observers of modification
@@ -511,25 +519,26 @@ public:
   }
 
   /**
-   * Remove RecordBlock object at given slot.
+   * Remove page slot of given identifier within page.
    *
-   * @param txn reference to active transaction
-   * @param slotId slot identifier
+   * @param slotId Identifier of the slot to remove
+   * @param txn Reference to active transaction
+   * @throws PageSlotNotFoundError
    */
-  void removeRecordBlock(Transaction &txn, PageSlotId slotId) {
-    // Check if slot exists in the Page
-    RecordBlockMap::iterator it = recordBlocks.find(slotId);
-    if (it == recordBlocks.end()) {
-      throw RecordBlockNotFoundError(header.pageId, slotId);
+  void removePageSlot(PageSlotId slotId, Transaction &txn) override {
+    // Check if slot exists
+    PageSlotMap::iterator it = pageSlots.find(slotId);
+    if (it == pageSlots.end()) {
+      throw PageSlotNotFoundError(header.pageId, slotId);
     }
     // Log delete operation
-    RecordBlock::Location location(header.pageId, slotId);
-    txn.logDeleteOp(location, recordBlocks.at(slotId));
+    PageSlot::Location location(header.pageId, slotId);
+    txn.logDeleteOp(location, pageSlots.at(slotId));
 
     // Adjusting header
     header.freeSlot(slotId);
     // Removing record block from cache
-    recordBlocks.erase(it);
+    pageSlots.erase(it);
     // Stage current page
     txn.stage(header.pageId);
     // Notify observers of modification
@@ -537,22 +546,22 @@ public:
   }
 
   /**
-   * Undo remove RecordBlock object at given slot.
+   * Undo remove page slot of given identifier within page.
    *
-   * @param txn reference to active transaction
-   * @param slotId slot identifier
-   * @param recordBlock removed record block to add back to page
+   * @param slotId Identifier of the slot to insert back
+   * @param pageSlot Reference to the slot to insert back
+   * @param txn Reference to active transaction
    */
-  void undoRemoveRecordBlock(Transaction &txn, PageSlotId slotId,
-                             RecordBlock &recordBlock) {
+  void undoRemovePageSlot(PageSlotId slotId, PageSlot &pageSlot,
+                          Transaction &txn) override {
     // Log insert operation
-    RecordBlock::Location location(header.pageId, slotId);
-    txn.logInsertOp(location, recordBlock);
+    PageSlot::Location location(header.pageId, slotId);
+    txn.logInsertOp(location, pageSlot);
 
     // Update slot for record block
-    header.createSlot(slotId, recordBlock.size());
+    header.createSlot(slotId, pageSlot.size());
     // Update record block at slot
-    recordBlocks.emplace(slotId, recordBlock);
+    pageSlots.emplace(slotId, pageSlot);
     // Stage current page
     txn.stage(header.pageId);
     // Notify observers of modification
@@ -568,18 +577,17 @@ public:
     if (input.size < header.pageSize) {
       throw PageParseError();
     }
-    recordBlocks.clear(); //<- clears record blocks in case they are loaded
+    pageSlots.clear(); //<- clears record blocks in case they are loaded
 
     // Load Page header
     header.load(input);
     // Load record blocks
     for (auto element : header.slots) {
-      Header::Slot &slot = element.second;
+      Header::HeaderSlot &slot = element.second;
       Span span(input.start + slot.offset, slot.size);
-      RecordBlock recordBlock;
-      recordBlock.load(span);
-      recordBlocks.insert(
-          std::pair<PageSlotId, RecordBlock>(slot.id, recordBlock));
+      PageSlot pageSlot;
+      pageSlot.load(span);
+      pageSlots.insert(std::pair<PageSlotId, PageSlot>(slot.id, pageSlot));
     }
   }
 
@@ -602,11 +610,11 @@ public:
     std::memset((void *)span.start, 0, span.size);
     // Dump record blocks
     for (auto element : header.slots) {
-      Header::Slot &slot = element.second;
-      RecordBlock &recordBlock = recordBlocks.at(slot.id);
+      Header::HeaderSlot &slot = element.second;
+      PageSlot &pageSlot = pageSlots.at(slot.id);
       span.start = output.start + slot.offset;
       span.size = slot.size;
-      recordBlock.dump(span);
+      pageSlot.dump(span);
     }
   }
 
@@ -614,10 +622,11 @@ public:
   /**
    * @brief Write page to output stream
    */
-  friend std::ostream &operator<<(std::ostream &os, const SlottedPage &page) {
+  friend std::ostream &operator<<(std::ostream &os,
+                                  const VLSSlottedPage &page) {
     os << "--------- Page " << page.header.pageId << " ---------\n";
     os << page.header << "\n";
-    for (auto element : page.recordBlocks) {
+    for (auto element : page.pageSlots) {
       os << ":--> [" << page.header.pageId << ", " << element.first << "]\n";
       os << element.second << "\n";
     }
@@ -630,4 +639,4 @@ public:
 
 } // namespace persist
 
-#endif /* SLOTTED_PAGE_HPP */
+#endif /* VLS_SLOTTED_PAGE_HPP */

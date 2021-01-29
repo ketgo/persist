@@ -37,7 +37,7 @@
 
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
-#include <persist/core/record_block.hpp>
+#include <persist/core/page/slotted_page/page_slot.hpp>
 
 namespace persist {
 
@@ -169,9 +169,25 @@ public:
 #endif
   };
   /**
-   * @brief Different types of log records.
+   * @brief Different types of log records given by the enumeration class. The
+   * description for each is as shown in the following comments.
    */
-  enum class Type { BEGIN, INSERT, UPDATE, DELETE, COMMIT, ABORT, DONE };
+  enum class Type {
+    BEGIN,  //<- The log record represents begining of a transaction.
+    INSERT, //<- The log record represents insert operation as part of a
+            // transaction.
+    UPDATE, //<- The log record represents update operation as part of a
+            // transaction.
+    DELETE, //<- The log record represents remove operation as part of a
+            // transaction.
+    COMMIT, //<- The log record represents a transaction has been partially
+            // comitted. This implies that the transaction is in
+            // `PARTIALLY_COMMITTED` state.
+    ABORT, //<- The log record represents that a transaction has successfully
+           // aborted. This implies that the transaction is in `ABORTED` state.
+    DONE //<- The log record represents a transaction has successfully comitted.
+         // This implies that the transaction is in `COMMITTED` state.
+  };
 
   PERSIST_PRIVATE
 
@@ -189,12 +205,12 @@ public:
   /**
    * @brief Record Block Location
    */
-  RecordBlock::Location location;
+  PageSlot::Location location;
 
   /**
    * @brief Record Blocks
    */
-  RecordBlock recordBlockA, recordBlockB;
+  PageSlot pageSlotA, pageSlotB;
 
   /**
    * @brief Computes checksum for record block.
@@ -204,7 +220,7 @@ public:
     // Implemented hash function based on comment in
     // https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
 
-    Checksum seed = recordBlockA.size() + recordBlockB.size();
+    Checksum seed = pageSlotA.size() + pageSlotB.size();
 
     seed = std::hash<SeqNumber>()(header.seqNumber) + 0x9e3779b9 + (seed << 6) +
            (seed >> 2);
@@ -217,10 +233,10 @@ public:
             (seed >> 2);
     seed ^= std::hash<PageSlotId>()(location.slotId) + 0x9e3779b9 +
             (seed << 6) + (seed >> 2);
-    seed ^= std::hash<size_t>()(recordBlockA.size()) + 0x9e3779b9 +
-            (seed << 6) + (seed >> 2);
-    seed ^= std::hash<size_t>()(recordBlockB.size()) + 0x9e3779b9 +
-            (seed << 6) + (seed >> 2);
+    seed ^= std::hash<size_t>()(pageSlotA.size()) + 0x9e3779b9 + (seed << 6) +
+            (seed >> 2);
+    seed ^= std::hash<size_t>()(pageSlotB.size()) + 0x9e3779b9 + (seed << 6) +
+            (seed >> 2);
 
     return seed;
   }
@@ -248,9 +264,9 @@ public:
    * records.
    */
   LogRecord(TransactionId transactionId, SeqNumber prevSeqNumber, Type type,
-            RecordBlock::Location location, RecordBlock recordBlock)
+            PageSlot::Location location, PageSlot pageSlot)
       : header(0, prevSeqNumber, transactionId), type(type), location(location),
-        recordBlockA(recordBlock) {}
+        pageSlotA(pageSlot) {}
 
   /**
    * @brief Construct a new Log Record object
@@ -259,10 +275,10 @@ public:
    * record.
    */
   LogRecord(TransactionId transactionId, SeqNumber prevSeqNumber, Type type,
-            RecordBlock::Location location, RecordBlock oldRecordBlock,
-            RecordBlock newRecordBlock)
+            PageSlot::Location location, PageSlot oldPageSlot,
+            PageSlot newPageSlot)
       : header(0, prevSeqNumber, transactionId), type(type), location(location),
-        recordBlockA(oldRecordBlock), recordBlockB(newRecordBlock) {}
+        pageSlotA(oldPageSlot), pageSlotB(newPageSlot) {}
 
   /**
    * @brief Get the Seq Number of log record
@@ -276,14 +292,14 @@ public:
    * - sizeof(header)
    * - sizeof(type)
    * - sizeof(location)
-   * - sizeof(recordBlockA.size())
-   * - recordBlockA.size()
-   * - sizeof(recordBlockB.size())
-   * - recordBlockB.size()
+   * - sizeof(pageSlotA.size())
+   * - pageSlotA.size()
+   * - sizeof(pageSlotB.size())
+   * - pageSlotB.size()
    */
   uint64_t size() {
     return header.size() + sizeof(type) + sizeof(location) +
-           2 * sizeof(uint64_t) + recordBlockA.size() + recordBlockB.size();
+           2 * sizeof(uint64_t) + pageSlotA.size() + pageSlotB.size();
   }
 
   /**
@@ -303,17 +319,17 @@ public:
     std::memcpy((void *)&type, (const void *)pos, sizeof(Type));
     pos += sizeof(Type);
     std::memcpy((void *)&location, (const void *)pos,
-                sizeof(RecordBlock::Location));
-    pos += sizeof(RecordBlock::Location);
-    uint64_t recordBlockASize;
-    std::memcpy((void *)&recordBlockASize, (const void *)pos, sizeof(uint64_t));
+                sizeof(PageSlot::Location));
+    pos += sizeof(PageSlot::Location);
+    uint64_t pageSlotASize;
+    std::memcpy((void *)&pageSlotASize, (const void *)pos, sizeof(uint64_t));
     pos += sizeof(uint64_t);
-    recordBlockA.load(Span(pos, recordBlockASize));
-    pos += recordBlockASize;
-    uint64_t recordBlockBSize;
-    std::memcpy((void *)&recordBlockBSize, (const void *)pos, sizeof(uint64_t));
+    pageSlotA.load(Span(pos, pageSlotASize));
+    pos += pageSlotASize;
+    uint64_t pageSlotBSize;
+    std::memcpy((void *)&pageSlotBSize, (const void *)pos, sizeof(uint64_t));
     pos += sizeof(uint64_t);
-    recordBlockB.load(Span(pos, recordBlockBSize));
+    pageSlotB.load(Span(pos, pageSlotBSize));
 
     // Check for corruption by matching checksum
     if (_checksum() != header.checksum) {
@@ -342,17 +358,17 @@ public:
     std::memcpy((void *)pos, (const void *)&type, sizeof(Type));
     pos += sizeof(Type);
     std::memcpy((void *)pos, (const void *)&location,
-                sizeof(RecordBlock::Location));
-    pos += sizeof(RecordBlock::Location);
-    uint64_t recordBlockASize = recordBlockA.size();
-    std::memcpy((void *)pos, (const void *)&recordBlockASize, sizeof(uint64_t));
+                sizeof(PageSlot::Location));
+    pos += sizeof(PageSlot::Location);
+    uint64_t pageSlotASize = pageSlotA.size();
+    std::memcpy((void *)pos, (const void *)&pageSlotASize, sizeof(uint64_t));
     pos += sizeof(uint64_t);
-    recordBlockA.dump(Span(pos, recordBlockASize));
-    pos += recordBlockASize;
-    uint64_t recordBlockBSize = recordBlockB.size();
-    std::memcpy((void *)pos, (const void *)&recordBlockBSize, sizeof(uint64_t));
+    pageSlotA.dump(Span(pos, pageSlotASize));
+    pos += pageSlotASize;
+    uint64_t pageSlotBSize = pageSlotB.size();
+    std::memcpy((void *)pos, (const void *)&pageSlotBSize, sizeof(uint64_t));
     pos += sizeof(uint64_t);
-    recordBlockB.dump(Span(pos, recordBlockBSize));
+    pageSlotB.dump(Span(pos, pageSlotBSize));
   }
 
   /**
@@ -360,8 +376,8 @@ public:
    */
   bool operator==(const LogRecord &other) const {
     return header == other.header && type == other.type &&
-           location == other.location && recordBlockA == other.recordBlockA &&
-           recordBlockB == other.recordBlockB;
+           location == other.location && pageSlotA == other.pageSlotA &&
+           pageSlotB == other.pageSlotB;
   }
 
   /**
@@ -369,8 +385,8 @@ public:
    */
   bool operator!=(const LogRecord &other) const {
     return header != other.header || type != other.type ||
-           location != other.location || recordBlockA != other.recordBlockA ||
-           recordBlockB != other.recordBlockB;
+           location != other.location || pageSlotA != other.pageSlotA ||
+           pageSlotB != other.pageSlotB;
   }
 
 #ifdef __PERSIST_DEBUG__
@@ -381,8 +397,8 @@ public:
                                   const LogRecord &logRecord) {
     os << logRecord.header << "\nType: " << uint64_t(logRecord.type)
        << "\nLocation: " << logRecord.location << "\nRecord A: \n"
-       << logRecord.recordBlockA << "\nRecord B: \n"
-       << logRecord.recordBlockB;
+       << logRecord.pageSlotA << "\nRecord B: \n"
+       << logRecord.pageSlotB;
     return os;
   }
 #endif

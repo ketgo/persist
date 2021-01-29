@@ -1,7 +1,7 @@
 /**
- * record.hpp - Persist
+ * slotted_page/page_slot.hpp - Persist
  *
- * Copyright 2020 Ketan Goyal
+ * Copyright 2021 Ketan Goyal
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,35 +22,53 @@
  * SOFTWARE.
  */
 
-#ifndef RECORD_HPP
-#define RECORD_HPP
+#ifndef SLOTTED_PAGE_SLOT_HPP
+#define SLOTTED_PAGE_SLOT_HPP
 
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
 
 namespace persist {
 
+// TODO:
+// 1. Implement PageSlotHandle used for accessing slots in a thread safe way.
+// The handle locks and unlocks read-write lock of the associated slot during
+// construction and destruction of the handle.
+// 2. Add a read-write mutex to the PageSlot class or create a wrapper class.
+
 /**
- * Record Block Class
+ * @brief PageSlot Class
  *
- * The class represents a single chunk of a data record stored in backend
- * storage. A data record can consist of one or more RecordBlock objects
- * with same identifier.
+ * The class implements a page slot used by slotted pages. It stores a full or
+ * partial data record which is to be stored in a slotted page. Each page slot
+ * belonging to a page has a unique identifier called SlotId. The SlotId is only
+ * unique within the context of a page. For a globally unique identifier the
+ * (PageId, SlotId) tuple is used. This tuple acts as an abstract address of the
+ * slot within a backend storage.
+ *
+ * A data record spanning accross multiple slots is stored as a doubly-linked
+ * list of page slots. Thus, a slot contains the location, i.e. the (PageId,
+ * SlotId) tuple, of the next and previous page slots to which it is linked.
+ * This information along with its own SlotId is stored its header. The rest of
+ * the slot stores the data record.
+ *
  */
-class RecordBlock {
+class PageSlot {
 public:
   /**
-   * Record Block Location Class
+   * PageSlot Location Class
    *
-   * The class contains location information of a record block.
+   * The class object represents the address location of a page slot. This is
+   * simply the global unique identifier of the slot given by the (PageId,
+   * SlotId) tuple.
    */
   struct Location {
     /**
-     * @brief ID of page containing record block.
+     * @brief ID of page containing slot.
      */
     PageId pageId;
     /**
-     * @brief ID of slot inside the above page containing record block.
+     * @brief ID of the slot inside the above page.
      */
     PageSlotId slotId;
 
@@ -90,7 +108,7 @@ public:
 
 #ifdef __PERSIST_DEBUG__
     /**
-     * @brief Write record block location to output stream
+     * @brief Write slot location to output stream
      */
     friend std::ostream &operator<<(std::ostream &os,
                                     const Location &location) {
@@ -101,25 +119,24 @@ public:
   };
 
   /**
-   * Record Block Header Class
+   * PageSlot Header Class
    *
-   * Header data type for Record Block. It contains the metadata information for
-   * facilitating read write operations of records. Since a record is stored as
-   * linked list of record blocks, the header contains this linking information.
+   * The class represents header of a page slot. It contains the metadata
+   * information required for facilitating read write operations of records.
    */
   class Header {
   public:
     /**
-     * @brief Next RecordBlock location
+     * @brief Next page slot location
      */
     Location nextLocation;
     /**
-     * @brief Previous RecordBlock location
+     * @brief Previous page slot location
      */
     Location prevLocation;
 
     /**
-     * @brief Checksum to detect record block corruption
+     * @brief Checksum to detect slot corruption
      */
     Checksum checksum;
 
@@ -134,13 +151,13 @@ public:
     uint64_t size() { return sizeof(Header); }
 
     /**
-     * Load record block header from byte string.
+     * Load slot header from byte string.
      *
      * @param input input buffer span to load
      */
     void load(Span input) {
       if (input.size < size()) {
-        throw RecordBlockParseError();
+        throw PageSlotParseError();
       }
 
       // Load bytes
@@ -148,13 +165,13 @@ public:
     }
 
     /**
-     * Dump record block header as byte string.
+     * Dump slot header as byte string.
      *
      * @param output output buffer span to dump
      */
     void dump(Span output) {
       if (output.size < size()) {
-        throw RecordBlockParseError();
+        throw PageSlotParseError();
       }
       // Dump bytes
       std::memcpy((void *)output.start, (const void *)this, size());
@@ -178,7 +195,7 @@ public:
 
 #ifdef __PERSIST_DEBUG__
     /**
-     * @brief Write record block header to output stream
+     * @brief Write slot header to output stream
      */
     friend std::ostream &operator<<(std::ostream &os, const Header &header) {
       os << "---- Header ----\n";
@@ -192,13 +209,13 @@ public:
 
   PERSIST_PRIVATE
   /**
-   * @brief Record block header
+   * @brief Page slot header
    *
    */
   Header header;
 
   /**
-   * @brief Computes checksum for record block.
+   * @brief Computes checksum for page slot.
    */
   Checksum _checksum() {
 
@@ -226,52 +243,53 @@ public:
   ByteBuffer data; //<- data contained in the record block
 
   /**
-   * Constructors
+   * @brief Construct a new Page Slot object
+   *
    */
-  RecordBlock() {}
-  RecordBlock(RecordBlock::Header &header) : header(header) {}
+  PageSlot() {}
+  PageSlot(PageSlot::Header &header) : header(header) {}
 
   /**
-   * Get storage size of record block.
+   * Get storage size of page slot.
    */
   uint64_t size() { return header.size() + sizeof(Byte) * data.size(); }
 
   /**
-   * @brief Get the next RecordBlock location object
+   * @brief Get the next page slot location
    *
-   * @return Location reference to the next record block
+   * @return Location of the next linked page slot
    */
   const Location &getNextLocation() const { return header.nextLocation; }
 
   /**
-   * @brief Set the next RecordBlock location object
+   * @brief Set the next page slot location
    *
-   * @param location reference to the location of the next record block
+   * @param location Location of the next linked page slot
    */
   void setNextLocation(Location &location) { header.nextLocation = location; }
 
   /**
-   * @brief Get the previous RecordBlock location object
+   * @brief Get the previous page slot location
    *
-   * @return Location reference to the previous record block
+   * @return Location of the previous linked page slot
    */
   const Location &getPrevLocation() const { return header.prevLocation; }
 
   /**
-   * @brief Set the previous RecordBlock location object
+   * @brief Set the previous page slot location
    *
-   * @param location reference to the location of the previous record block
+   * @param location Location of the previous linked page slot
    */
   void setPrevLocation(Location &location) { header.prevLocation = location; }
 
   /**
-   * Load RecordBlock object from byte string.
+   * Load page slot object from byte string.
    *
    * @param input input buffer span to load
    */
   void load(Span input) {
     if (input.size < size()) {
-      throw RecordBlockParseError();
+      throw PageSlotParseError();
     }
     // Load header
     header.load(input);
@@ -283,18 +301,18 @@ public:
 
     // Check for corruption by matching checksum
     if (_checksum() != header.checksum) {
-      throw RecordBlockCorruptError();
+      throw PageSlotCorruptError();
     }
   }
 
   /**
-   * Dump RecordBlock object as byte string.
+   * Dump page slot object as byte string.
    *
    * @param output output buffer span to dump
    */
   void dump(Span output) {
     if (output.size < size()) {
-      throw RecordBlockParseError();
+      throw PageSlotParseError();
     }
 
     // Compute and set checksum
@@ -310,14 +328,14 @@ public:
   /**
    * @brief Equality comparision operator.
    */
-  bool operator==(const RecordBlock &other) const {
+  bool operator==(const PageSlot &other) const {
     return header == other.header && data == other.data;
   }
 
   /**
    * @brief Non-equality comparision operator.
    */
-  bool operator!=(const RecordBlock &other) const {
+  bool operator!=(const PageSlot &other) const {
     return header != other.header || data != other.data;
   }
 
@@ -326,7 +344,7 @@ public:
    * @brief Write record block to output stream
    */
   friend std::ostream &operator<<(std::ostream &os,
-                                  const RecordBlock &recordBlock) {
+                                  const PageSlot &recordBlock) {
     os << "------ Record Block ------\n";
     os << recordBlock.header << "\n";
     os << "data: " << recordBlock.data << "\n";
@@ -338,4 +356,4 @@ public:
 
 } // namespace persist
 
-#endif /* RECORD_HPP */
+#endif /* SLOTTED_PAGE_SLOT_HPP */

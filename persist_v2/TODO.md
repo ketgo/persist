@@ -52,9 +52,9 @@
 
 6. Implement PAGE-LEVEL and SLOT-LEVEL granularity of atomic operations for thread safety:
     - refactor buffer manager for PAGE-LEVEL granularity
-        - implement and use no lock concurrent hash map for page buffer
-        - implement and use no lock concurrent replacer
-        - implement and use no lock concurrent FreeSpaceManager
+        - implement and use no-lock/lock-based concurrent hash map --> used in multiple places like buffer manager and slotted pages
+        - implement and use no-lock/lock-based concurrent replacer --> used by the buffer manager
+        - implement and use no-lock/lock-based concurrent FreeSpaceManager --> used by the buffer manager
     - create a new thread-safe slotted page implementation for SLOT-LEVEL granularity
 
 7. Create collection metadata manager:

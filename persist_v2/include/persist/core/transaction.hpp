@@ -35,25 +35,37 @@ namespace persist {
 /**
  * Transaction Class
  *
- * A transaction represents group of operations performed on collection while
- * mentaining atomicity. A transaction can have the following states:
+ * A transaction is a group of operations performed on a collection in atomic
+ * manner. It can have the following states:
  *
- * - GROWING: Adding operations to the transaction
- * - SHRINKING: Removing operations during rollback
- * - COMMITED: Successful completion of operations
- * - ABORTED: The transaction has been rolled back and the database  has
- * beenrestored to its state prior to the start of the transaction.
+ * - ACTIVE: The state represents an active transaction. A transaction is active
+ * if one or more operations are being performed as part of the transaction.
+ * - FAILED: The state represents a failed transaction. A transaction is failed
+ * if further operations can not be performed as part of the transaction.
+ * - PARTIALLY_COMMITED: The state represents a partially comitted transaction.
+ * A partially comitted transaction has all its operations logged and executed.
+ * - COMMITED: The state represent successfull completetion of a transaction.
+ * - ABORTED: The state represents successfull rollback of a failed transaction
+ * where the collection has been restored to its state prior to the start of the
+ * transaction.
+ *
+ * The transition diagram between states is as shown below:
+ *
+ *  ACTIVE +--> PARTIALLY_COMMITTED --> COMMITTED
+ *          |           |
+ *          |           v
+ *          +-->     FAILED    --> ABORTED
+ *
  */
 class Transaction {
-  friend class Page;
-  friend class SlottedPage;
+  friend class VLSSlottedPage;
   friend class TransactionManager;
 
 public:
   /**
-   * @brief Transaction states.
+   * @brief Enumerated set of transaction states.
    */
-  enum class State { GROWING, SHRINKING, COMMITED, ABORTED };
+  enum class State { ACTIVE, FAILED, PARTIALLY_COMMITED, COMMITED, ABORTED };
 
   PERSIST_PRIVATE
 
@@ -87,12 +99,12 @@ public:
    * @brief Log INSERT operation.
    *
    * @param location location where record is inserted
-   * @param recordBlock record block inserted
+   * @param pageSlot page slot inserted
    */
-  void logInsertOp(RecordBlock::Location &location, RecordBlock &recordBlock) {
+  void logInsertOp(PageSlot::Location &location, PageSlot &pageSlot) {
     // Log record for insert operation
     LogRecord logRecord(id, prevSeqNumber, LogRecord::Type::INSERT, location,
-                        recordBlock);
+                        pageSlot);
     prevSeqNumber = logManager.add(logRecord);
   }
 
@@ -100,14 +112,14 @@ public:
    * @brief Log UPDATE operation.
    *
    * @param location location where record is located
-   * @param oldRecordBlock old record block
-   * @param newRecordBlock new record block
+   * @param oldPageSlot old page slot
+   * @param newPageSlot new page slot
    */
-  void logUpdateOp(RecordBlock::Location &location, RecordBlock &oldRecordBlock,
-                   RecordBlock &newRecordBlock) {
+  void logUpdateOp(PageSlot::Location &location, PageSlot &oldPageSlot,
+                   PageSlot &newPageSlot) {
     // Log record for update operation
     LogRecord logRecord(id, prevSeqNumber, LogRecord::Type::UPDATE, location,
-                        oldRecordBlock, newRecordBlock);
+                        oldPageSlot, newPageSlot);
     prevSeqNumber = logManager.add(logRecord);
   }
 
@@ -115,12 +127,12 @@ public:
    * @brief Log DELETE operation.
    *
    * @param location location where record is located
-   * @param recordBlock record block deleted
+   * @param pageSlot page slot deleted
    */
-  void logDeleteOp(RecordBlock::Location &location, RecordBlock &recordBlock) {
+  void logDeleteOp(PageSlot::Location &location, PageSlot &pageSlot) {
     // Log record for delete operation
     LogRecord logRecord(id, prevSeqNumber, LogRecord::Type::DELETE, location,
-                        recordBlock);
+                        pageSlot);
     prevSeqNumber = logManager.add(logRecord);
   }
 
@@ -140,7 +152,7 @@ public:
    * @param id Transaction ID
    * @param state transaction state
    */
-  Transaction(LogManager &logManager, uint64_t id, State state = State::GROWING)
+  Transaction(LogManager &logManager, uint64_t id, State state = State::ACTIVE)
       : logManager(logManager), id(id), state(state), prevSeqNumber(0) {}
 
   /**

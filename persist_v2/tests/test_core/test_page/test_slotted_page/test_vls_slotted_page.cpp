@@ -1,5 +1,5 @@
 /**
- * test_slotted_page.cpp - Persist
+ * test_vls_slotted_page.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -23,7 +23,8 @@
  */
 
 /**
- * SlottedPage Unit Tests
+ * @brief VLSSlottedPage unit tests
+ *
  */
 
 #include <gmock/gmock.h>
@@ -36,38 +37,36 @@
  */
 #define PERSIST_INTRUSIVE_TESTING
 
-#include <persist/core/defs.hpp>
-#include <persist/core/exceptions.hpp>
-#include <persist/core/page/slotted_page.hpp>
+#include <persist/core/page/slotted_page/vls_slotted_page.hpp>
 
 using namespace persist;
 using ::testing::AtLeast;
 using ::testing::Return;
 
 /***********************************************
- * Slotted Page Header Unit Tests
+ * VLS Slotted Page Header Unit Tests
  **********************************************/
 
-class SlottedPageHeaderTestFixture : public ::testing::Test {
+class VLSSlottedPageHeaderTestFixture : public ::testing::Test {
 protected:
   ByteBuffer input;
   ByteBuffer extra;
   const PageId pageId = 12;
   const PageId nextPageId = 15;
   const PageId prevPageId = 1;
-  std::unique_ptr<SlottedPage::Header> header;
+  std::unique_ptr<VLSSlottedPage::Header> header;
 
   void SetUp() override {
-    header = std::make_unique<SlottedPage::Header>(pageId);
+    header = std::make_unique<VLSSlottedPage::Header>(pageId);
     // setup valid header
     header->nextPageId = nextPageId;
     header->prevPageId = prevPageId;
     header->slots[1] =
-        SlottedPage::Header::Slot({1, DEFAULT_PAGE_SIZE - 10, 10});
+        VLSSlottedPage::Header::HeaderSlot({1, DEFAULT_PAGE_SIZE - 10, 10});
     header->slots[2] =
-        SlottedPage::Header::Slot({2, DEFAULT_PAGE_SIZE - 15, 5});
+        VLSSlottedPage::Header::HeaderSlot({2, DEFAULT_PAGE_SIZE - 15, 5});
     header->slots[3] =
-        SlottedPage::Header::Slot({3, DEFAULT_PAGE_SIZE - 18, 3});
+        VLSSlottedPage::Header::HeaderSlot({3, DEFAULT_PAGE_SIZE - 18, 3});
 
     input = {12,  0, 0, 0, 0, 0, 0, 0, 15,  0,   0,   0,  0,  0,   0,  0,
              1,   0, 0, 0, 0, 0, 0, 0, 3,   0,   0,   0,  0,  0,   0,  0,
@@ -80,8 +79,8 @@ protected:
   }
 };
 
-TEST_F(SlottedPageHeaderTestFixture, TestLoad) {
-  SlottedPage::Header _header;
+TEST_F(VLSSlottedPageHeaderTestFixture, TestLoad) {
+  VLSSlottedPage::Header _header;
   ByteBuffer _input;
   _input.insert(_input.end(), input.begin(), input.end());
   _input.insert(_input.end(), extra.begin(), extra.end());
@@ -89,8 +88,8 @@ TEST_F(SlottedPageHeaderTestFixture, TestLoad) {
 
   ASSERT_EQ(_header.pageId, header->pageId);
   ASSERT_EQ(_header.slots.size(), header->slots.size());
-  SlottedPage::Header::Slots::iterator _it = _header.slots.begin();
-  SlottedPage::Header::Slots::iterator it = header->slots.begin();
+  VLSSlottedPage::Header::HeaderSlotMap::iterator _it = _header.slots.begin();
+  VLSSlottedPage::Header::HeaderSlotMap::iterator it = header->slots.begin();
   while (_it != _header.slots.end() && it != header->slots.end()) {
     ASSERT_EQ(_it->second.id, it->second.id);
     ASSERT_EQ(_it->second.offset, it->second.offset);
@@ -100,10 +99,10 @@ TEST_F(SlottedPageHeaderTestFixture, TestLoad) {
   }
 }
 
-TEST_F(SlottedPageHeaderTestFixture, TestLoadError) {
+TEST_F(VLSSlottedPageHeaderTestFixture, TestLoadError) {
   try {
     ByteBuffer _input;
-    SlottedPage::Header _header;
+    VLSSlottedPage::Header _header;
     _header.load(Span(_input));
     FAIL() << "Expected PageParseError Exception.";
   } catch (PageParseError &err) {
@@ -113,11 +112,11 @@ TEST_F(SlottedPageHeaderTestFixture, TestLoadError) {
   }
 }
 
-TEST_F(SlottedPageHeaderTestFixture, TestLoadCorruptErrorInvalidChecksum) {
+TEST_F(VLSSlottedPageHeaderTestFixture, TestLoadCorruptErrorInvalidChecksum) {
   try {
     ByteBuffer _input = input;
     _input.back() = 0;
-    SlottedPage::Header _header;
+    VLSSlottedPage::Header _header;
     _header.load(Span(_input));
     FAIL() << "Expected PageCorruptError Exception.";
   } catch (PageCorruptError &err) {
@@ -127,11 +126,11 @@ TEST_F(SlottedPageHeaderTestFixture, TestLoadCorruptErrorInvalidChecksum) {
   }
 }
 
-TEST_F(SlottedPageHeaderTestFixture, TestLoadCorruptErrorInvalidSlotsCount) {
+TEST_F(VLSSlottedPageHeaderTestFixture, TestLoadCorruptErrorInvalidSlotsCount) {
   try {
     ByteBuffer _input = input;
     _input[24] = 9; //<- sets the slot count located at 24th byte to 9
-    SlottedPage::Header _header;
+    VLSSlottedPage::Header _header;
     _header.load(Span(_input));
     FAIL() << "Expected PageCorruptError Exception.";
   } catch (PageCorruptError &err) {
@@ -141,18 +140,18 @@ TEST_F(SlottedPageHeaderTestFixture, TestLoadCorruptErrorInvalidSlotsCount) {
   }
 }
 
-TEST_F(SlottedPageHeaderTestFixture, TestDump) {
+TEST_F(VLSSlottedPageHeaderTestFixture, TestDump) {
   ByteBuffer output(header->size());
   header->dump(Span(output));
 
   ASSERT_EQ(input, output);
 }
 
-TEST_F(SlottedPageHeaderTestFixture, TestSize) {
+TEST_F(VLSSlottedPageHeaderTestFixture, TestSize) {
   ASSERT_EQ(header->size(), input.size());
 }
 
-TEST_F(SlottedPageHeaderTestFixture, TestCreateSlot) {
+TEST_F(VLSSlottedPageHeaderTestFixture, TestCreateSlot) {
   uint64_t size = 100;
   uint64_t tail = header->tail();
   PageSlotId slotId = header->createSlot(size);
@@ -163,7 +162,7 @@ TEST_F(SlottedPageHeaderTestFixture, TestCreateSlot) {
   ASSERT_EQ(header->slots.rbegin()->second.size, size);
 }
 
-TEST_F(SlottedPageHeaderTestFixture, TestUpdateSlot) {
+TEST_F(VLSSlottedPageHeaderTestFixture, TestUpdateSlot) {
   uint64_t oldSize = header->slots.at(2).size;
   uint64_t newSize = 100;
   uint64_t tail = header->tail();
@@ -189,9 +188,9 @@ TEST_F(SlottedPageHeaderTestFixture, TestUpdateSlot) {
   ASSERT_EQ(header->slots.at(3).size, 3);
 }
 
-TEST_F(SlottedPageHeaderTestFixture, TestFreeSlot) {
+TEST_F(VLSSlottedPageHeaderTestFixture, TestFreeSlot) {
   uint64_t tail = header->tail();
-  SlottedPage::Header::Slots::iterator it = header->slots.begin();
+  VLSSlottedPage::Header::HeaderSlotMap::iterator it = header->slots.begin();
   ++it;
   uint64_t entrySize = it->second.size;
 
@@ -203,9 +202,9 @@ TEST_F(SlottedPageHeaderTestFixture, TestFreeSlot) {
  * Slotted Page Unit Tests
  ***********************************************/
 
-TEST(SlottedPageTest, PageSizeError) {
+TEST(VLSSlottedPageTest, PageSizeError) {
   try {
-    SlottedPage page(1, 64);
+    VLSSlottedPage page(1, 64);
     FAIL() << "Expected PageSizeError Exception.";
   } catch (PageSizeError &err) {
     SUCCEED();
@@ -214,41 +213,41 @@ TEST(SlottedPageTest, PageSizeError) {
   }
 }
 
-class MockSlottedPageObserver : public PageObserver {
+class MockVLSSlottedPageObserver : public PageObserver {
 public:
   MOCK_METHOD(void, handleModifiedPage, (PageId pageId), (override));
 };
 
-class SlottedPageTestFixture : public ::testing::Test {
+class VLSSlottedPageTestFixture : public ::testing::Test {
 protected:
   ByteBuffer input;
   const PageId pageId = 12;
   const PageId nextPageId = 15;
   const PageId prevPageId = 1;
   const uint64_t pageSize = DEFAULT_PAGE_SIZE;
-  std::unique_ptr<SlottedPage> page;
+  std::unique_ptr<VLSSlottedPage> page;
   PageSlotId slotId_1, slotId_2;
-  std::unique_ptr<RecordBlock> recordBlock_1, recordBlock_2;
-  const ByteBuffer recordBlockData_1 = "testing_1"_bb,
-                   recordBlockData_2 = "testing_2"_bb;
+  std::unique_ptr<PageSlot> pageSlot_1, pageSlot_2;
+  const ByteBuffer pageSlotData_1 = "testing_1"_bb,
+                   pageSlotData_2 = "testing_2"_bb;
   std::unique_ptr<LogManager> logManager;
-  MockSlottedPageObserver observer;
+  MockVLSSlottedPageObserver observer;
 
   void SetUp() override {
     // Setup log manager
     logManager = std::make_unique<LogManager>();
     // Setup valid page
-    page = std::make_unique<SlottedPage>(pageId, pageSize);
+    page = std::make_unique<VLSSlottedPage>(pageId, pageSize);
     page->setNextPageId(nextPageId);
     page->setPrevPageId(prevPageId);
     // Add record blocks
     Transaction txn(*logManager, 0);
-    recordBlock_1 = std::make_unique<RecordBlock>();
-    recordBlock_1->data = recordBlockData_1;
-    slotId_1 = page->addRecordBlock(txn, *recordBlock_1).first;
-    recordBlock_2 = std::make_unique<RecordBlock>();
-    recordBlock_2->data = recordBlockData_2;
-    slotId_2 = page->addRecordBlock(txn, *recordBlock_2).first;
+    pageSlot_1 = std::make_unique<PageSlot>();
+    pageSlot_1->data = pageSlotData_1;
+    slotId_1 = page->insertPageSlot(*pageSlot_1, txn).first;
+    pageSlot_2 = std::make_unique<PageSlot>();
+    pageSlot_2->data = pageSlotData_2;
+    slotId_2 = page->insertPageSlot(*pageSlot_2, txn).first;
 
     input = {
         12,  0,   0,   0,   0,   0,   0,   0,   15,  0,   0,   0,   0,   0,
@@ -328,13 +327,15 @@ protected:
   }
 };
 
-TEST_F(SlottedPageTestFixture, TestGetId) { ASSERT_EQ(page->getId(), pageId); }
+TEST_F(VLSSlottedPageTestFixture, TestGetId) {
+  ASSERT_EQ(page->getId(), pageId);
+}
 
-TEST_F(SlottedPageTestFixture, TestGetNextBlockId) {
+TEST_F(VLSSlottedPageTestFixture, TestGetNextBlockId) {
   ASSERT_EQ(page->getNextPageId(), nextPageId);
 }
 
-TEST_F(SlottedPageTestFixture, TestSetNextBlockId) {
+TEST_F(VLSSlottedPageTestFixture, TestSetNextBlockId) {
   PageId blockId = 99;
   page->registerObserver(&observer);
   EXPECT_CALL(observer, handleModifiedPage(page->getId())).Times(AtLeast(1));
@@ -342,11 +343,11 @@ TEST_F(SlottedPageTestFixture, TestSetNextBlockId) {
   ASSERT_EQ(page->getNextPageId(), blockId);
 }
 
-TEST_F(SlottedPageTestFixture, TestGetPrevBlockId) {
+TEST_F(VLSSlottedPageTestFixture, TestGetPrevBlockId) {
   ASSERT_EQ(page->getPrevPageId(), prevPageId);
 }
 
-TEST_F(SlottedPageTestFixture, TestSetPrevBlockId) {
+TEST_F(VLSSlottedPageTestFixture, TestSetPrevBlockId) {
   PageId blockId = 99;
   page->registerObserver(&observer);
   EXPECT_CALL(observer, handleModifiedPage(page->getId())).Times(AtLeast(1));
@@ -354,152 +355,152 @@ TEST_F(SlottedPageTestFixture, TestSetPrevBlockId) {
   ASSERT_EQ(page->getPrevPageId(), blockId);
 }
 
-TEST_F(SlottedPageTestFixture, TestFreeSpace) {
-  SlottedPage::Header header(pageId, pageSize);
+TEST_F(VLSSlottedPageTestFixture, TestFreeSpace) {
+  VLSSlottedPage::Header header(pageId, pageSize);
   header.nextPageId = nextPageId;
   header.prevPageId = prevPageId;
-  SlottedPage _page(pageId, pageSize);
+  VLSSlottedPage _page(pageId, pageSize);
   _page.setNextPageId(nextPageId);
   _page.setPrevPageId(prevPageId);
 
-  ASSERT_EQ(_page.freeSpace(SlottedPage::Operation::UPDATE),
+  ASSERT_EQ(_page.freeSpace(VLSSlottedPage::Operation::UPDATE),
             pageSize - header.size());
-  ASSERT_EQ(_page.freeSpace(SlottedPage::Operation::INSERT),
-            pageSize - header.size() - sizeof(SlottedPage::Header::Slot));
+  ASSERT_EQ(_page.freeSpace(VLSSlottedPage::Operation::INSERT),
+            pageSize - header.size() -
+                sizeof(VLSSlottedPage::Header::HeaderSlot));
 }
 
-TEST_F(SlottedPageTestFixture, TestGetRecordBlock) {
+TEST_F(VLSSlottedPageTestFixture, TestGetPageSlot) {
   Transaction txn(*logManager, 0);
-  RecordBlock _recordBlock = page->getRecordBlock(txn, slotId_1);
+  PageSlot _pageSlot = page->getPageSlot(slotId_1, txn);
 
-  ASSERT_EQ(_recordBlock.data, recordBlockData_1);
-  ASSERT_TRUE(_recordBlock.getNextLocation().isNull());
-  ASSERT_TRUE(_recordBlock.getPrevLocation().isNull());
+  ASSERT_EQ(_pageSlot.data, pageSlotData_1);
+  ASSERT_TRUE(_pageSlot.getNextLocation().isNull());
+  ASSERT_TRUE(_pageSlot.getPrevLocation().isNull());
 }
 
-TEST_F(SlottedPageTestFixture, TestGetRecordBlockError) {
+TEST_F(VLSSlottedPageTestFixture, TestGetPageSlotError) {
   try {
     Transaction txn(*logManager, 0);
-    RecordBlock _recordBlock = page->getRecordBlock(txn, 10);
-    FAIL() << "Expected RecordBlockNotFoundError Exception.";
-  } catch (RecordBlockNotFoundError &err) {
+    PageSlot _pageSlot = page->getPageSlot(10, txn);
+    FAIL() << "Expected PageSlotNotFoundError Exception.";
+  } catch (PageSlotNotFoundError &err) {
     SUCCEED();
   } catch (...) {
-    FAIL() << "Expected RecordBlockNotFoundError Exception.";
+    FAIL() << "Expected PageSlotNotFoundError Exception.";
   }
 }
 
-TEST_F(SlottedPageTestFixture, TestAddRecordBlock) {
-  RecordBlock recordBlock;
-  recordBlock.data = "testing_3"_bb;
+TEST_F(VLSSlottedPageTestFixture, TestAddPageSlot) {
+  PageSlot pageSlot;
+  pageSlot.data = "testing_3"_bb;
 
   // Current free space in block
   page->registerObserver(&observer);
   EXPECT_CALL(observer, handleModifiedPage(page->getId())).Times(AtLeast(1));
-  uint64_t oldFreeSpace = page->freeSpace(SlottedPage::Operation::INSERT);
+  uint64_t oldFreeSpace = page->freeSpace(VLSSlottedPage::Operation::INSERT);
   Transaction txn(*logManager, 0);
-  PageSlotId slotId = page->addRecordBlock(txn, recordBlock).first;
+  PageSlotId slotId = page->insertPageSlot(pageSlot, txn).first;
 
   LogRecord logRecord = logManager->get(txn.prevSeqNumber);
   ASSERT_EQ(logRecord.header.transactionId, txn.getId());
   ASSERT_EQ(logRecord.header.seqNumber, txn.prevSeqNumber);
   ASSERT_EQ(logRecord.header.prevSeqNumber, 0);
   ASSERT_EQ(logRecord.type, LogRecord::Type::INSERT);
-  ASSERT_EQ(logRecord.location, RecordBlock::Location(page->getId(), slotId));
-  ASSERT_EQ(logRecord.recordBlockA, recordBlock);
-  ASSERT_EQ(logRecord.recordBlockB, RecordBlock());
+  ASSERT_EQ(logRecord.location, PageSlot::Location(page->getId(), slotId));
+  ASSERT_EQ(logRecord.pageSlotA, pageSlot);
+  ASSERT_EQ(logRecord.pageSlotB, PageSlot());
 
   uint64_t newFreeSize = page->header.tail() - page->header.size();
-  ASSERT_EQ(oldFreeSpace - newFreeSize, recordBlock.size());
-  ASSERT_EQ(page->getRecordBlock(txn, slotId), recordBlock);
+  ASSERT_EQ(oldFreeSpace - newFreeSize, pageSlot.size());
+  ASSERT_EQ(page->getPageSlot(slotId, txn), pageSlot);
 }
 
-TEST_F(SlottedPageTestFixture, TestUpdateRecordBlock) {
-  RecordBlock recordBlock;
-  recordBlock.data = "testing_1-update"_bb;
-  RecordBlock recordBlockCopy = recordBlock;
+TEST_F(VLSSlottedPageTestFixture, TestUpdatePageSlot) {
+  PageSlot pageSlot;
+  pageSlot.data = "testing_1-update"_bb;
+  PageSlot pageSlotCopy = pageSlot;
 
   // Current free space in block
   page->registerObserver(&observer);
   EXPECT_CALL(observer, handleModifiedPage(page->getId())).Times(AtLeast(1));
-  uint64_t oldFreeSpace = page->freeSpace(SlottedPage::Operation::UPDATE);
+  uint64_t oldFreeSpace = page->freeSpace(VLSSlottedPage::Operation::UPDATE);
   Transaction txn(*logManager, 0);
-  page->updateRecordBlock(txn, slotId_1, recordBlock);
+  page->updatePageSlot(slotId_1, pageSlot, txn);
 
   LogRecord logRecord = logManager->get(txn.prevSeqNumber);
   ASSERT_EQ(logRecord.header.transactionId, txn.getId());
   ASSERT_EQ(logRecord.header.seqNumber, txn.prevSeqNumber);
   ASSERT_EQ(logRecord.header.prevSeqNumber, 0);
   ASSERT_EQ(logRecord.type, LogRecord::Type::UPDATE);
-  ASSERT_EQ(logRecord.location, RecordBlock::Location(page->getId(), slotId_1));
-  ASSERT_EQ(logRecord.recordBlockA, *recordBlock_1);
-  ASSERT_EQ(logRecord.recordBlockB, recordBlockCopy);
+  ASSERT_EQ(logRecord.location, PageSlot::Location(page->getId(), slotId_1));
+  ASSERT_EQ(logRecord.pageSlotA, *pageSlot_1);
+  ASSERT_EQ(logRecord.pageSlotB, pageSlotCopy);
 
   uint64_t newFreeSize = page->header.tail() - page->header.size();
-  RecordBlock recordBlock_;
-  recordBlock_.data = "testing_1-update"_bb;
-  ASSERT_EQ(oldFreeSpace - newFreeSize,
-            recordBlock_.size() - recordBlock_1->size());
-  ASSERT_EQ(page->getRecordBlock(txn, slotId_1), recordBlockCopy);
+  PageSlot pageSlot_;
+  pageSlot_.data = "testing_1-update"_bb;
+  ASSERT_EQ(oldFreeSpace - newFreeSize, pageSlot_.size() - pageSlot_1->size());
+  ASSERT_EQ(page->getPageSlot(slotId_1, txn), pageSlotCopy);
 }
 
-TEST_F(SlottedPageTestFixture, TestRemoveRecordBlock) {
+TEST_F(VLSSlottedPageTestFixture, TestRemovePageSlot) {
   page->registerObserver(&observer);
   EXPECT_CALL(observer, handleModifiedPage(page->getId())).Times(AtLeast(1));
-  uint64_t oldFreeSpace = page->freeSpace(SlottedPage::Operation::UPDATE);
+  uint64_t oldFreeSpace = page->freeSpace(VLSSlottedPage::Operation::UPDATE);
   Transaction txn(*logManager, 0);
-  page->removeRecordBlock(txn, slotId_2);
+  page->removePageSlot(slotId_2, txn);
 
   LogRecord logRecord = logManager->get(txn.prevSeqNumber);
   ASSERT_EQ(logRecord.header.transactionId, txn.getId());
   ASSERT_EQ(logRecord.header.seqNumber, txn.prevSeqNumber);
   ASSERT_EQ(logRecord.header.prevSeqNumber, 0);
   ASSERT_EQ(logRecord.type, LogRecord::Type::DELETE);
-  ASSERT_EQ(logRecord.location, RecordBlock::Location(page->getId(), slotId_2));
-  ASSERT_EQ(logRecord.recordBlockA, *recordBlock_2);
-  ASSERT_EQ(logRecord.recordBlockB, RecordBlock());
+  ASSERT_EQ(logRecord.location, PageSlot::Location(page->getId(), slotId_2));
+  ASSERT_EQ(logRecord.pageSlotA, *pageSlot_2);
+  ASSERT_EQ(logRecord.pageSlotB, PageSlot());
 
   uint64_t newFreeSize = page->header.tail() - page->header.size();
-  ASSERT_THROW(page->getRecordBlock(txn, slotId_2), RecordBlockNotFoundError);
+  ASSERT_THROW(page->getPageSlot(slotId_2, txn), PageSlotNotFoundError);
   ASSERT_EQ(newFreeSize - oldFreeSpace,
-            recordBlock_2->size() + sizeof(SlottedPage::Header::Slot));
+            pageSlot_2->size() + sizeof(VLSSlottedPage::Header::HeaderSlot));
 }
 
-TEST_F(SlottedPageTestFixture, TestRemoveRecordBlockError) {
+TEST_F(VLSSlottedPageTestFixture, TestRemovePageSlotError) {
   try {
     Transaction txn(*logManager, 0);
-    page->removeRecordBlock(txn, 20);
-    FAIL() << "Expected RecordBlockNotFoundError Exception.";
-  } catch (RecordBlockNotFoundError &err) {
+    page->removePageSlot(20, txn);
+    FAIL() << "Expected PageSlotNotFoundError Exception.";
+  } catch (PageSlotNotFoundError &err) {
     SUCCEED();
   } catch (...) {
-    FAIL() << "Expected RecordBlockNotFoundError Exception.";
+    FAIL() << "Expected PageSlotNotFoundError Exception.";
   }
 }
 
-TEST_F(SlottedPageTestFixture, TestLoad) {
-  SlottedPage _page;
+TEST_F(VLSSlottedPageTestFixture, TestLoad) {
+  VLSSlottedPage _page;
   _page.load(Span(input));
 
   ASSERT_EQ(_page.getId(), page->getId());
 
   Transaction txn(*logManager, 0);
 
-  RecordBlock _recordBlock_1 = _page.getRecordBlock(txn, slotId_1);
-  ASSERT_EQ(_recordBlock_1.data, recordBlockData_1);
-  ASSERT_TRUE(_recordBlock_1.getNextLocation().isNull());
-  ASSERT_TRUE(_recordBlock_1.getPrevLocation().isNull());
+  PageSlot _pageSlot_1 = _page.getPageSlot(slotId_1, txn);
+  ASSERT_EQ(_pageSlot_1.data, pageSlotData_1);
+  ASSERT_TRUE(_pageSlot_1.getNextLocation().isNull());
+  ASSERT_TRUE(_pageSlot_1.getPrevLocation().isNull());
 
-  RecordBlock _recordBlock_2 = _page.getRecordBlock(txn, slotId_2);
-  ASSERT_EQ(_recordBlock_2.data, recordBlockData_2);
-  ASSERT_TRUE(_recordBlock_2.getNextLocation().isNull());
-  ASSERT_TRUE(_recordBlock_2.getPrevLocation().isNull());
+  PageSlot _pageSlot_2 = _page.getPageSlot(slotId_2, txn);
+  ASSERT_EQ(_pageSlot_2.data, pageSlotData_2);
+  ASSERT_TRUE(_pageSlot_2.getNextLocation().isNull());
+  ASSERT_TRUE(_pageSlot_2.getPrevLocation().isNull());
 }
 
-TEST_F(SlottedPageTestFixture, TestLoadError) {
+TEST_F(VLSSlottedPageTestFixture, TestLoadError) {
   try {
     ByteBuffer _input(pageSize);
-    SlottedPage _page;
+    VLSSlottedPage _page;
     _page.load(Span(_input));
     FAIL() << "Expected PageCorruptError Exception.";
   } catch (PageCorruptError &err) {
@@ -509,7 +510,7 @@ TEST_F(SlottedPageTestFixture, TestLoadError) {
   }
 }
 
-TEST_F(SlottedPageTestFixture, TestDump) {
+TEST_F(VLSSlottedPageTestFixture, TestDump) {
   ByteBuffer output(pageSize);
   page->dump(Span(output));
 

@@ -66,3 +66,5 @@
     - Page-Level: needed for concurrent access of pages --> Implemented in the BufferManager class
     - Slot-Level: needed for concurrent access of slots within a page --> Implemented in the SlottedPage class
     - Record-Level: needed for concurrent operations on a record. A record is comprised of multiple slots and thus in-turn pages. --> Implemented in the ConcurrencyControlManager.
+
+10. Use lazy serialization and de-serialization for better performance.
