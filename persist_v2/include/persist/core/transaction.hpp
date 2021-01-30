@@ -51,10 +51,10 @@ namespace persist {
  *
  * The transition diagram between states is as shown below:
  *
- *  ACTIVE +--> PARTIALLY_COMMITTED --> COMMITTED
- *          |           |
- *          |           v
- *          +-->     FAILED    --> ABORTED
+ *  ACTIVE +--> PARTIALLY_COMMITTED ---> COMMITTED
+ *         |           |
+ *         |           v
+ *         +-------> FAILED --------> ABORTED
  *
  */
 class Transaction {

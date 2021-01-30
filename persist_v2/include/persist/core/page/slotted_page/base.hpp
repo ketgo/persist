@@ -47,13 +47,13 @@ namespace persist {
  * collections storing fixed length records. Similarly, the variable length
  * slot slotted page is used in collections storing variable length records.
  */
-class SlottedPageBase : public Page {
+class SlottedPage : public Page {
 public:
   /**
    * @brief Destroy the Slotted Page Base object
    *
    */
-  virtual ~SlottedPageBase() {}
+  virtual ~SlottedPage() {}
 
   /**
    * Get page slot of given identifier within the page.

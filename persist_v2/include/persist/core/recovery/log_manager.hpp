@@ -25,6 +25,7 @@
 #ifndef LOG_MANAGER_HPP
 #define LOG_MANAGER_HPP
 
+#include <atomic>
 #include <unordered_map>
 
 #include <persist/core/defs.hpp>
@@ -43,7 +44,7 @@ class LogManager {
    * @brief Sequence number of the latest log record. This is used to set
    * sequence number of the next log record.
    */
-  SeqNumber seqNumber;
+  std::atomic<SeqNumber> seqNumber;
 
   /**
    * @brief Log record buffer
@@ -79,7 +80,7 @@ public:
    * @param seqNumber sequence number of the log record to get
    * @returns reference to the log record
    */
-  LogRecord &get(SeqNumber seqNumber) { return buffer[seqNumber]; }
+  const LogRecord &get(SeqNumber seqNumber) const { return buffer.at(seqNumber); }
 
   /**
    * @brief Get sequence number.

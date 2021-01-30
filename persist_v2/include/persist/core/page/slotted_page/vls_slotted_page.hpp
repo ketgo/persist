@@ -43,7 +43,7 @@ namespace persist {
  * contains entries of offset values indicating where each slot in the page is
  * located.
  */
-class VLSSlottedPage : public SlottedPageBase {
+class VLSSlottedPage : public SlottedPage {
 public:
   /**
    * Page Header Class
