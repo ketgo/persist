@@ -59,5 +59,5 @@ TEST_F(LogManagerTestFixture, TestAddAndGet) {
 }
 
 TEST_F(LogManagerTestFixture, TestGetSeqNumber) {
-  ASSERT_EQ(logManager->getSeqNumber(), 0);
+  ASSERT_EQ(logManager->seqNumber, 0);
 }

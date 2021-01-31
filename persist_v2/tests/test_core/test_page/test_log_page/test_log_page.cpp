@@ -36,6 +36,6 @@
  */
 #define PERSIST_INTRUSIVE_TESTING
 
-#include <persist/core/page/log_page.hpp>
+#include <persist/core/page/log_page/log_page.hpp>
 
 using namespace persist;

@@ -80,14 +80,9 @@ public:
    * @param seqNumber sequence number of the log record to get
    * @returns reference to the log record
    */
-  const LogRecord &get(SeqNumber seqNumber) const { return buffer.at(seqNumber); }
-
-  /**
-   * @brief Get sequence number.
-   *
-   * @returns sequence number in the log
-   */
-  SeqNumber getSeqNumber() { return seqNumber; }
+  const LogRecord &get(SeqNumber seqNumber) const {
+    return buffer.at(seqNumber);
+  }
 };
 
 } // namespace persist

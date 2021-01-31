@@ -228,7 +228,7 @@ public:
            (seed << 6) + (seed >> 2);
     seed ^= std::hash<PageSlotId>()(header.nextLocation.slotId) + 0x9e3779b9 +
             (seed << 6) + (seed >> 2);
-    seed ^= std::hash<PageId>()(header.prevLocation.slotId) + 0x9e3779b9 +
+    seed ^= std::hash<PageId>()(header.prevLocation.pageId) + 0x9e3779b9 +
             (seed << 6) + (seed >> 2);
     seed ^= std::hash<PageSlotId>()(header.prevLocation.slotId) + 0x9e3779b9 +
             (seed << 6) + (seed >> 2);
@@ -343,11 +343,10 @@ public:
   /**
    * @brief Write record block to output stream
    */
-  friend std::ostream &operator<<(std::ostream &os,
-                                  const PageSlot &recordBlock) {
-    os << "------ Record Block ------\n";
-    os << recordBlock.header << "\n";
-    os << "data: " << recordBlock.data << "\n";
+  friend std::ostream &operator<<(std::ostream &os, const PageSlot &slot) {
+    os << "------ PageSlot ------\n";
+    os << slot.header << "\n";
+    os << "data: " << slot.data << "\n";
     os << "--------------------------";
     return os;
   }

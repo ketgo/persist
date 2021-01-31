@@ -29,6 +29,7 @@
 
 #include <persist/core/exceptions.hpp>
 #include <persist/core/page/base.hpp>
+#include <persist/core/page/log_page/page_slot.hpp>
 
 namespace persist {
 
@@ -59,7 +60,7 @@ public:
 
       seed ^=
           std::hash<PageId>()(pageId) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-      seed ^= std::hash<uint64_t>()(spillover) + 0x9e3779b9 + (seed << 6) +
+      seed ^= std::hash<SeqNumber>()(lastSeqNumber) + 0x9e3779b9 + (seed << 6) +
               (seed >> 2);
 
       return seed;
@@ -72,11 +73,12 @@ public:
     PageId pageId;
 
     /**
-     * @brief When there is not enough space on current page for whole log
-     * record, the remaining part is written on the next page. Here `spillover`
-     * is the number of bytes remaining from a previous page.
+     * @brief Sequence number of the last log record in page.
+     *
+     * Note: A value of 0 indicates no complete or starting part of the log
+     * record found in page.
      */
-    uint64_t spillover;
+    SeqNumber lastSeqNumber;
 
     /**
      * @brief Storage size of the page.
@@ -93,14 +95,14 @@ public:
      *
      */
     Header(PageId pageId = 0, uint64_t pageSize = DEFAULT_PAGE_SIZE)
-        : pageId(pageId), pageSize(pageSize) {}
+        : pageId(pageId), pageSize(pageSize), lastSeqNumber(0) {}
 
     /**
      * @brief Get storage size of header
      *
      */
     uint64_t size() {
-      return sizeof(PageId) + sizeof(PageId) + sizeof(Checksum);
+      return sizeof(PageId) + sizeof(SeqNumber) + sizeof(Checksum);
     }
 
     /**
@@ -117,8 +119,8 @@ public:
       Byte *pos = input.start;
       std::memcpy((void *)&pageId, (const void *)pos, sizeof(PageId));
       pos += sizeof(PageId);
-      std::memcpy((void *)&spillover, (const void *)pos, sizeof(uint64_t));
-      pos += sizeof(uint64_t);
+      std::memcpy((void *)&lastSeqNumber, (const void *)pos, sizeof(SeqNumber));
+      pos += sizeof(SeqNumber);
       std::memcpy((void *)&checksum, (const void *)pos, sizeof(Checksum));
 
       // Check for corruption by matching checksum
@@ -144,8 +146,8 @@ public:
       Byte *pos = output.start;
       std::memcpy((void *)pos, (const void *)&pageId, sizeof(PageId));
       pos += sizeof(PageId);
-      std::memcpy((void *)pos, (const void *)&spillover, sizeof(uint64_t));
-      pos += sizeof(uint64_t);
+      std::memcpy((void *)pos, (const void *)&lastSeqNumber, sizeof(SeqNumber));
+      pos += sizeof(SeqNumber);
       std::memcpy((void *)pos, (const void *)&checksum, sizeof(Checksum));
     }
 
@@ -156,7 +158,7 @@ public:
     friend std::ostream &operator<<(std::ostream &os, const Header &header) {
       os << "------- Header -------\n";
       os << "id: " << header.pageId << "\n";
-      os << "spillover: " << header.spillover << "\n";
+      os << "lastSeqNumber: " << header.lastSeqNumber << "\n";
       os << "----------------------";
       return os;
     }
@@ -170,20 +172,11 @@ public:
   Header header;
 
   /**
-   * @brief
-   *
-   */
-  class LogPageSlot {
-  public:
-    ByteBuffer logRecord;
-  };
-
-  /**
    * @brief Mapping between sequence number and corresponding log record stored
    * as bytes in log page slots.
    */
-  typedef typename std::unordered_map<PageSlotId, LogPageSlot> LogPageSlotMap;
-  LogPageSlotMap slots;
+  typedef typename std::unordered_map<PageSlotId, LogPageSlot> SlotMap;
+  SlotMap slots;
 
   /**
    * @brief Size of free space available on the page.
@@ -226,6 +219,42 @@ public:
   }
 
   /**
+   * Get page slot of given identifier within the page.
+   *
+   * @param slotId Slot identifier
+   * @returns Constant reference to the LogPageSlot object if found
+   * @throws PageSlotNotFoundError
+   */
+  const LogPageSlot &getPageSlot(PageSlotId slotId) const {
+    // Check if slot exists
+    SlotMap::const_iterator it = slots.find(slotId);
+    if (it == slots.end()) {
+      throw PageSlotNotFoundError(header.pageId, slotId);
+    }
+    return it->second;
+  }
+
+  // TODO: The insert is not thread safe as it exposes a loophole for
+  // accessing protected slots by returning a pointer. We need a SlotHandle
+  // which locks the access to slots from concurrent read and writes.
+  /**
+   * @brief Insert log page slot to page.
+   *
+   * @param pageSlot Reference to the LogPageSlot object to insert
+   * @returns pointer to the inserted LogPageSlot
+   */
+  LogPageSlot *insertPageSlot(LogPageSlot &pageSlot) {
+    // Insert record block at slot
+    auto inserted = slots.emplace(pageSlot.getSeqNumber(), pageSlot);
+    // Notify observers of modification
+    notifyObservers();
+
+    // TODO: Update dataSize
+
+    return &inserted.first->second;
+  }
+
+  /**
    * Load LogPage object from byte string.
    *
    * @param input input buffer span to load
@@ -240,6 +269,7 @@ public:
     header.load(input);
 
     Byte *pos = input.start + header.size();
+    // Skip overflowed
 
     /*
     // Load record size
