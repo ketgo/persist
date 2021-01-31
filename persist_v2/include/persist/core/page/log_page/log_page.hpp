@@ -62,6 +62,8 @@ public:
           std::hash<PageId>()(pageId) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
       seed ^= std::hash<SeqNumber>()(lastSeqNumber) + 0x9e3779b9 + (seed << 6) +
               (seed >> 2);
+      seed ^= std::hash<uint64_t>()(slotCount) + 0x9e3779b9 + (seed << 6) +
+              (seed >> 2);
 
       return seed;
     }
@@ -81,6 +83,12 @@ public:
     SeqNumber lastSeqNumber;
 
     /**
+     * @brief Number of slots in the page
+     *
+     */
+    uint64_t slotCount;
+
+    /**
      * @brief Storage size of the page.
      */
     uint64_t pageSize;
@@ -95,14 +103,15 @@ public:
      *
      */
     Header(PageId pageId = 0, uint64_t pageSize = DEFAULT_PAGE_SIZE)
-        : pageId(pageId), pageSize(pageSize), lastSeqNumber(0) {}
+        : pageId(pageId), pageSize(pageSize), lastSeqNumber(0), slotCount(0) {}
 
     /**
      * @brief Get storage size of header
      *
      */
     uint64_t size() {
-      return sizeof(PageId) + sizeof(SeqNumber) + sizeof(Checksum);
+      return sizeof(PageId) + sizeof(SeqNumber) + sizeof(uint64_t) +
+             sizeof(Checksum);
     }
 
     /**
@@ -121,6 +130,8 @@ public:
       pos += sizeof(PageId);
       std::memcpy((void *)&lastSeqNumber, (const void *)pos, sizeof(SeqNumber));
       pos += sizeof(SeqNumber);
+      std::memcpy((void *)&slotCount, (const void *)pos, sizeof(uint64_t));
+      pos += sizeof(uint64_t);
       std::memcpy((void *)&checksum, (const void *)pos, sizeof(Checksum));
 
       // Check for corruption by matching checksum
@@ -148,6 +159,8 @@ public:
       pos += sizeof(PageId);
       std::memcpy((void *)pos, (const void *)&lastSeqNumber, sizeof(SeqNumber));
       pos += sizeof(SeqNumber);
+      std::memcpy((void *)pos, (const void *)&slotCount, sizeof(uint64_t));
+      pos += sizeof(uint64_t);
       std::memcpy((void *)pos, (const void *)&checksum, sizeof(Checksum));
     }
 
@@ -159,6 +172,7 @@ public:
       os << "------- Header -------\n";
       os << "id: " << header.pageId << "\n";
       os << "lastSeqNumber: " << header.lastSeqNumber << "\n";
+      os << "slotCount: " << header.slotCount << "\n";
       os << "----------------------";
       return os;
     }
@@ -219,6 +233,24 @@ public:
   }
 
   /**
+   * @brief Get the last sequence number in the page
+   *
+   * @returns Constant reference to last sequence number
+   */
+  const SeqNumber &getLastSeqNumber() const { return header.lastSeqNumber; }
+
+  /**
+   * @brief Set the last sequence number in the page
+   *
+   * @param seqNumber last sequence number in the page
+   */
+  void setLastSeqNumber(SeqNumber seqNumber) {
+    header.lastSeqNumber = seqNumber;
+    // Notify observers of modification
+    notifyObservers();
+  }
+
+  /**
    * Get page slot of given identifier within the page.
    *
    * @param slotId Slot identifier
@@ -244,12 +276,13 @@ public:
    * @returns pointer to the inserted LogPageSlot
    */
   LogPageSlot *insertPageSlot(LogPageSlot &pageSlot) {
+    // Update data size in page
+    dataSize += pageSlot.size();
     // Insert record block at slot
     auto inserted = slots.emplace(pageSlot.getSeqNumber(), pageSlot);
+
     // Notify observers of modification
     notifyObservers();
-
-    // TODO: Update dataSize
 
     return &inserted.first->second;
   }
@@ -263,23 +296,24 @@ public:
     if (input.size < header.pageSize) {
       throw PageParseError();
     }
-    // record.clear(); //<- clears data in case it is loaded
+    slots.clear(); //<- clears data in case it is loaded
 
     // Load Page header
     header.load(input);
 
-    Byte *pos = input.start + header.size();
-    // Skip overflowed
-
-    /*
-    // Load record size
-    size_t recordSize = 0;
-    std::memcpy((void *)&recordSize, (const void *)pos, sizeof(size_t));
-    pos += sizeof(size_t);
-    // Load data
-    record.resize(recordSize);
-    std::memcpy((void *)record.data(), (const void *)(pos), recordSize);
-    */
+    // Load bytes
+    dataSize = header.size();
+    Byte *pos = input.start + dataSize;
+    // Load Slots
+    for (int i = 0; i < header.slotCount; ++i) {
+      // Load slot
+      LogPageSlot slot;
+      slot.load(Span(pos, input.size - dataSize));
+      uint64_t slotSize = slot.size();
+      dataSize += slotSize;
+      slots.emplace(slot.getSeqNumber(), slot);
+      pos += slotSize;
+    }
   }
 
   /**
@@ -292,20 +326,22 @@ public:
       throw PageParseError();
     }
 
-    Span span(output.start, header.size());
+    // Set slot count in header
+    header.slotCount = slots.size();
     // Dump header
-    header.dump(span);
+    header.dump(output);
 
+    // Dump bytes
     Byte *pos = output.start + header.size();
-
-    /*
-    // Dump record size
-    size_t recordSize = record.size();
-    std::memcpy((void *)pos, (const void *)&recordSize, sizeof(size_t));
-    pos += sizeof(size_t);
-    // Dump record
-    std::memcpy((void *)(pos), (const void *)record.data(), record.size());
-    */
+    // Dump slots
+    for (auto &element : slots) {
+      LogPageSlot &slot = element.second;
+      uint64_t slotSize = slot.size();
+      slot.dump(Span(pos, slotSize));
+      pos += slotSize;
+    }
+    // Dump free space
+    std::memset((void *)pos, 0, freeSpace(Operation::INSERT));
   }
 
 #ifdef __PERSIST_DEBUG__
@@ -315,6 +351,10 @@ public:
   friend std::ostream &operator<<(std::ostream &os, const LogPage &page) {
     os << "--------- Page " << page.header.pageId << " ---------\n";
     os << page.header << "\n";
+    for (auto element : page.slots) {
+      os << ":--> [" << page.header.pageId << ", " << element.first << "]\n";
+      os << element.second << "\n";
+    }
     os << "-----------------------------";
 
     return os;

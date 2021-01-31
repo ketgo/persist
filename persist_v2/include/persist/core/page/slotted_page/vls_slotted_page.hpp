@@ -319,7 +319,7 @@ public:
       size_t slotsCount = slots.size();
       std::memcpy((void *)pos, (const void *)&slotsCount, sizeof(size_t));
       pos += sizeof(size_t);
-      for (auto element : slots) {
+      for (auto &element : slots) {
         HeaderSlot &slot = element.second;
         std::memcpy((void *)pos, (const void *)&slot, sizeof(HeaderSlot));
         pos += sizeof(HeaderSlot);
@@ -582,7 +582,7 @@ public:
     // Load Page header
     header.load(input);
     // Load record blocks
-    for (auto element : header.slots) {
+    for (auto &element : header.slots) {
       Header::HeaderSlot &slot = element.second;
       Span span(input.start + slot.offset, slot.size);
       PageSlot pageSlot;
@@ -609,7 +609,7 @@ public:
     span.size = header.tail() - header.size();
     std::memset((void *)span.start, 0, span.size);
     // Dump record blocks
-    for (auto element : header.slots) {
+    for (auto &element : header.slots) {
       Header::HeaderSlot &slot = element.second;
       PageSlot &pageSlot = pageSlots.at(slot.id);
       span.start = output.start + slot.offset;
