@@ -201,7 +201,7 @@ public:
   /**
    * @brief Construct a new Log Page object
    */
-  LogPage(PageId pageId = 0, uint64_t pageSize = DEFAULT_PAGE_SIZE)
+  LogPage(PageId pageId = 0, uint64_t pageSize = DEFAULT_LOG_PAGE_SIZE)
       : header(pageId, pageSize), dataSize(header.size()) {
     // Check page size greater than minimum size
     if (pageSize < MINIMUM_PAGE_SIZE) {
@@ -253,15 +253,15 @@ public:
   /**
    * Get page slot of given identifier within the page.
    *
-   * @param slotId Slot identifier
+   * @param seqNumber sequence number of the log record seeked
    * @returns Constant reference to the LogPageSlot object if found
    * @throws PageSlotNotFoundError
    */
-  const LogPageSlot &getPageSlot(PageSlotId slotId) const {
+  const LogPageSlot &getPageSlot(SeqNumber seqNumber) const {
     // Check if slot exists
-    SlotMap::const_iterator it = slots.find(slotId);
+    SlotMap::const_iterator it = slots.find(seqNumber);
     if (it == slots.end()) {
-      throw PageSlotNotFoundError(header.pageId, slotId);
+      throw PageSlotNotFoundError(header.pageId, seqNumber);
     }
     return it->second;
   }

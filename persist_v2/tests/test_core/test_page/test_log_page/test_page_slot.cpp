@@ -156,11 +156,6 @@ TEST_F(LogPageSlotTestFixture, TestDump) {
   ByteBuffer output(data.size() + sizeof(size_t) + sizeof(LogPageSlot::Header));
   slot->dump(Span(output));
 
-  for (int c : output) {
-    std::cout << c << ", ";
-  }
-  std::cout << "\n";
-
   ASSERT_EQ(input, output);
 }
 

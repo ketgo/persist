@@ -36,8 +36,8 @@
 #include <persist/core/page/base.hpp>
 #include <persist/core/storage/base.hpp>
 
-#include <persist/core/buffer/page_handle.hpp>
 #include <persist/core/buffer/fsl.hpp>
+#include <persist/core/buffer/page_handle.hpp>
 #include <persist/core/buffer/replacer/base.hpp>
 
 // At the minimum 2 pages are needed in memory by record manager.
@@ -49,7 +49,7 @@ namespace persist {
  * @brief Buffer Manager
  *
  * The buffer manager handles buffer of pages loaded in memory from a backend
- * storage. The reading of pages while wrting of modifed pages are perfromed in
+ * storage-> The reading of pages while wrting of modifed pages are perfromed in
  * compliance with the page repleacement policy.
  *
  * @tparam PageType type of page handled by the buffer manager
@@ -80,7 +80,7 @@ class BufferManager : public PageObserver {
     PageSlot() : page(nullptr), modified(false) {}
   };
 
-  Storage<PageType> &storage; //<- opened backend storage
+  Storage<PageType> *storage; //<- opened backend storage
   std::unique_ptr<FSL> fsl;   //<- free space list
 
   uint64_t maxSize;      //<- maximum size of buffer
@@ -127,12 +127,12 @@ public:
   /**
    * Construct a new Page Table object
    *
-   * @param storage reference to backend storage.
+   * @param storage pointer to backend storage
    * @param maxSize maximum buffer size. If set to 0 then no maximum limit is
-   * set.
+   * set
    *
    */
-  BufferManager(Storage<PageType> &storage,
+  BufferManager(Storage<PageType> *storage,
                 uint64_t maxSize = DEFAULT_BUFFER_SIZE)
       : storage(storage), maxSize(maxSize), started(false) {
     // Check buffer size value
@@ -157,9 +157,9 @@ public:
 
     if (!started) {
       // Start backend storage
-      storage.open();
+      storage->open();
       // Load free space list
-      fsl = storage.read();
+      fsl = storage->read();
       // Set state to started
       started = true;
     }
@@ -179,7 +179,7 @@ public:
       // Flush all loaded pages
       flushAll();
       // Close backend storage
-      storage.close();
+      storage->close();
       // Set state to closed
       started = false;
     }
@@ -195,12 +195,12 @@ public:
     LockGuard guard(lock);
 
     // Allocate space for new page
-    PageId pageId = storage.allocate();
+    PageId pageId = storage->allocate();
     // Create entry for new page in free space list
     fsl->freePages.insert(pageId);
     // Create an empty page
     std::unique_ptr<PageType> page =
-        std::make_unique<PageType>(pageId, storage.getPageSize());
+        std::make_unique<PageType>(pageId, storage->getPageSize());
     // Load the new page in buffer
     put(page);
 
@@ -244,7 +244,7 @@ public:
     // Check if page not present in buffer
     if (buffer.find(pageId) == buffer.end()) {
       // Load page from storage
-      std::unique_ptr<PageType> page = storage.read(pageId);
+      std::unique_ptr<PageType> page = storage->read(pageId);
       // Insert page in buffer in accordance with LRU strategy
       put(page);
     }
@@ -254,7 +254,7 @@ public:
   }
 
   /**
-   * Save a single page to backend storage. The page will be stored only
+   * Save a single page to backend storage-> The page will be stored only
    * if it is marked as modified and is unpinned.
    *
    * @param pageId page identifer
@@ -269,16 +269,16 @@ public:
     if (it != buffer.end() && it->second.modified &&
         !replacer.isPinned(pageId)) {
       // Persist FSL
-      storage.write(*fsl);
+      storage->write(*fsl);
       // Persist page on backend storage
-      storage.write(*(it->second.page));
+      storage->write(*(it->second.page));
       // Since the page has been saved it is now considered as un-modified
       it->second.modified = false;
     }
   }
 
   /**
-   * @brief Save all modified and unpinned pages to backend storage.
+   * @brief Save all modified and unpinned pages to backend storage->
    *
    */
   void flushAll() {

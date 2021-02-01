@@ -183,8 +183,8 @@ public:
     COMMIT, //<- The log record represents a transaction has been partially
             // comitted. This implies that the transaction is in
             // `PARTIALLY_COMMITTED` state.
-    ABORT, //<- The log record represents that a transaction has successfully
-           // aborted. This implies that the transaction is in `ABORTED` state.
+    ABORT,  //<- The log record represents that a transaction has successfully
+            // aborted. This implies that the transaction is in `ABORTED` state.
     DONE //<- The log record represents a transaction has successfully comitted.
          // This implies that the transaction is in `COMMITTED` state.
   };
@@ -281,11 +281,60 @@ public:
         pageSlotA(oldPageSlot), pageSlotB(newPageSlot) {}
 
   /**
-   * @brief Get the Seq Number of log record
+   * @brief Get the sequence number of log record
    *
    * @returns log record sequence number
    */
-  SeqNumber getSeqNumber() { return header.seqNumber; }
+  const SeqNumber &getSeqNumber() const { return header.seqNumber; }
+
+  /**
+   * @brief Set the sequence number of log record
+   *
+   * @param seqNumber log record sequence number
+   */
+  void setSeqNumber(SeqNumber seqNumber) { header.seqNumber = seqNumber; }
+
+  /**
+   * @brief Get the previous log record sequence number
+   *
+   * @returns Consant reference to previous sequence number
+   */
+  const SeqNumber &getPrevSeqNumber() const { return header.prevSeqNumber; }
+
+  /**
+   * @brief Get the transaction ID of the log record
+   *
+   * @return Consant reference to previous sequence number
+   */
+  const TransactionId &getTransactionId() const { return header.transactionId; }
+
+  /**
+   * @brief Get the log record type
+   *
+   * @returns Consant reference to type of log record
+   */
+  const Type &getLogType() const { return type; }
+
+  /**
+   * @brief Get the page slot location targeted by log record
+   *
+   * @returns Consant reference to page slot location targeted by log record
+   */
+  const PageSlot::Location &getLocation() const { return location; }
+
+  /**
+   * @brief Get the first PageSlot targeted by log record
+   *
+   * @return Consant reference to page slot
+   */
+  const PageSlot &getPageSlotA() const { return pageSlotA; }
+
+  /**
+   * @brief Get the second PageSlot targeted by log record
+   *
+   * @return Consant reference to page slot
+   */
+  const PageSlot &getPageSlotB() const { return pageSlotB; }
 
   /**
    * @brief Get size of log record.
