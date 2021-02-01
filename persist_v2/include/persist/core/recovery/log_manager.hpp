@@ -1,7 +1,7 @@
 /**
- * log_manager.hpp - Persist
+ * recovery/log_manager.hpp - Persist
  *
- * Copyright 2020 Ketan Goyal
+ * Copyright 2021 Ketan Goyal
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,12 +26,22 @@
 #define LOG_MANAGER_HPP
 
 #include <atomic>
-#include <unordered_map>
+#include <memory>
 
+#include <persist/core/buffer/buffer_manager.hpp>
+#include <persist/core/buffer/replacer/lru_replacer.hpp>
 #include <persist/core/defs.hpp>
+#include <persist/core/page/log_page/log_page.hpp>
 #include <persist/core/recovery/log_record.hpp>
+#include <persist/core/storage/base.hpp>
 
 namespace persist {
+
+/**
+ * @brief Log record location type
+ *
+ */
+typedef LogPageSlot::Location LogRecordLocation;
 
 /**
  * @brief Log Manager Class
@@ -40,25 +50,55 @@ namespace persist {
  */
 class LogManager {
   PERSIST_PRIVATE
-  /**
-   * @brief Sequence number of the latest log record. This is used to set
-   * sequence number of the next log record.
-   */
-  std::atomic<SeqNumber> seqNumber;
 
-  /**
-   * @brief Log record buffer
-   */
-  typedef std::unordered_map<SeqNumber, LogRecord> Buffer;
-  Buffer buffer;
+  std::atomic<SeqNumber>
+      seqNumber; //<- Sequence number of the latest log record. This is used to
+                 // set sequence number of the next log record.
+  Storage<LogPage> *storage; //<- Pointer to backend log storage
+  BufferManager<LogPage, LRUReplacer>
+      bufferManager; //<- Log record buffer manager
+
+  bool started; //<- flag indicating log manager started
 
 public:
   /**
-   * @brief Construct a new Log Manager object
+   * @brief Construct a new log manager object.
    *
-   * TODO: Obtain sequence number from log records backend storage
+   * @param storage pointer to backend log sotrage
+   * @param cacheSize log buffer cache size
    */
-  LogManager() : seqNumber(0) {}
+  LogManager(Storage<LogPage> *storage,
+             uint64_t cacheSize = DEFAULT_LOG_BUFFER_SIZE)
+      : seqNumber(0), started(false), storage(storage),
+        bufferManager(storage, cacheSize) {}
+
+  /**
+   * @brief Start log manager.
+   *
+   */
+  void start() {
+    if (!started) {
+      // Start buffer manager
+      bufferManager.start();
+      // Load last page in buffer
+      PageId lastPageId = storage->getPageCount();
+      // Get last sequence number if last page ID is not 0
+      if (lastPageId) {
+        auto page = bufferManager.get(lastPageId);
+        seqNumber = page->getLastSeqNumber();
+      }
+    }
+  }
+
+  /**
+   * @brief Stop log manager.
+   *
+   */
+  void stop() {
+    if (started) {
+      bufferManager.stop();
+    }
+  }
 
   /**
    * @brief Add log record to transaction logs
@@ -66,23 +106,102 @@ public:
    * @param logRecord reference to the log record object to add
    * @returns sequence number of the added log record
    */
-  SeqNumber add(LogRecord &logRecord) {
-    seqNumber++;
-    logRecord.header.seqNumber = seqNumber;
-    buffer.insert(std::pair<SeqNumber, LogRecord>(seqNumber, logRecord));
+  LogRecordLocation add(LogRecord &logRecord) {
+    // Set log record sequence number
+    logRecord.setSeqNumber(++seqNumber);
+    // Dump log record bytes
+    ByteBuffer data(logRecord.size());
+    logRecord.dump(data);
 
-    return seqNumber;
+    // Check free space in page and size of log record. If log record larger
+    // than free space, then split and store it into multiple page slots. Else
+    // store is into a single page slot. Link the slots and insert it into log
+    // page.
+
+    // Null page slot representing a virtual previous from first slot
+    LogPageSlot nullSlot;
+    // Bookkeeping variables
+    uint64_t toWriteSize = data.size(), writtenSize = 0;
+    // Pointer to previous page slot in the linked list. Begins with
+    // pointing to the null slot.
+    LogPageSlot *prevSlot = &nullSlot;
+    // Start loop to write content in linked record blocks
+    while (toWriteSize > 0) {
+      // Get a free page
+      auto page = bufferManager.getFree();
+      PageId pageId = page->getId();
+
+      // Create slot to add to page
+      LogPageSlot slot(logRecord.getSeqNumber());
+      // Compute availble space to write data in page. Here he greedy approach
+      // is utilized where all the available free space can be used to store the
+      // data. The amount of data that can be stored in the page is the
+      // (freeSpace of page) - (fixedSize of page slot).
+      uint64_t writeSpace =
+          page->freeSpace(LogPage::Operation::INSERT) - slot.fixedSize;
+      if (toWriteSize < writeSpace) {
+        writeSpace = toWriteSize;
+      }
+      // Write data to slot and add to page
+      slot.data.resize(writeSpace);
+      for (int i = 0; i < writeSpace; i++) {
+        slot.data[i] = data[writtenSize + i];
+      }
+      auto inserted = page->insertPageSlot(slot);
+
+      // Create linkage between slots
+      LogPageSlot::Location nextLocation(pageId, logRecord.getSeqNumber());
+      // TODO: This will cause data race unless a slot level lock is used.
+      prevSlot->setNextLocation(nextLocation);
+
+      // Update previous record block and location pointers
+      prevSlot = inserted;
+
+      // Update counters
+      writtenSize += writeSpace;
+      toWriteSize -= writeSpace;
+    }
+
+    return nullSlot.getNextLocation();
   }
 
   /**
    * @brief Get Log record of given sequence number.
    *
    * @param seqNumber sequence number of the log record to get
-   * @returns reference to the log record
+   * @returns unique pointer to the loaded log record
    */
-  const LogRecord &get(SeqNumber seqNumber) const {
-    return buffer.at(seqNumber);
+  std::unique_ptr<LogRecord> get(LogRecordLocation location) {
+    // Get the first page slot from the given location and create the log record
+    // by joining all related slots.
+
+    // Byte buffer to read
+    ByteBuffer read;
+    // Start reading record blocks
+    LogPageSlot::Location readLocation = location;
+    while (!readLocation.isNull()) {
+      // Get page
+      auto page = bufferManager.get(readLocation.pageId);
+      // Get page slot
+      const LogPageSlot &slot = page->getPageSlot(readLocation.seqNumber);
+      // Append data stored in slot to output buffer
+      read.insert(read.end(), slot.data.begin(), slot.data.end());
+      // Update read location to next block
+      readLocation = slot.getNextLocation();
+    }
+    // Return value
+    std::unique_ptr<LogRecord> logRecord = std::make_unique<LogRecord>();
+    // Load and return log record
+    logRecord->load(read);
+
+    return logRecord;
   }
+
+  /**
+   * @brief Flush all log records to storage. This method is used by transaction
+   * manager when a transaction is committed.
+   */
+  void flush() { bufferManager.flushAll(); }
 };
 
 } // namespace persist

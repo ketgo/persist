@@ -43,7 +43,7 @@
     - remove the FSL and the read and write method of backend storage
     - FreeSpaceManager should use Pages obtained from the buffer manager to persist FSL
 
-4. [IN-PROGRESS] Implement a persistent log file for transaction logging:
+4. [DONE] Implement a persistent log file for transaction logging:
     - create page class for storing log records
     - use buffer manager for loading pages of log records in the log manager
     - log manager to persist pages using the flush method of buffer manager

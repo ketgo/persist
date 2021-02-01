@@ -70,9 +70,9 @@ public:
   PERSIST_PRIVATE
 
   /**
-   * @brief Reference to log manager.
+   * @brief Pointer to log manager.
    */
-  LogManager &logManager;
+  LogManager *logManager;
 
   /**
    * @brief Transaction ID
@@ -90,10 +90,10 @@ public:
   std::set<PageId> staged;
 
   /**
-   * @brief Sequence number of the latest log record in the transaction. This
-   * used to set the previous sequence number in the next log record.
+   * @brief Location of the latest log record in the transaction. This
+   * used to link the the next log record.
    */
-  SeqNumber prevSeqNumber;
+  LogRecordLocation logLocation;
 
   /**
    * @brief Log INSERT operation.
@@ -103,9 +103,9 @@ public:
    */
   void logInsertOp(PageSlot::Location &location, PageSlot &pageSlot) {
     // Log record for insert operation
-    LogRecord logRecord(id, prevSeqNumber, LogRecord::Type::INSERT, location,
-                        pageSlot);
-    prevSeqNumber = logManager.add(logRecord);
+    LogRecord logRecord(id, logLocation.seqNumber, LogRecord::Type::INSERT,
+                        location, pageSlot);
+    logLocation = logManager->add(logRecord);
   }
 
   /**
@@ -118,9 +118,9 @@ public:
   void logUpdateOp(PageSlot::Location &location, PageSlot &oldPageSlot,
                    PageSlot &newPageSlot) {
     // Log record for update operation
-    LogRecord logRecord(id, prevSeqNumber, LogRecord::Type::UPDATE, location,
-                        oldPageSlot, newPageSlot);
-    prevSeqNumber = logManager.add(logRecord);
+    LogRecord logRecord(id, logLocation.seqNumber, LogRecord::Type::UPDATE,
+                        location, oldPageSlot, newPageSlot);
+    logLocation = logManager->add(logRecord);
   }
 
   /**
@@ -131,9 +131,9 @@ public:
    */
   void logDeleteOp(PageSlot::Location &location, PageSlot &pageSlot) {
     // Log record for delete operation
-    LogRecord logRecord(id, prevSeqNumber, LogRecord::Type::DELETE, location,
-                        pageSlot);
-    prevSeqNumber = logManager.add(logRecord);
+    LogRecord logRecord(id, logLocation.seqNumber, LogRecord::Type::DELETE,
+                        location, pageSlot);
+    logLocation = logManager->add(logRecord);
   }
 
   /**
@@ -148,12 +148,12 @@ public:
   /**
    * Construct a new Transaction object
    *
-   * @param logManager reference to log manager
+   * @param logManager pointer to log manager
    * @param id Transaction ID
    * @param state transaction state
    */
-  Transaction(LogManager &logManager, uint64_t id, State state = State::ACTIVE)
-      : logManager(logManager), id(id), state(state), prevSeqNumber(0) {}
+  Transaction(LogManager *logManager, uint64_t id, State state = State::ACTIVE)
+      : logManager(logManager), id(id), state(state), logLocation(0, 0) {}
 
   /**
    * @brief Get the transaction ID
