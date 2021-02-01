@@ -1,5 +1,5 @@
 /**
- * recovery/log_manager_2.hpp - Persist
+ * recovery/log_manager.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -82,8 +82,11 @@ public:
       bufferManager.start();
       // Load last page in buffer
       PageId lastPageId = storage->getPageCount();
-      auto page = bufferManager.get(lastPageId);
-      seqNumber = page->getLastSeqNumber();
+      // Get last sequence number if last page ID is not 0
+      if (lastPageId) {
+        auto page = bufferManager.get(lastPageId);
+        seqNumber = page->getLastSeqNumber();
+      }
     }
   }
 
@@ -129,7 +132,7 @@ public:
       PageId pageId = page->getId();
 
       // Create slot to add to page
-      LogPageSlot slot;
+      LogPageSlot slot(logRecord.getSeqNumber());
       // Compute availble space to write data in page. Here he greedy approach
       // is utilized where all the available free space can be used to store the
       // data. The amount of data that can be stored in the page is the
@@ -193,6 +196,12 @@ public:
 
     return logRecord;
   }
+
+  /**
+   * @brief Flush all log records to storage. This method is used by transaction
+   * manager when a transaction is committed.
+   */
+  void flush() { bufferManager.flushAll(); }
 };
 
 } // namespace persist

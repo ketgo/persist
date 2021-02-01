@@ -260,7 +260,7 @@ private:
 
 public:
   PageSlotNotFoundError(persist::PageId pageId, persist::PageSlotId slotId)
-      : msg(std::string("Page slot at slot '") + std::to_string(slotId) +
+      : msg(std::string("Page slot '") + std::to_string(slotId) +
             std::string("' in page with ID '") + std::to_string(pageId) +
             std::string("' not found.")) {}
 

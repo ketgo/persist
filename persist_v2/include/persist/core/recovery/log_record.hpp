@@ -47,7 +47,6 @@ namespace persist {
  * Records used to store operations performed by transactions.
  */
 class LogRecord {
-  friend class LogManager;         // forward declared
   friend class TransactionManager; // forward declared
 
 public:
