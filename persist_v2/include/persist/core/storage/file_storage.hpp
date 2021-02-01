@@ -299,6 +299,13 @@ public:
   uint64_t getPageSize() override { return pageSize; }
 
   /**
+   * @brief Get page count.
+   *
+   * @returns number of pages in storage
+   */
+  uint64_t getPageCount() override { return pageCount; }
+
+  /**
    * Read free space list from storage. If no free list is found then pointer to
    * an empty FSL object is returned.
    *

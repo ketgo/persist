@@ -68,7 +68,7 @@ protected:
     storage = createStorage<SimplePage>("file://" + path);
     insert();
 
-    bufferManager = std::make_unique<BufferManager>(*storage, maxSize);
+    bufferManager = std::make_unique<BufferManager>(storage.get(), maxSize);
     bufferManager->start();
   }
 
@@ -93,7 +93,7 @@ private:
 
 TEST_F(BufferManagerTestFixture, TestBufferManagerError) {
   try {
-    BufferManager manager(*storage, 1); //<- invalid max size value
+    BufferManager manager(storage.get(), 1); //<- invalid max size value
     FAIL() << "Expected BufferManagerError Exception.";
   } catch (BufferManagerError &err) {
     SUCCEED();

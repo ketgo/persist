@@ -61,6 +61,12 @@
 // load in-memory.
 #define DEFAULT_BUFFER_SIZE 1024
 
+// Default log page size in bytes
+#define DEFAULT_LOG_PAGE_SIZE 1024
+// Default log buffer size. This is the maximum number of log pages the log
+// buffer can load in-memory.
+#define DEFAULT_LOG_BUFFER_SIZE 8
+
 namespace persist {
 
 /**

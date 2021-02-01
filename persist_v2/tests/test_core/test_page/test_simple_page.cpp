@@ -37,8 +37,6 @@
  */
 #define PERSIST_INTRUSIVE_TESTING
 
-#include <persist/core/defs.hpp>
-#include <persist/core/exceptions.hpp>
 #include <persist/core/page/simple_page.hpp>
 
 using namespace persist;

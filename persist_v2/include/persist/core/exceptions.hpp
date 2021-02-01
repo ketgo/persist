@@ -217,50 +217,50 @@ public:
 };
 
 /**
- * Record Block Parsing Error
+ * Page Slot Parsing Error
  *
- * This error is thrown if unable to parse record block.
+ * This error is thrown if unable to parse page slot.
  */
-class RecordBlockParseError : public ParseException {
+class PageSlotParseError : public ParseException {
 private:
   std::string msg;
 
 public:
-  RecordBlockParseError() : msg("Record block parsing error.") {}
-  RecordBlockParseError(const char *msg) : msg(msg) {}
-  RecordBlockParseError(std::string &msg) : msg(msg) {}
+  PageSlotParseError() : msg("Page slot parsing error.") {}
+  PageSlotParseError(const char *msg) : msg(msg) {}
+  PageSlotParseError(std::string &msg) : msg(msg) {}
 
   const char *what() const throw() { return msg.c_str(); }
 };
 
 /**
- * Record Block Corrupt Error
+ * Page Slot Corrupt Error
  *
- * This error is thrown if the loaded record block is corrupt.
+ * This error is thrown if the loaded page slot is corrupt.
  */
-class RecordBlockCorruptError : public CorruptException {
+class PageSlotCorruptError : public CorruptException {
 private:
   std::string msg;
 
 public:
-  RecordBlockCorruptError() : msg("Record block corrupt error.") {}
+  PageSlotCorruptError() : msg("Page slot corrupt error.") {}
 
   const char *what() const throw() { return msg.c_str(); }
 };
 
 /**
- * Record Block Not Found Error
+ * Page Slot Not Found Error
  *
- * This error is thrown when a record block does not exists inside
+ * This error is thrown when a page slot does not exists inside
  * a page.
  */
-class RecordBlockNotFoundError : public NotFoundException {
+class PageSlotNotFoundError : public NotFoundException {
 private:
   std::string msg;
 
 public:
-  RecordBlockNotFoundError(persist::PageId pageId, persist::PageSlotId &slotId)
-      : msg(std::string("Record Block at slot '") + std::to_string(slotId) +
+  PageSlotNotFoundError(persist::PageId pageId, persist::PageSlotId slotId)
+      : msg(std::string("Page slot '") + std::to_string(slotId) +
             std::string("' in page with ID '") + std::to_string(pageId) +
             std::string("' not found.")) {}
 

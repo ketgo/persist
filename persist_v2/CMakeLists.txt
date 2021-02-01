@@ -38,35 +38,42 @@ file(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
 )
 
-# Create static lib for running test suits
-add_library(
-    ${LIB} 
-    STATIC 
-    ${SOURCES}
-)
-
-# Add include directories
-target_include_directories(
-    ${LIB} 
-    PUBLIC 
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
-# Add libraries to link for lib
-if (${CMAKE_BUILD_TYPE} MATCHES Debug)
-target_link_libraries(
-    ${LIB} 
-    loguru::loguru
-)
+# If source files found then make static lib else create header-only interface lib
+if(${SOURCES})
+    # Create static lib for running test suits
+    add_library(
+        ${LIB} 
+        STATIC 
+        ${SOURCES}
+    )
+    # Add include directories
+    target_include_directories(
+        ${LIB} 
+        PUBLIC 
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+    # Add libraries to link for lib
+    if (${CMAKE_BUILD_TYPE} MATCHES Debug)
+        target_link_libraries(
+            ${LIB} 
+            loguru::loguru
+        )
+        target_compile_definitions(${LIB} PUBLIC __PERSIST_DEBUG__)
+    else()
+        target_link_libraries(
+            ${LIB} 
+            # NOTE: Add any required dependencies here
+        )
+    endif()
 else()
-target_link_libraries(
-    ${LIB} 
-)
-endif()
-
-# Set compiler flags
-if (${CMAKE_BUILD_TYPE} MATCHES Debug)
-    target_compile_definitions(${LIB} PUBLIC __PERSIST_DEBUG__)
+    # Create interface lib for running test suits
+    add_library(${LIB} INTERFACE)
+    # Add include directories
+    target_include_directories(${LIB} INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    # Set compiler flags
+    if (${CMAKE_BUILD_TYPE} MATCHES Debug)
+        target_compile_definitions(${LIB} INTERFACE __PERSIST_DEBUG__)
+    endif()
 endif()
 
 # Tests

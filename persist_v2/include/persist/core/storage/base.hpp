@@ -37,8 +37,12 @@
 #include <list>
 #include <memory>
 
-#include <persist/core/fsl.hpp>
+#include <persist/core/buffer/fsl.hpp>
 #include <persist/core/page/base.hpp>
+
+// TODO: Add interface for segmenting storage. Instead of storing all the data
+// into one big chunk of persistent memory, this can be used to split into
+// multiple smaller chunks. For example, storing data into multiple heap files.
 
 namespace persist {
 
@@ -86,6 +90,13 @@ public:
    * @returns page size used in storage
    */
   virtual uint64_t getPageSize() = 0;
+
+  /**
+   * @brief Get page count.
+   *
+   * @returns number of pages in storage
+   */
+  virtual uint64_t getPageCount() = 0;
 
   /**
    * @brief Read free space list from storage. If no free list is found then

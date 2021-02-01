@@ -31,9 +31,9 @@
 #include <list>
 #include <memory>
 
+#include <persist/core/buffer/fsl.hpp>
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
-#include <persist/core/fsl.hpp>
 
 using namespace persist;
 

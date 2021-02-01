@@ -140,3 +140,21 @@ GET_FREE:
 FLUSH:
 
 FLUSH_ALL:
+
+
+------------------------------------------
+
+Log Manager
+
+Collection State
+
+  Live Transactions: T_1, T_2, ..., T_N
+  Last Log SN per Transaction: LSN_a_1, LSN_a_2, ..., LSN_a_N
+
+  Policy: Logs are persisted on transaction commit
+
+
+SeqNumber --> LogPage
+
+LogPage
+  + const LogRecord& getLogRecord(SeqNumber) const
