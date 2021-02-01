@@ -48,7 +48,7 @@
     - use buffer manager for loading pages of log records in the log manager
     - log manager to persist pages using the flush method of buffer manager
 
-5. Implement the FORCE and NO-FORCE mode of operations of the transaction manager:
+5. [IN-PROGRESS] Implement the FORCE and NO-FORCE mode of operations of the transaction manager:
     - Re-design and implement transaction class
     - Refactor transaction manager to use FORCE and NO-FORCE policies
     - Maybe introduce transaction context?
@@ -60,15 +60,17 @@
         - implement and use no-lock/lock-based concurrent FreeSpaceManager --> used by the buffer manager
     - create a new thread-safe slotted page implementation for SLOT-LEVEL granularity
 
-7. Create collection metadata manager:
+7. Implement recovery manager and checkpoint manager
+
+8. Create collection metadata manager:
     - handles metadata containing the starting location, ending location, and number of records in a collection
     - writes metadata to the first record block of the collection
 
-8. Implement List collection
+9. Implement List collection
     - implement record manager for list collection
     - implement list collection class
 
-9. Create Concurrency Control Manager:
+10. Create Concurrency Control Manager:
     - Design manager class. The design should be extendable to support different concurrency control protocols
     - Implement different types of concurrency control policies
     - Implement RECORD-LEVEL atomic operations
