@@ -90,8 +90,8 @@ public:
   std::set<PageId> staged;
 
   /**
-   * @brief Location of the latest log record in the transaction. This
-   * used to link the the next log record.
+   * @brief Location of the latest log record in the transaction. This is used
+   * to link the the next log record.
    */
   LogRecordLocation logLocation;
 
@@ -158,16 +158,23 @@ public:
   /**
    * @brief Get the transaction ID
    *
-   * returns transaction unique identifier
+   * @returns transaction unique identifier
    */
-  TransactionId getId() { return id; }
+  TransactionId getId() const { return id; }
 
   /**
    * Get the state of transaction.
    *
    * @returns transaction state
    */
-  State getState() { return state; }
+  State getState() const { return state; }
+
+  /**
+   * @brief Get sequence number of the lastest log record of the transaction.
+   *
+   * @returns sequence number of the lastest log record of the transaction
+   */
+  SeqNumber getSeqNumber() const { return logLocation.seqNumber; }
 
   /**
    * @brief Equality comparision operator.

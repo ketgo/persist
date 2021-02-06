@@ -83,8 +83,8 @@ class BufferManager : public PageObserver {
   Storage<PageType> *storage; //<- opened backend storage
   std::unique_ptr<FSL> fsl;   //<- free space list
 
-  uint64_t maxSize;      //<- maximum size of buffer
-  ReplacerType replacer; //<- page replacer
+  uint64_t maxSize;                       //<- maximum size of buffer
+  std::unique_ptr<ReplacerType> replacer; //<- page replacer
   typedef typename std::unordered_map<PageId, PageSlot> Buffer;
   Buffer buffer; //<- buffer of page slots
   bool started;  //<- flag indicating buffer manager started
@@ -105,13 +105,13 @@ class BufferManager : public PageObserver {
     // If buffer is full then remove the victum page
     if (maxSize != 0 && buffer.size() == maxSize) {
       // Get victum page ID from replacer
-      PageId victumPageId = replacer.getVictumId();
+      PageId victumPageId = replacer->getVictumId();
       // Write victum page to storage if modified
       flush(victumPageId);
       // Remove page from buffer
       buffer.erase(victumPageId);
       // Replacer can stop tracking the victum page
-      replacer.forget(victumPageId);
+      replacer->forget(victumPageId);
     }
 
     PageId pageId = page->getId();
@@ -120,7 +120,7 @@ class BufferManager : public PageObserver {
     // Register buffer manager as observer to inserted page
     buffer[pageId].page->registerObserver(this);
     // Replacer starts tracking page for victum page discovery
-    replacer.track(pageId);
+    replacer->track(pageId);
   }
 
 public:
@@ -134,7 +134,8 @@ public:
    */
   BufferManager(Storage<PageType> *storage,
                 uint64_t maxSize = DEFAULT_BUFFER_SIZE)
-      : storage(storage), maxSize(maxSize), started(false) {
+      : storage(storage), replacer(std::make_unique<ReplacerType>()),
+        maxSize(maxSize), started(false) {
     // Check buffer size value
     if (maxSize != 0 && maxSize < MINIMUM_BUFFER_SIZE) {
       throw BufferManagerError("Invalid value for max buffer size. The max "
@@ -180,7 +181,7 @@ public:
       flushAll();
       // Close backend storage
       storage->close();
-      // Set state to closed
+      // Set state to stopped
       started = false;
     }
   }
@@ -250,7 +251,7 @@ public:
     }
 
     // Create and return page handle object
-    return PageHandle<PageType>(buffer.at(pageId).page.get(), &replacer);
+    return PageHandle<PageType>(buffer.at(pageId).page.get(), replacer.get());
   }
 
   /**
@@ -267,7 +268,7 @@ public:
     BufferPosition it = buffer.find(pageId);
     // Save page if found, modified, and not pinned
     if (it != buffer.end() && it->second.modified &&
-        !replacer.isPinned(pageId)) {
+        !replacer->isPinned(pageId)) {
       // Persist FSL
       storage->write(*fsl);
       // Persist page on backend storage

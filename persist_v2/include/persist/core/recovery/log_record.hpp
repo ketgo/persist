@@ -41,6 +41,9 @@
 
 namespace persist {
 
+// TODO: Add non-const methods to allow access by transaction manager. This is
+// to remove the friend class declaration.
+
 /**
  * @brief Log Record
  *
@@ -179,13 +182,11 @@ public:
             // transaction.
     DELETE, //<- The log record represents remove operation as part of a
             // transaction.
-    COMMIT, //<- The log record represents a transaction has been partially
-            // comitted. This implies that the transaction is in
-            // `PARTIALLY_COMMITTED` state.
     ABORT,  //<- The log record represents that a transaction has successfully
             // aborted. This implies that the transaction is in `ABORTED` state.
-    DONE //<- The log record represents a transaction has successfully comitted.
-         // This implies that the transaction is in `COMMITTED` state.
+    COMMIT  //<- The log record represents a transaction has successfully
+            // comitted.
+           // This implies that the transaction is in `COMMITTED` state.
   };
 
   PERSIST_PRIVATE

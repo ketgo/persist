@@ -87,6 +87,8 @@ public:
         auto page = bufferManager.get(lastPageId);
         seqNumber = page->getLastSeqNumber();
       }
+      // Set state to started
+      started = true;
     }
   }
 
@@ -96,7 +98,10 @@ public:
    */
   void stop() {
     if (started) {
+      // Stop buffer manager
       bufferManager.stop();
+      // Set state to stopped
+      started = false;
     }
   }
 

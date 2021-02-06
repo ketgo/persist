@@ -1,0 +1,214 @@
+/**
+ * transaction_manager.hpp - Persist
+ *
+ * Copyright 2021 Ketan Goyal
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+#ifndef TRANSACTION_MANAGER_HPP
+#define TRANSACTION_MANAGER_HPP
+
+#include <persist/core/buffer/buffer_manager.hpp>
+#include <persist/core/buffer/replacer/base.hpp>
+#include <persist/core/page/slotted_page/base.hpp>
+#include <persist/core/recovery/log_manager.hpp>
+#include <persist/core/transaction/transaction.hpp>
+#include <persist/core/utility.hpp>
+
+namespace persist {
+
+/**
+ * @brief Transaction Manager Class
+ *
+ * The transaction manager manages slotted page transactions of a collection.
+ *
+ */
+class TransactionManager {
+  PERSIST_PRIVATE
+  /**
+   * @brief Pointer to Buffer Manager
+   *
+   */
+  BufferManager<SlottedPage, Replacer> *bufferManager;
+
+  /**
+   * @brief Pointer to Log Manager
+   *
+   */
+  LogManager *logManager;
+
+  /**
+   * @brief Log transaction begin.
+   *
+   * @param txn reference to the new transaction
+   */
+  void logBegin(Transaction &txn) {
+    // Log record for starting transaction
+    LogRecord logRecord(txn.id, txn.logLocation.seqNumber,
+                        LogRecord::Type::BEGIN);
+    // Add log record and update the location in the transaction
+    txn.logLocation = logManager->add(logRecord);
+  }
+
+  /**
+   * @brief Log transaction abort.
+   *
+   * @param txn reference to the aborted transaction
+   */
+  void logAbort(Transaction &txn) {
+    // Log record for transaction abortion
+    LogRecord logRecord(txn.id, txn.logLocation.seqNumber,
+                        LogRecord::Type::ABORT);
+    // Add log record and update the location in the transaction
+    txn.logLocation = logManager->add(logRecord);
+  }
+
+  /**
+   * @brief Log transaction commit operation.
+   *
+   * @param txn reference to the committed transaction
+   */
+  void logCommit(Transaction &txn) {
+    // Log record for commit operation
+    LogRecord logRecord(txn.id, txn.logLocation.seqNumber,
+                        LogRecord::Type::COMMIT);
+    // Add log record and update the location in the transaction
+    txn.logLocation = logManager->add(logRecord);
+  }
+
+  /**
+   * @brief Undo a given operation performed during a transaction.
+   *
+   * @param txn reference to the transaction for which to perfrom undo
+   * @param logRecord log record of the operation to undo
+   */
+  void undo(Transaction &txn, LogRecord &logRecord) {
+    switch (logRecord.type) {
+    case LogRecord::Type::INSERT: {
+      auto page = bufferManager->get(logRecord.location.pageId);
+      page->removePageSlot(logRecord.location.slotId, txn);
+      break;
+    }
+    case LogRecord::Type::DELETE: {
+      auto page = bufferManager->get(logRecord.location.pageId);
+      page->undoRemovePageSlot(logRecord.location.slotId, logRecord.pageSlotA,
+                               txn);
+      break;
+    }
+    case LogRecord::Type::UPDATE: {
+      auto page = bufferManager->get(logRecord.location.pageId);
+      // NOTE: The value from log record object is being moved
+      page->updatePageSlot(logRecord.location.slotId, logRecord.pageSlotA, txn);
+      break;
+    }
+    default:
+      break;
+    }
+  }
+
+public:
+  /**
+   * @brief Construct a new Transaction Manager object
+   *
+   * @param bufferManager slotted page buffer manager for which transactions are
+   * to be managed
+   * @param logManager transaction log manager
+   */
+  TransactionManager(BufferManager<SlottedPage, Replacer> *bufferManager,
+                     LogManager *logManager)
+      : bufferManager(bufferManager), logManager(logManager) {}
+
+  /**
+   * @brief Begin a new transaction.
+   *
+   * @returns transaction object
+   */
+  Transaction begin() {
+    // Create a new transaction
+    Transaction txn(logManager, uuid::generate(), Transaction::State::ACTIVE);
+    // Log transaction begin record
+    logBegin(txn);
+
+    return txn;
+  }
+
+  /**
+   * @brief Abort given transaction. This operation rollsback all changes
+   * performed during the transaction.
+   *
+   * @param txn reference to the transaction to abort. Nop is performed if null
+   * is passed.
+   */
+  void abort(Transaction &txn) {
+    // Abort transaction if not in completed state, i.e. COMMITED or
+    // ABORTED.
+    if (txn.state != Transaction::State::COMMITED &&
+        txn.state != Transaction::State::ABORTED) {
+      // Log transaction abort record
+      logAbort(txn);
+
+      // Undo all operations performed as part of the transaction
+      // std::unique_ptr<LogRecord> logRecord =
+      // logManager->get(txn.logLocation); while
+      // (logRecord->header.prevSeqNumber) {
+      //  logRecord = logManager->get(logRecord->getPrevSeqNumber());
+      //  undo(txn, *logRecord);
+      //}
+      txn.state = Transaction::State::ABORTED;
+    }
+  }
+
+  /**
+   * @brief Commit given transaction. Persists all modified pages and metadata
+   * to backend storage.
+   *
+   * @param txn reference to the transaction to commit. Nop is performed if null
+   * is passed.
+   */
+  void commit(Transaction &txn) {
+    // Commit pages if transaction not in completed state, i.e. COMMITED or
+    // ABORTED.
+    if (txn.state != Transaction::State::COMMITED &&
+        txn.state != Transaction::State::ABORTED) {
+      // Log transaction commit record
+      logCommit(txn);
+      // Flush all log records to stable storage
+      logManager->flush();
+      // Set transaction to partially commited state. This is in compliance with
+      // the requirement that all log records are flushed to backend storage on
+      // transaction commit.
+      txn.state = Transaction::State::PARTIALLY_COMMITED;
+
+      // TODO: Implement FORCE vs NO_FORCE mode of commit
+
+      // Flush all staged pages
+      for (auto pageId : txn.staged) {
+        bufferManager->flush(pageId);
+      }
+      // Set transaction to commited state as all modified pages by the
+      // transaction have been flushed to disk.
+      txn.state = Transaction::State::COMMITED;
+    }
+  }
+};
+
+} // namespace persist
+
+#endif /* TRANSACTION_MANAGER_HPP */
