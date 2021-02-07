@@ -50,7 +50,7 @@ public:
      */
     PageId pageId;
     /**
-     * @brief Sequence number of the log records stored in the slot.
+     * @brief Sequence number of the log record stored in the slot.
      */
     SeqNumber seqNumber;
 
@@ -62,12 +62,13 @@ public:
         : pageId(pageId), seqNumber(seqNumber) {}
 
     /**
-     * @brief Check if location is NULL
+     * @brief Check if location is NULL. A NULL location will have both page ID
+     * and sequence number set to `0`.
      */
-    bool isNull() const { return pageId == 0; }
+    bool isNull() const { return pageId == 0 && seqNumber == 0; }
 
     /**
-     * @brief Set the location to NULL
+     * @brief Set the location to NULL.
      */
     void setNull() {
       pageId = 0;

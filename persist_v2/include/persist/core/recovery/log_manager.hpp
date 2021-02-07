@@ -38,12 +38,6 @@
 namespace persist {
 
 /**
- * @brief Log record location type
- *
- */
-typedef LogPageSlot::Location LogRecordLocation;
-
-/**
  * @brief Log Manager Class
  *
  * The log manager handles collection of log records for all transactions.
@@ -111,7 +105,7 @@ public:
    * @param logRecord reference to the log record object to add
    * @returns sequence number of the added log record
    */
-  LogRecordLocation add(LogRecord &logRecord) {
+  LogRecord::Location add(LogRecord &logRecord) {
     // Set log record sequence number
     logRecord.setSeqNumber(++seqNumber);
     // Dump log record bytes
@@ -176,7 +170,7 @@ public:
    * @param seqNumber sequence number of the log record to get
    * @returns unique pointer to the loaded log record
    */
-  std::unique_ptr<LogRecord> get(LogRecordLocation location) {
+  std::unique_ptr<LogRecord> get(LogRecord::Location location) {
     // Get the first page slot from the given location and create the log record
     // by joining all related slots.
 

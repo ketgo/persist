@@ -93,7 +93,7 @@ public:
    * @brief Location of the latest log record in the transaction. This is used
    * to link the the next log record.
    */
-  LogRecordLocation logLocation;
+  LogRecord::Location logLocation;
 
   /**
    * @brief Log INSERT operation.
@@ -103,8 +103,8 @@ public:
    */
   void logInsertOp(PageSlot::Location &location, PageSlot &pageSlot) {
     // Log record for insert operation
-    LogRecord logRecord(id, logLocation.seqNumber, LogRecord::Type::INSERT,
-                        location, pageSlot);
+    LogRecord logRecord(id, logLocation, LogRecord::Type::INSERT, location,
+                        pageSlot);
     logLocation = logManager->add(logRecord);
   }
 
@@ -118,8 +118,8 @@ public:
   void logUpdateOp(PageSlot::Location &location, PageSlot &oldPageSlot,
                    PageSlot &newPageSlot) {
     // Log record for update operation
-    LogRecord logRecord(id, logLocation.seqNumber, LogRecord::Type::UPDATE,
-                        location, oldPageSlot, newPageSlot);
+    LogRecord logRecord(id, logLocation, LogRecord::Type::UPDATE, location,
+                        oldPageSlot, newPageSlot);
     logLocation = logManager->add(logRecord);
   }
 
@@ -131,8 +131,8 @@ public:
    */
   void logDeleteOp(PageSlot::Location &location, PageSlot &pageSlot) {
     // Log record for delete operation
-    LogRecord logRecord(id, logLocation.seqNumber, LogRecord::Type::DELETE,
-                        location, pageSlot);
+    LogRecord logRecord(id, logLocation, LogRecord::Type::DELETE, location,
+                        pageSlot);
     logLocation = logManager->add(logRecord);
   }
 
@@ -170,9 +170,9 @@ public:
   State getState() const { return state; }
 
   /**
-   * @brief Get sequence number of the lastest log record of the transaction.
+   * @brief Get sequence number of the lastest log record in the transaction.
    *
-   * @returns sequence number of the lastest log record of the transaction
+   * @returns sequence number of the lastest log record in the transaction
    */
   SeqNumber getSeqNumber() const { return logLocation.seqNumber; }
 

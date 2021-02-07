@@ -37,6 +37,7 @@
 
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
+#include <persist/core/page/log_page/page_slot.hpp>
 #include <persist/core/page/slotted_page/page_slot.hpp>
 
 namespace persist {
@@ -54,6 +55,12 @@ class LogRecord {
 
 public:
   /**
+   * @brief Log record location type
+   *
+   */
+  typedef LogPageSlot::Location Location;
+
+  /**
    * @brief Log Record Header
    *
    * The header contains the metadata information of the record.
@@ -66,10 +73,10 @@ public:
     SeqNumber seqNumber;
 
     /**
-     * @brief Previous record sequence number with valid values greater than
-     * `1`. For the first record of a transaction this is set to `0`.
+     * @brief Previous log record location. This is used to link log records in
+     * chronological order.
      */
-    SeqNumber prevSeqNumber;
+    Location prevLogRecordLocation;
 
     /**
      * @brief Transaction ID
@@ -84,9 +91,9 @@ public:
     /**
      * Constructors
      */
-    Header(SeqNumber seqNumber = 0, SeqNumber prevSeqNumber = 0,
+    Header(SeqNumber seqNumber = 0, Location prevLogRecordLocation = {0, 0},
            TransactionId transactionId = 0)
-        : seqNumber(seqNumber), prevSeqNumber(prevSeqNumber),
+        : seqNumber(seqNumber), prevLogRecordLocation(prevLogRecordLocation),
           transactionId(transactionId), checksum(0) {}
 
     /**
@@ -108,8 +115,9 @@ public:
       Byte *pos = input.start;
       std::memcpy((void *)&seqNumber, (const void *)pos, sizeof(SeqNumber));
       pos += sizeof(SeqNumber);
-      std::memcpy((void *)&prevSeqNumber, (const void *)pos, sizeof(SeqNumber));
-      pos += sizeof(SeqNumber);
+      std::memcpy((void *)&prevLogRecordLocation, (const void *)pos,
+                  sizeof(Location));
+      pos += sizeof(Location);
       std::memcpy((void *)&transactionId, (const void *)pos,
                   sizeof(TransactionId));
       pos += sizeof(TransactionId);
@@ -130,8 +138,9 @@ public:
       Byte *pos = output.start;
       std::memcpy((void *)pos, (const void *)&seqNumber, sizeof(SeqNumber));
       pos += sizeof(SeqNumber);
-      std::memcpy((void *)pos, (const void *)&prevSeqNumber, sizeof(SeqNumber));
-      pos += sizeof(SeqNumber);
+      std::memcpy((void *)pos, (const void *)&prevLogRecordLocation,
+                  sizeof(Location));
+      pos += sizeof(Location);
       std::memcpy((void *)pos, (const void *)&transactionId,
                   sizeof(TransactionId));
       pos += sizeof(TransactionId);
@@ -143,7 +152,7 @@ public:
      */
     bool operator==(const Header &other) const {
       return seqNumber == other.seqNumber &&
-             prevSeqNumber == other.prevSeqNumber &&
+             prevLogRecordLocation == other.prevLogRecordLocation &&
              transactionId == other.transactionId;
     }
 
@@ -152,7 +161,7 @@ public:
      */
     bool operator!=(const Header &other) const {
       return seqNumber != other.seqNumber ||
-             prevSeqNumber != other.prevSeqNumber ||
+             prevLogRecordLocation != other.prevLogRecordLocation ||
              transactionId != other.transactionId;
     }
 
@@ -163,7 +172,7 @@ public:
     friend std::ostream &operator<<(std::ostream &os, const Header &header) {
       os << "---- Header ----\n";
       os << "seqNumber: " << header.seqNumber << "\n";
-      os << "prevSeqNumber: " << header.prevSeqNumber << "\n";
+      os << "prevLogRecordLocation: " << header.prevLogRecordLocation << "\n";
       os << "transactionId: " << header.transactionId << "\n";
       os << "-----------------";
       return os;
@@ -186,7 +195,7 @@ public:
             // aborted. This implies that the transaction is in `ABORTED` state.
     COMMIT  //<- The log record represents a transaction has successfully
             // comitted.
-           // This implies that the transaction is in `COMMITTED` state.
+            // This implies that the transaction is in `COMMITTED` state.
   };
 
   PERSIST_PRIVATE
@@ -224,8 +233,10 @@ public:
 
     seed = std::hash<SeqNumber>()(header.seqNumber) + 0x9e3779b9 + (seed << 6) +
            (seed >> 2);
-    seed ^= std::hash<SeqNumber>()(header.prevSeqNumber) + 0x9e3779b9 +
-            (seed << 6) + (seed >> 2);
+    seed ^= std::hash<PageId>()(header.prevLogRecordLocation.pageId) +
+            0x9e3779b9 + (seed << 6) + (seed >> 2);
+    seed ^= std::hash<SeqNumber>()(header.prevLogRecordLocation.seqNumber) +
+            0x9e3779b9 + (seed << 6) + (seed >> 2);
     seed ^= std::hash<TransactionId>()(header.transactionId) + 0x9e3779b9 +
             (seed << 6) + (seed >> 2);
     seed ^= std::hash<Type>()(type) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
@@ -250,12 +261,12 @@ public:
   /**
    * @brief Construct a new Log Record object
    *
-   * This constructor is used to create BEGIN, COMMIT, ABORT and DONE type log
+   * This constructor is used to create BEGIN, COMMIT and ABORT type log
    * records.
    */
-  LogRecord(TransactionId transactionId, SeqNumber prevSeqNumber = 0,
-            Type type = Type::BEGIN)
-      : header(0, prevSeqNumber, transactionId), type(type) {}
+  LogRecord(TransactionId transactionId,
+            Location prevLogRecordLocation = {0, 0}, Type type = Type::BEGIN)
+      : header(0, prevLogRecordLocation, transactionId), type(type) {}
 
   /**
    * @brief Construct a new Log Record object
@@ -263,22 +274,21 @@ public:
    * This constructor is used to create INSERT and DELETE type log
    * records.
    */
-  LogRecord(TransactionId transactionId, SeqNumber prevSeqNumber, Type type,
-            PageSlot::Location location, PageSlot pageSlot)
-      : header(0, prevSeqNumber, transactionId), type(type), location(location),
-        pageSlotA(pageSlot) {}
+  LogRecord(TransactionId transactionId, Location prevLogRecordLocation,
+            Type type, PageSlot::Location location, PageSlot pageSlot)
+      : header(0, prevLogRecordLocation, transactionId), type(type),
+        location(location), pageSlotA(pageSlot) {}
 
   /**
    * @brief Construct a new Log Record object
    *
-   * This constructor is used to create UPDATE type log
-   * record.
+   * This constructor is used to create UPDATE type log record.
    */
-  LogRecord(TransactionId transactionId, SeqNumber prevSeqNumber, Type type,
-            PageSlot::Location location, PageSlot oldPageSlot,
+  LogRecord(TransactionId transactionId, Location prevLogRecordLocation,
+            Type type, PageSlot::Location location, PageSlot oldPageSlot,
             PageSlot newPageSlot)
-      : header(0, prevSeqNumber, transactionId), type(type), location(location),
-        pageSlotA(oldPageSlot), pageSlotB(newPageSlot) {}
+      : header(0, prevLogRecordLocation, transactionId), type(type),
+        location(location), pageSlotA(oldPageSlot), pageSlotB(newPageSlot) {}
 
   /**
    * @brief Get the sequence number of log record
@@ -295,11 +305,13 @@ public:
   void setSeqNumber(SeqNumber seqNumber) { header.seqNumber = seqNumber; }
 
   /**
-   * @brief Get the previous log record sequence number
+   * @brief Get the previous log record location
    *
-   * @returns Consant reference to previous sequence number
+   * @returns Consant reference to previous location
    */
-  const SeqNumber &getPrevSeqNumber() const { return header.prevSeqNumber; }
+  const Location &getPrevLogRecordLocation() const {
+    return header.prevLogRecordLocation;
+  }
 
   /**
    * @brief Get the transaction ID of the log record

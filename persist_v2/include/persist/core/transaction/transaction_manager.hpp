@@ -61,8 +61,7 @@ class TransactionManager {
    */
   void logBegin(Transaction &txn) {
     // Log record for starting transaction
-    LogRecord logRecord(txn.id, txn.logLocation.seqNumber,
-                        LogRecord::Type::BEGIN);
+    LogRecord logRecord(txn.id, txn.logLocation, LogRecord::Type::BEGIN);
     // Add log record and update the location in the transaction
     txn.logLocation = logManager->add(logRecord);
   }
@@ -74,8 +73,7 @@ class TransactionManager {
    */
   void logAbort(Transaction &txn) {
     // Log record for transaction abortion
-    LogRecord logRecord(txn.id, txn.logLocation.seqNumber,
-                        LogRecord::Type::ABORT);
+    LogRecord logRecord(txn.id, txn.logLocation, LogRecord::Type::ABORT);
     // Add log record and update the location in the transaction
     txn.logLocation = logManager->add(logRecord);
   }
@@ -87,8 +85,7 @@ class TransactionManager {
    */
   void logCommit(Transaction &txn) {
     // Log record for commit operation
-    LogRecord logRecord(txn.id, txn.logLocation.seqNumber,
-                        LogRecord::Type::COMMIT);
+    LogRecord logRecord(txn.id, txn.logLocation, LogRecord::Type::COMMIT);
     // Add log record and update the location in the transaction
     txn.logLocation = logManager->add(logRecord);
   }
@@ -165,12 +162,11 @@ public:
       logAbort(txn);
 
       // Undo all operations performed as part of the transaction
-      // std::unique_ptr<LogRecord> logRecord =
-      // logManager->get(txn.logLocation); while
-      // (logRecord->header.prevSeqNumber) {
-      //  logRecord = logManager->get(logRecord->getPrevSeqNumber());
-      //  undo(txn, *logRecord);
-      //}
+      std::unique_ptr<LogRecord> logRecord = logManager->get(txn.logLocation);
+      while (!logRecord->header.prevLogRecordLocation.isNull()) {
+        logRecord = logManager->get(logRecord->header.prevLogRecordLocation);
+        undo(txn, *logRecord);
+      }
       txn.state = Transaction::State::ABORTED;
     }
   }

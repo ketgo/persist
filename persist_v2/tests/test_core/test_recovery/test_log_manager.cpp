@@ -45,7 +45,7 @@ protected:
   const TransactionId txnId = 10;
   const PageId pageId = 1;
   const SeqNumber seqNumber = 1;
-  const LogRecordLocation location = {pageId, seqNumber};
+  const LogRecord::Location location = {pageId, seqNumber};
   const uint64_t maxSize = 2;
   const std::string path = "test_log_manager";
   std::unique_ptr<LogPage> page;
@@ -114,11 +114,12 @@ TEST_F(LogManagerTestFixture, TestAdd) {
   pageSlotA.data = ByteBuffer(storage->getPageSize(), 'A');
   pageSlotB.data = ByteBuffer(storage->getPageSize(), 'B');
   PageSlot::Location slotLocation = {10, 1};
-  LogRecord logRecord(11, 0, LogRecord::Type::UPDATE, slotLocation, pageSlotA,
-                      pageSlotB);
+  LogRecord::Location prevLogRecordLocation = {0, 0};
+  LogRecord logRecord(11, prevLogRecordLocation, LogRecord::Type::UPDATE,
+                      slotLocation, pageSlotA, pageSlotB);
   logRecord.setSeqNumber(2);
 
-  LogRecordLocation location = logManager->add(logRecord);
+  LogRecord::Location location = logManager->add(logRecord);
   auto _logRecord = logManager->get(location);
 
   ASSERT_EQ(*_logRecord, logRecord);
@@ -130,11 +131,12 @@ TEST_F(LogManagerTestFixture, TestFlush) {
   pageSlotA.data = ByteBuffer(storage->getPageSize(), 'A');
   pageSlotB.data = ByteBuffer(storage->getPageSize(), 'B');
   PageSlot::Location slotLocation = {10, 1};
-  LogRecord logRecord(11, 0, LogRecord::Type::UPDATE, slotLocation, pageSlotA,
-                      pageSlotB);
+  LogRecord::Location prevLogRecordLocation = {0, 0};
+  LogRecord logRecord(11, prevLogRecordLocation, LogRecord::Type::UPDATE,
+                      slotLocation, pageSlotA, pageSlotB);
   logRecord.setSeqNumber(2);
 
-  LogRecordLocation location = logManager->add(logRecord);
+  LogRecord::Location location = logManager->add(logRecord);
   logManager->flush();
 
   // Create storage to test page flush
