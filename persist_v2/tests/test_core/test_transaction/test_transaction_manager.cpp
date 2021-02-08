@@ -52,12 +52,12 @@ protected:
   const std::string path = "test_transaction_manager";
   PageId pageId;
   PageSlotId pageSlotId;
-  typedef BufferManager<VLSSlottedPage, LRUReplacer> BufferManager;
+  typedef BufferManager<VLSSlottedPage> BufferManager;
   std::unique_ptr<BufferManager> bufferManager;
   std::unique_ptr<Storage<VLSSlottedPage>> dataStorage;
   std::unique_ptr<Storage<LogPage>> logStorage;
   std::unique_ptr<LogManager> logManager;
-  std::unique_ptr<TransactionManager> txnManager;
+  std::unique_ptr<TransactionManager<VLSSlottedPage>> txnManager;
 
   void SetUp() override {
     // Setting up storage
@@ -73,8 +73,8 @@ protected:
     logManager->start();
 
     // Setup transaction manager
-    txnManager = std::make_unique<TransactionManager>(bufferManager.get(),
-                                                      logManager.get());
+    txnManager = std::make_unique<TransactionManager<VLSSlottedPage>>(
+        bufferManager.get(), logManager.get());
 
     // Setup data for test
     insert();
@@ -95,10 +95,12 @@ protected:
    * @param logRecords reference to vector of log records type
    */
   void retriveLogRecord(Transaction &txn, std::vector<LogRecord> &logRecords) {
-    std::unique_ptr<LogRecord> logRecord = logManager->get(txn.logLocation);
-    while (!logRecord->header.prevLogRecordLocation.isNull()) {
+    std::unique_ptr<LogRecord> logRecord =
+        logManager->get(txn.getLogLocation());
+    logRecords.push_back(*logRecord);
+    while (!logRecord->getPrevLogRecordLocation().isNull()) {
       logRecords.push_back(*logRecord);
-      logRecord = logManager->get(logRecord->header.prevLogRecordLocation);
+      logRecord = logManager->get(logRecord->getPrevLogRecordLocation());
     }
   }
 
@@ -119,6 +121,6 @@ TEST_F(TransactionManagerTestFixture, TestBegin) {
 
   // Assert BEGIN log record
   ASSERT_EQ(logRecords.size(), 1);
-  ASSERT_EQ(logRecords.back().getSeqNumber(), txn.getSeqNumber());
-  ASSERT_EQ(logRecords.back().type, LogRecord::Type::BEGIN);
+  ASSERT_EQ(logRecords.back().getSeqNumber(), txn.getLogLocation().seqNumber);
+  ASSERT_EQ(logRecords.back().getLogType(), LogRecord::Type::BEGIN);
 }

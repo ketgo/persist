@@ -38,7 +38,7 @@
 
 #include <persist/core/buffer/fsl.hpp>
 #include <persist/core/buffer/page_handle.hpp>
-#include <persist/core/buffer/replacer/base.hpp>
+#include <persist/core/buffer/replacer/factory.hpp>
 
 // At the minimum 2 pages are needed in memory by record manager.
 #define MINIMUM_BUFFER_SIZE 2
@@ -53,14 +53,10 @@ namespace persist {
  * compliance with the page repleacement policy.
  *
  * @tparam PageType type of page handled by the buffer manager
- * @tparam ReplacerType type of page replacer used by buffer manager
  */
-template <class PageType, class ReplacerType>
-class BufferManager : public PageObserver {
+template <class PageType> class BufferManager : public PageObserver {
   static_assert(std::is_base_of<Page, PageType>::value,
                 "PageType must be derived from Page class.");
-  static_assert(std::is_base_of<Replacer, ReplacerType>::value,
-                "ReplacerType must be derived from Replacer class.");
 
   PERSIST_PRIVATE
   /**
@@ -84,7 +80,7 @@ class BufferManager : public PageObserver {
   std::unique_ptr<FSL> fsl;   //<- free space list
 
   uint64_t maxSize;                       //<- maximum size of buffer
-  std::unique_ptr<ReplacerType> replacer; //<- page replacer
+  std::unique_ptr<Replacer> replacer; //<- page replacer
   typedef typename std::unordered_map<PageId, PageSlot> Buffer;
   Buffer buffer; //<- buffer of page slots
   bool started;  //<- flag indicating buffer manager started
@@ -125,22 +121,24 @@ class BufferManager : public PageObserver {
 
 public:
   /**
-   * Construct a new Page Table object
+   * Construct a new BufferManager object
    *
    * @param storage pointer to backend storage
    * @param maxSize maximum buffer size. If set to 0 then no maximum limit is
    * set
+   * @param replacerType type of page replacer to be used by buffer manager
    *
    */
   BufferManager(Storage<PageType> *storage,
-                uint64_t maxSize = DEFAULT_BUFFER_SIZE)
-      : storage(storage), replacer(std::make_unique<ReplacerType>()),
-        maxSize(maxSize), started(false) {
+                uint64_t maxSize = DEFAULT_BUFFER_SIZE,
+                ReplacerType replacerType = ReplacerType::LRU)
+      : storage(storage), maxSize(maxSize), started(false) {
     // Check buffer size value
     if (maxSize != 0 && maxSize < MINIMUM_BUFFER_SIZE) {
       throw BufferManagerError("Invalid value for max buffer size. The max "
                                "size can be 0 or greater than 2.");
     }
+    replacer = createReplacer(replacerType);
   }
 
   /**

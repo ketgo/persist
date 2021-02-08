@@ -27,7 +27,7 @@
 
 #include <persist/core/buffer/buffer_manager.hpp>
 #include <persist/core/buffer/replacer/base.hpp>
-#include <persist/core/page/slotted_page/base.hpp>
+#include <persist/core/page/slotted_page/vls_slotted_page.hpp>
 #include <persist/core/recovery/log_manager.hpp>
 #include <persist/core/transaction/transaction.hpp>
 #include <persist/core/utility.hpp>
@@ -39,14 +39,19 @@ namespace persist {
  *
  * The transaction manager manages slotted page transactions of a collection.
  *
+ * @tparam PageType type of page
  */
-class TransactionManager {
+// TODO: This is brute force approach. Need to use polymorphic pages
+template <class PageType> class TransactionManager {
+  static_assert(std::is_base_of<SlottedPage, PageType>::value,
+                "PageType must be derived from SlottedPage class.");
+
   PERSIST_PRIVATE
   /**
    * @brief Pointer to Buffer Manager
    *
    */
-  BufferManager<SlottedPage, Replacer> *bufferManager;
+  BufferManager<PageType> *bufferManager;
 
   /**
    * @brief Pointer to Log Manager
@@ -61,9 +66,10 @@ class TransactionManager {
    */
   void logBegin(Transaction &txn) {
     // Log record for starting transaction
-    LogRecord logRecord(txn.id, txn.logLocation, LogRecord::Type::BEGIN);
+    LogRecord logRecord(txn.getId(), txn.getLogLocation(),
+                        LogRecord::Type::BEGIN);
     // Add log record and update the location in the transaction
-    txn.logLocation = logManager->add(logRecord);
+    txn.setLogLocation(logManager->add(logRecord));
   }
 
   /**
@@ -73,9 +79,10 @@ class TransactionManager {
    */
   void logAbort(Transaction &txn) {
     // Log record for transaction abortion
-    LogRecord logRecord(txn.id, txn.logLocation, LogRecord::Type::ABORT);
+    LogRecord logRecord(txn.getId(), txn.getLogLocation(),
+                        LogRecord::Type::ABORT);
     // Add log record and update the location in the transaction
-    txn.logLocation = logManager->add(logRecord);
+    txn.setLogLocation(logManager->add(logRecord));
   }
 
   /**
@@ -85,9 +92,10 @@ class TransactionManager {
    */
   void logCommit(Transaction &txn) {
     // Log record for commit operation
-    LogRecord logRecord(txn.id, txn.logLocation, LogRecord::Type::COMMIT);
+    LogRecord logRecord(txn.getId(), txn.getLogLocation(),
+                        LogRecord::Type::COMMIT);
     // Add log record and update the location in the transaction
-    txn.logLocation = logManager->add(logRecord);
+    txn.setLogLocation(logManager->add(logRecord));
   }
 
   /**
@@ -97,22 +105,23 @@ class TransactionManager {
    * @param logRecord log record of the operation to undo
    */
   void undo(Transaction &txn, LogRecord &logRecord) {
-    switch (logRecord.type) {
+    switch (logRecord.getLogType()) {
     case LogRecord::Type::INSERT: {
-      auto page = bufferManager->get(logRecord.location.pageId);
-      page->removePageSlot(logRecord.location.slotId, txn);
+      auto page = bufferManager->get(logRecord.getLocation().pageId);
+      page->removePageSlot(logRecord.getLocation().slotId, txn);
       break;
     }
     case LogRecord::Type::DELETE: {
-      auto page = bufferManager->get(logRecord.location.pageId);
-      page->undoRemovePageSlot(logRecord.location.slotId, logRecord.pageSlotA,
-                               txn);
+      auto page = bufferManager->get(logRecord.getLocation().pageId);
+      page->undoRemovePageSlot(logRecord.getLocation().slotId,
+                               logRecord.getPageSlotA(), txn);
       break;
     }
     case LogRecord::Type::UPDATE: {
-      auto page = bufferManager->get(logRecord.location.pageId);
+      auto page = bufferManager->get(logRecord.getLocation().pageId);
       // NOTE: The value from log record object is being moved
-      page->updatePageSlot(logRecord.location.slotId, logRecord.pageSlotA, txn);
+      page->updatePageSlot(logRecord.getLocation().slotId,
+                           logRecord.getPageSlotA(), txn);
       break;
     }
     default:
@@ -128,7 +137,7 @@ public:
    * to be managed
    * @param logManager transaction log manager
    */
-  TransactionManager(BufferManager<SlottedPage, Replacer> *bufferManager,
+  TransactionManager(BufferManager<PageType> *bufferManager,
                      LogManager *logManager)
       : bufferManager(bufferManager), logManager(logManager) {}
 
@@ -156,18 +165,19 @@ public:
   void abort(Transaction &txn) {
     // Abort transaction if not in completed state, i.e. COMMITED or
     // ABORTED.
-    if (txn.state != Transaction::State::COMMITED &&
-        txn.state != Transaction::State::ABORTED) {
+    if (txn.getState() != Transaction::State::COMMITED &&
+        txn.getState() != Transaction::State::ABORTED) {
       // Log transaction abort record
       logAbort(txn);
 
       // Undo all operations performed as part of the transaction
-      std::unique_ptr<LogRecord> logRecord = logManager->get(txn.logLocation);
-      while (!logRecord->header.prevLogRecordLocation.isNull()) {
-        logRecord = logManager->get(logRecord->header.prevLogRecordLocation);
+      std::unique_ptr<LogRecord> logRecord =
+          logManager->get(txn.getLogLocation());
+      while (!logRecord->getPrevLogRecordLocation().isNull()) {
+        logRecord = logManager->get(logRecord->getPrevLogRecordLocation());
         undo(txn, *logRecord);
       }
-      txn.state = Transaction::State::ABORTED;
+      txn.setState(Transaction::State::ABORTED);
     }
   }
 
@@ -181,8 +191,8 @@ public:
   void commit(Transaction &txn) {
     // Commit pages if transaction not in completed state, i.e. COMMITED or
     // ABORTED.
-    if (txn.state != Transaction::State::COMMITED &&
-        txn.state != Transaction::State::ABORTED) {
+    if (txn.getState() != Transaction::State::COMMITED &&
+        txn.getState() != Transaction::State::ABORTED) {
       // Log transaction commit record
       logCommit(txn);
       // Flush all log records to stable storage
@@ -190,17 +200,17 @@ public:
       // Set transaction to partially commited state. This is in compliance with
       // the requirement that all log records are flushed to backend storage on
       // transaction commit.
-      txn.state = Transaction::State::PARTIALLY_COMMITED;
+      txn.setState(Transaction::State::PARTIALLY_COMMITED);
 
       // TODO: Implement FORCE vs NO_FORCE mode of commit
 
       // Flush all staged pages
-      for (auto pageId : txn.staged) {
+      for (auto pageId : txn.getStaged()) {
         bufferManager->flush(pageId);
       }
       // Set transaction to commited state as all modified pages by the
       // transaction have been flushed to disk.
-      txn.state = Transaction::State::COMMITED;
+      txn.setState(Transaction::State::COMMITED);
     }
   }
 };

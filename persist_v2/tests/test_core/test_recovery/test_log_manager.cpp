@@ -142,7 +142,6 @@ TEST_F(LogManagerTestFixture, TestFlush) {
   // Create storage to test page flush
   auto _storage = createStorage<LogPage>("file://" + path);
   _storage->open();
-  std::cout << _storage->getPageCount() << "\n";
   ASSERT_TRUE(_storage->getPageCount() > 1);
   _storage->close();
 }
