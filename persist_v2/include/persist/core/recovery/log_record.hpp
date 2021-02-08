@@ -42,17 +42,12 @@
 
 namespace persist {
 
-// TODO: Add non-const methods to allow access by transaction manager. This is
-// to remove the friend class declaration.
-
 /**
  * @brief Log Record
  *
  * Records used to store operations performed by transactions.
  */
 class LogRecord {
-  friend class TransactionManager; // forward declared
-
 public:
   /**
    * @brief Log record location type

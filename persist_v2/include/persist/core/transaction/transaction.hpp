@@ -58,9 +58,6 @@ namespace persist {
  *
  */
 class Transaction {
-  friend class VLSSlottedPage;
-  friend class TransactionManager;
-
 public:
   /**
    * @brief Enumerated set of transaction states.
@@ -94,6 +91,17 @@ public:
    * to link the the next log record.
    */
   LogRecord::Location logLocation;
+
+public:
+  /**
+   * Construct a new Transaction object
+   *
+   * @param logManager pointer to log manager
+   * @param id Transaction ID
+   * @param state transaction state
+   */
+  Transaction(LogManager *logManager, uint64_t id, State state = State::ACTIVE)
+      : logManager(logManager), id(id), state(state), logLocation(0, 0) {}
 
   /**
    * @brief Log INSERT operation.
@@ -144,16 +152,12 @@ public:
    */
   void stage(PageId pageId) { staged.insert(pageId); }
 
-public:
   /**
-   * Construct a new Transaction object
+   * @brief Get the staged page IDs in the transaction.
    *
-   * @param logManager pointer to log manager
-   * @param id Transaction ID
-   * @param state transaction state
+   * @returns constant reference to set of staged page IDs
    */
-  Transaction(LogManager *logManager, uint64_t id, State state = State::ACTIVE)
-      : logManager(logManager), id(id), state(state), logLocation(0, 0) {}
+  const std::set<PageId> &getStaged() const { return staged; }
 
   /**
    * @brief Get the transaction ID
@@ -167,14 +171,28 @@ public:
    *
    * @returns transaction state
    */
-  State getState() const { return state; }
+  const State getState() const { return state; }
 
   /**
-   * @brief Get sequence number of the lastest log record in the transaction.
+   * Set the state of transaction.
+   *
+   * @param state transaction state to set
+   */
+  void setState(State state) { this->state = state; }
+
+  /**
+   * @brief Get the location of the lastest log record in the transaction.
    *
    * @returns sequence number of the lastest log record in the transaction
    */
-  SeqNumber getSeqNumber() const { return logLocation.seqNumber; }
+  const LogRecord::Location getLogLocation() const { return logLocation; }
+
+  /**
+   * @brief Set the location of the lastest log record in the transaction.
+   *
+   * @param location location of the lastest log record in the transaction
+   */
+  void setLogLocation(LogRecord::Location location) { logLocation = location; }
 
   /**
    * @brief Equality comparision operator.

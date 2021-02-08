@@ -50,7 +50,7 @@ protected:
   const std::string path = "test_buffer_manager";
   std::unique_ptr<SimplePage> page_1, page_2, page_3;
   std::unique_ptr<FSL> fsl;
-  typedef BufferManager<SimplePage, LRUReplacer> BufferManager;
+  typedef BufferManager<SimplePage> BufferManager;
   std::unique_ptr<BufferManager> bufferManager;
   std::unique_ptr<Storage<SimplePage>> storage;
 
@@ -68,7 +68,7 @@ protected:
     storage = createStorage<SimplePage>("file://" + path);
     insert();
 
-    bufferManager = std::make_unique<BufferManager>(storage.get(), maxSize);
+    bufferManager = std::make_unique<BufferManager>(storage.get(), maxSize, ReplacerType::LRU);
     bufferManager->start();
   }
 

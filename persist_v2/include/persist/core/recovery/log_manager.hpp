@@ -29,8 +29,6 @@
 #include <memory>
 
 #include <persist/core/buffer/buffer_manager.hpp>
-#include <persist/core/buffer/replacer/lru_replacer.hpp>
-#include <persist/core/defs.hpp>
 #include <persist/core/page/log_page/log_page.hpp>
 #include <persist/core/recovery/log_record.hpp>
 #include <persist/core/storage/base.hpp>
@@ -48,9 +46,8 @@ class LogManager {
   std::atomic<SeqNumber>
       seqNumber; //<- Sequence number of the latest log record. This is used to
                  // set sequence number of the next log record.
-  Storage<LogPage> *storage; //<- Pointer to backend log storage
-  BufferManager<LogPage, LRUReplacer>
-      bufferManager; //<- Log record buffer manager
+  Storage<LogPage> *storage;            //<- Pointer to backend log storage
+  BufferManager<LogPage> bufferManager; //<- Log record buffer manager
 
   bool started; //<- flag indicating log manager started
 
