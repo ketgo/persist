@@ -4,8 +4,8 @@ ACID Data Store
 
 ## License
 
-The source code is under MIT licence.
+The source code is under MIT license.
 
 ## Contributions
 
-Pull requests and bug reports always welcomed! :)
+Pull requests and bug reports are always welcomed! :)

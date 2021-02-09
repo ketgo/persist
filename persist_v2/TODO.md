@@ -48,12 +48,12 @@
     - use buffer manager for loading pages of log records in the log manager
     - log manager to persist pages using the flush method of buffer manager
 
-5. [IN-PROGRESS] Implement the FORCE and NO-FORCE mode of operations of the transaction manager:
-    - Re-design and implement transaction class
-    - Refactor transaction manager to use FORCE and NO-FORCE policies
-    - Maybe introduce transaction context?
+5. [DONE] Implement the FORCE and NO-FORCE mode of operations of the transaction manager:
+    - [DONE] Re-design and implement transaction class
+    - [DONE] Refactor transaction manager to use FORCE and NO-FORCE policies
+    - [SKIPPED] Maybe introduce transaction context?
 
-6. Implement PAGE-LEVEL and SLOT-LEVEL granularity of atomic operations for thread safety:
+6. [IN_PROGRESS] Implement PAGE-LEVEL and SLOT-LEVEL granularity of atomic operations for thread safety:
     - refactor buffer manager for PAGE-LEVEL granularity
         - implement and use no-lock/lock-based concurrent hash map --> used in multiple places like buffer manager and slotted pages
         - implement and use no-lock/lock-based concurrent replacer --> used by the buffer manager
