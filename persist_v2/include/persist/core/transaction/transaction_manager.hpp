@@ -159,24 +159,41 @@ public:
    * @brief Abort given transaction. This operation rollsback all changes
    * performed during the transaction.
    *
-   * @param txn reference to the transaction to abort. Nop is performed if null
-   * is passed.
+   * @param txn reference to the transaction to abort.
+   * @param force force abort writes all modified pages to backend storage. If
+   * set to `false`, the modified pages are automatically written upon page
+   * replacement process of the buffer manager. Default value is set to `false`.
    */
-  void abort(Transaction &txn) {
+  void abort(Transaction &txn, bool force = false) {
     // Abort transaction if not in completed state, i.e. COMMITED or
     // ABORTED.
     if (txn.getState() != Transaction::State::COMMITED &&
         txn.getState() != Transaction::State::ABORTED) {
-      // Log transaction abort record
-      logAbort(txn);
-
       // Undo all operations performed as part of the transaction
       std::unique_ptr<LogRecord> logRecord =
           logManager->get(txn.getLogLocation());
+      undo(txn, *logRecord);
       while (!logRecord->getPrevLogRecordLocation().isNull()) {
         logRecord = logManager->get(logRecord->getPrevLogRecordLocation());
         undo(txn, *logRecord);
       }
+
+      // Log transaction abort record
+      logAbort(txn);
+
+      // Flush all staged pages if force mode commit
+      if (force) {
+
+        // TODO: Use page IDs in log records instead of a staged list of IDS?
+
+        // Flush all staged pages
+        for (auto pageId : txn.getStaged()) {
+          bufferManager->flush(pageId);
+        }
+      }
+
+      // Set transaction to aborted state as all operations performed by the
+      // transaction have been rolled backed.
       txn.setState(Transaction::State::ABORTED);
     }
   }
@@ -185,32 +202,41 @@ public:
    * @brief Commit given transaction. Persists all modified pages and metadata
    * to backend storage.
    *
-   * @param txn reference to the transaction to commit. Nop is performed if null
-   * is passed.
+   * @param txn reference to the transaction to commit.
+   * @param force force commit all modified pages to backend storage. If set
+   * to `false`, the modified pages are automatically written upon page
+   * replacement process of the buffer manager. Default value is set to
+   * `false`.
    */
-  void commit(Transaction &txn) {
-    // Commit pages if transaction not in completed state, i.e. COMMITED or
-    // ABORTED.
+  void commit(Transaction &txn, bool force = false) {
+    // Commit staged pages if transaction not in completed state, i.e.
+    // COMMITED or ABORTED.
     if (txn.getState() != Transaction::State::COMMITED &&
         txn.getState() != Transaction::State::ABORTED) {
       // Log transaction commit record
       logCommit(txn);
       // Flush all log records to stable storage
       logManager->flush();
-      // Set transaction to partially commited state. This is in compliance with
-      // the requirement that all log records are flushed to backend storage on
-      // transaction commit.
+      // Set transaction to partially commited state. This is in compliance
+      // with the requirement that all log records are flushed to backend
+      // storage on transaction commit.
       txn.setState(Transaction::State::PARTIALLY_COMMITED);
 
-      // TODO: Implement FORCE vs NO_FORCE mode of commit
+      // Flush all staged pages if force mode commit
+      if (force) {
 
-      // Flush all staged pages
-      for (auto pageId : txn.getStaged()) {
-        bufferManager->flush(pageId);
+        // TODO: Use page IDs in log records instead of a staged list of IDS?
+
+        // Flush all staged pages
+        for (auto pageId : txn.getStaged()) {
+          bufferManager->flush(pageId);
+        }
+        // Set transaction to commited state as all modified pages by the
+        // transaction have been flushed to disk.
+        txn.setState(Transaction::State::COMMITED);
+
+        // TODO: Transaction state change to COMMITED for non-force commit
       }
-      // Set transaction to commited state as all modified pages by the
-      // transaction have been flushed to disk.
-      txn.setState(Transaction::State::COMMITED);
     }
   }
 };

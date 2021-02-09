@@ -329,19 +329,21 @@ public:
    */
   const PageSlot::Location &getLocation() const { return location; }
 
+  // TODO: Add cont qualifier for get page slot methods.
+
   /**
    * @brief Get the first PageSlot targeted by log record
    *
    * @return Consant reference to page slot
    */
-  const PageSlot &getPageSlotA() const { return pageSlotA; }
+  PageSlot &getPageSlotA() { return pageSlotA; }
 
   /**
    * @brief Get the second PageSlot targeted by log record
    *
    * @return Consant reference to page slot
    */
-  const PageSlot &getPageSlotB() const { return pageSlotB; }
+  PageSlot &getPageSlotB() { return pageSlotB; }
 
   /**
    * @brief Get size of log record.

@@ -31,7 +31,7 @@
 
 namespace persist {
 
-// TODO: Use move operations in interface
+// TODO: Use move operations in interface for writing page slots in page.
 
 /**
  * @brief Slotted Page Base Class

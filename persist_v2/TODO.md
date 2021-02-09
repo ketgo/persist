@@ -74,3 +74,5 @@
     - Design manager class. The design should be extendable to support different concurrency control protocols
     - Implement different types of concurrency control policies
     - Implement RECORD-LEVEL atomic operations
+
+11. Split tests into unit-tests and integration-tests

@@ -36,7 +36,7 @@
 #include <persist/core/page/base.hpp>
 #include <persist/core/storage/base.hpp>
 
-#include <persist/core/buffer/fsl.hpp>
+#include <persist/core/fsm/fsl.hpp>
 #include <persist/core/buffer/page_handle.hpp>
 #include <persist/core/buffer/replacer/factory.hpp>
 
@@ -277,7 +277,7 @@ public:
   }
 
   /**
-   * @brief Save all modified and unpinned pages to backend storage->
+   * @brief Save all modified and unpinned pages to backend storage.
    *
    */
   void flushAll() {

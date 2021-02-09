@@ -37,7 +37,7 @@
 #include <list>
 #include <memory>
 
-#include <persist/core/buffer/fsl.hpp>
+#include <persist/core/fsm/fsl.hpp>
 #include <persist/core/page/base.hpp>
 
 // TODO: Add interface for segmenting storage. Instead of storing all the data

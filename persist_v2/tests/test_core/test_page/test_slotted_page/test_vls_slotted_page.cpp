@@ -232,6 +232,7 @@ protected:
   const ByteBuffer pageSlotData_1 = "testing_1"_bb,
                    pageSlotData_2 = "testing_2"_bb;
   std::unique_ptr<Storage<LogPage>> storage;
+  // TODO: Use Mock LogManager
   std::unique_ptr<LogManager> logManager;
   MockVLSSlottedPageObserver observer;
 
