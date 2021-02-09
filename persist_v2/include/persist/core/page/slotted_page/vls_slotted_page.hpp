@@ -480,8 +480,7 @@ public:
 
     // Insert record block at slot
     auto inserted = pageSlots.emplace(slotId, pageSlot);
-    // Stage current page
-    txn.stage(header.pageId);
+
     // Notify observers of modification
     notifyObservers();
 
@@ -512,8 +511,7 @@ public:
     header.updateSlot(slotId, pageSlot.size());
     // Update record block at slot
     it->second = std::move(pageSlot);
-    // Stage current page
-    txn.stage(header.pageId);
+
     // Notify observers of modification
     notifyObservers();
   }
@@ -531,6 +529,7 @@ public:
     if (it == pageSlots.end()) {
       throw PageSlotNotFoundError(header.pageId, slotId);
     }
+
     // Log delete operation
     PageSlot::Location location(header.pageId, slotId);
     txn.logDeleteOp(location, pageSlots.at(slotId));
@@ -539,8 +538,7 @@ public:
     header.freeSlot(slotId);
     // Removing record block from cache
     pageSlots.erase(it);
-    // Stage current page
-    txn.stage(header.pageId);
+
     // Notify observers of modification
     notifyObservers();
   }
@@ -562,8 +560,7 @@ public:
     header.createSlot(slotId, pageSlot.size());
     // Update record block at slot
     pageSlots.emplace(slotId, pageSlot);
-    // Stage current page
-    txn.stage(header.pageId);
+
     // Notify observers of modification
     notifyObservers();
   }

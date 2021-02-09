@@ -110,6 +110,8 @@ public:
    * @param pageSlot page slot inserted
    */
   void logInsertOp(PageSlot::Location &location, PageSlot &pageSlot) {
+    // Stage Page ID
+    staged.insert(location.pageId);
     // Log record for insert operation
     LogRecord logRecord(id, logLocation, LogRecord::Type::INSERT, location,
                         pageSlot);
@@ -125,6 +127,8 @@ public:
    */
   void logUpdateOp(PageSlot::Location &location, PageSlot &oldPageSlot,
                    PageSlot &newPageSlot) {
+    // Stage Page ID
+    staged.insert(location.pageId);
     // Log record for update operation
     LogRecord logRecord(id, logLocation, LogRecord::Type::UPDATE, location,
                         oldPageSlot, newPageSlot);
@@ -138,19 +142,13 @@ public:
    * @param pageSlot page slot deleted
    */
   void logDeleteOp(PageSlot::Location &location, PageSlot &pageSlot) {
+    // Stage Page ID
+    staged.insert(location.pageId);
     // Log record for delete operation
     LogRecord logRecord(id, logLocation, LogRecord::Type::DELETE, location,
                         pageSlot);
     logLocation = logManager->add(logRecord);
   }
-
-  /**
-   * Stage the page with given ID for commit. This adds the page ID to the
-   * stage list and marks the corresponding page as modified.
-   *
-   * @param pageId page identifier
-   */
-  void stage(PageId pageId) { staged.insert(pageId); }
 
   /**
    * @brief Get the staged page IDs in the transaction.

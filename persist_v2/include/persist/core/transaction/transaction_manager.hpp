@@ -41,7 +41,7 @@ namespace persist {
  *
  * @tparam PageType type of page
  */
-// TODO: This is brute force approach. Need to use polymorphic pages
+// TODO: This is brute force approach. Need to use polymorphic pages.
 template <class PageType> class TransactionManager {
   static_assert(std::is_base_of<SlottedPage, PageType>::value,
                 "PageType must be derived from SlottedPage class.");
@@ -160,11 +160,8 @@ public:
    * performed during the transaction.
    *
    * @param txn reference to the transaction to abort.
-   * @param force force abort writes all modified pages to backend storage. If
-   * set to `false`, the modified pages are automatically written upon page
-   * replacement process of the buffer manager. Default value is set to `false`.
    */
-  void abort(Transaction &txn, bool force = false) {
+  void abort(Transaction &txn) {
     // Abort transaction if not in completed state, i.e. COMMITED or
     // ABORTED.
     if (txn.getState() != Transaction::State::COMMITED &&
@@ -181,16 +178,8 @@ public:
       // Log transaction abort record
       logAbort(txn);
 
-      // Flush all staged pages if force mode commit
-      if (force) {
-
-        // TODO: Use page IDs in log records instead of a staged list of IDS?
-
-        // Flush all staged pages
-        for (auto pageId : txn.getStaged()) {
-          bufferManager->flush(pageId);
-        }
-      }
+      // NOTE: No need to flush log records and staged pages since the recovery
+      // manager will always abort any unfinished transaction.
 
       // Set transaction to aborted state as all operations performed by the
       // transaction have been rolled backed.
@@ -225,7 +214,7 @@ public:
       // Flush all staged pages if force mode commit
       if (force) {
 
-        // TODO: Use page IDs in log records instead of a staged list of IDS?
+        // TODO: Use page IDs in log records instead of a staged list?
 
         // Flush all staged pages
         for (auto pageId : txn.getStaged()) {

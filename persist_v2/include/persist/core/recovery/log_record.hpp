@@ -329,7 +329,7 @@ public:
    */
   const PageSlot::Location &getLocation() const { return location; }
 
-  // TODO: Add cont qualifier for get page slot methods.
+  // TODO: Add const qualifier for get page slot methods.
 
   /**
    * @brief Get the first PageSlot targeted by log record

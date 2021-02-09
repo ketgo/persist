@@ -69,6 +69,7 @@ public:
   // TODO: The insert interface is not thread safe as it exposes a loophole for
   // accessing protected slots by returning a pointer. We need a SlotHandle
   // which locks the access to slots from concurrent read and writes.
+  
   /**
    * Insert page slot to the page.
    *

@@ -38,11 +38,11 @@
         - NO-STEAL: Page modified by a transaction that is still active, i.e. yet to commit, should not be written to disk
         - STEAL: Page modified by a transaction that is still active, i.e. yet to commit, can be written to disk
 
-    Persist implements the STEAL mode for buffer manager as it results in better memory management, and supports both FORCE and NO-FORCE modes for transactions.
+    Persist implements the STEAL mode for buffer manager as it results in better memory handling and supports both FORCE and NO-FORCE modes for transactions.
 
 4. Approaches for handling Free Space Map (FSM):-
 
-    Maintaining an up to date non-volatile (saved in storage) free space map is not absolutely required. In case the FSM is lost, for example on system restart, at most any new INSERT operation will use a new page. Thus any free space available on previously written pages will be unutilized but all collection operations will still function correctly. In fact, the FSM will automatically be recovered with time whenever records stored on pages not in FSM are accessed. This is since the FSM is updated (in-memory) every time any page is accessed as part of a transaction. The following approaches can thus be taken to persist FSM.
+    Maintaining an up to date non-volatile (saved in storage) free space map is not required. In case the FSM is lost, such as on system restart, at most any new INSERT operation will use a new page. Any free space available on previously written pages will be left unutilized while all collection operations will still function correctly. The FSM will automatically be recovered with time whenever records stored on the pages not present in FSM are accessed. This is since the FSM is updated (in-memory) every time any page is accessed as part of a transaction. The following approaches can thus be taken to persist FSM.
 
         - Keep it in-memory always and never persist. The drawback of this approach is after a system failure or a restart, we will lose track of all the pages with free space. This implies that any following insert operations will use new pages. We can partially resolve this problem by updating the FSM on every `getPage` method call. In this way when a page with free space is accessed, the FSM will get notified and start tracking that page.
 

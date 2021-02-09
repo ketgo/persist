@@ -31,11 +31,6 @@
 
 #include <memory>
 
-/**
- * Enabled intrusive testing
- */
-// #define PERSIST_INTRUSIVE_TESTING
-
 #include <persist/core/buffer/buffer_manager.hpp>
 #include <persist/core/buffer/replacer/lru_replacer.hpp>
 #include <persist/core/page/log_page/log_page.hpp>
@@ -118,6 +113,29 @@ protected:
     _location.slotId = inserted.first;
 
     return _location;
+  }
+
+  /**
+   * @brief Helper function to update page slot as part of a transaction.
+   *
+   * @param txn reference to the transaction
+   * @param location reference to the location to update
+   * @param slot reference to the page lost to insert
+   */
+  void update(Transaction &txn, PageSlot::Location &location, PageSlot &slot) {
+    auto page = bufferManager->get(location.pageId);
+    page->updatePageSlot(location.slotId, slot, txn);
+  }
+
+  /**
+   * @brief Helper function to update page slot as part of a transaction.
+   *
+   * @param txn reference to the transaction
+   * @param location reference to the location to remove
+   */
+  void remove(Transaction &txn, PageSlot::Location &location) {
+    auto page = bufferManager->get(location.pageId);
+    page->removePageSlot(location.slotId, txn);
   }
 
 private:
@@ -233,68 +251,66 @@ TEST_F(TransactionManagerTestFixture, TestInsertAbort) {
   ASSERT_EQ(logRecords[0].getLogType(), LogRecord::Type::ABORT);
 }
 
-/*
 TEST_F(TransactionManagerTestFixture, TestUpdateAbort) {
-  Transaction txn = txnManager->begin();
-  Page &page = pageTable->get(pageId);
-  RecordBlock recordBlock;
-  recordBlock.data = "testing-update"_bb;
-  page.updateRecordBlock(txn, pageSlotId, recordBlock);
-  ASSERT_EQ(pageTable->get(pageId).getRecordBlock(txn, pageSlotId).data,
-            "testing-update"_bb);
-  txnManager->abort(txn);
-  ASSERT_EQ(pageTable->get(pageId).getRecordBlock(txn, pageSlotId).data,
-            "testing"_bb);
+  PageSlot slot("testing-update-abort"_bb);
 
+  // Update page slot as part of transaction
+  Transaction txn = txnManager->begin();
+  update(txn, location, slot);
+  txnManager->abort(txn);
+
+  Transaction _txn = txnManager->begin();
+  // Assert slot not updated due to aborted transaction
+  ASSERT_EQ(bufferManager->get(location.pageId)
+                ->getPageSlot(location.slotId, _txn)
+                .data,
+            "testing"_bb);
+  txnManager->commit(_txn);
+
+  // Retrive all log records for transaction
   std::vector<LogRecord> logRecords;
-  SeqNumber seqNumber = txn.prevSeqNumber;
-  while (seqNumber) {
-    logRecords.push_back(logManager->get(seqNumber));
-    ASSERT_EQ(logRecords.back().header.seqNumber, seqNumber);
-    seqNumber = logRecords.back().header.prevSeqNumber;
-  }
-  ASSERT_EQ(logRecords.size(), 5);
-  ASSERT_EQ(logRecords[4].type, LogRecord::Type::BEGIN);
-  ASSERT_EQ(logRecords[3].type, LogRecord::Type::UPDATE);
-  ASSERT_EQ(logRecords[3].location, RecordBlock::Location(pageId, pageSlotId));
-  ASSERT_EQ(logRecords[3].recordBlockA.data, "testing"_bb);
-  ASSERT_EQ(logRecords[3].recordBlockB.data, "testing-update"_bb);
-  ASSERT_EQ(logRecords[2].type, LogRecord::Type::ABORT);
-  ASSERT_EQ(logRecords[1].type, LogRecord::Type::UPDATE);
-  ASSERT_EQ(logRecords[1].location, RecordBlock::Location(pageId, pageSlotId));
-  ASSERT_EQ(logRecords[1].recordBlockA.data, "testing-update"_bb);
-  ASSERT_EQ(logRecords[1].recordBlockB.data, "testing"_bb);
-  ASSERT_EQ(logRecords[0].type, LogRecord::Type::DONE);
+  retriveLogRecord(txn, logRecords);
+
+  // Assert Rollback log records
+  ASSERT_EQ(logRecords.size(), 4);
+  ASSERT_EQ(logRecords[3].getLogType(), LogRecord::Type::BEGIN);
+  ASSERT_EQ(logRecords[2].getLogType(), LogRecord::Type::UPDATE);
+  ASSERT_EQ(logRecords[2].getLocation(), location);
+  ASSERT_EQ(logRecords[2].getPageSlotA().data, "testing"_bb);
+  ASSERT_EQ(logRecords[2].getPageSlotB().data, "testing-update-abort"_bb);
+  ASSERT_EQ(logRecords[1].getLogType(), LogRecord::Type::UPDATE);
+  ASSERT_EQ(logRecords[1].getLocation(), location);
+  ASSERT_EQ(logRecords[1].getPageSlotA().data, "testing-update-abort"_bb);
+  ASSERT_EQ(logRecords[1].getPageSlotB().data, "testing"_bb);
+  ASSERT_EQ(logRecords[0].getLogType(), LogRecord::Type::ABORT);
 }
 
 TEST_F(TransactionManagerTestFixture, TestRemoveAbort) {
+  // Remove page slot as part of transaction
   Transaction txn = txnManager->begin();
-  Page &page = pageTable->get(pageId);
-  page.removeRecordBlock(txn, pageSlotId);
-  EXPECT_THROW(pageTable->get(pageId).getRecordBlock(txn, pageSlotId),
-               RecordBlockNotFoundError);
+  remove(txn, location);
   txnManager->abort(txn);
-  ASSERT_EQ(pageTable->get(pageId).getRecordBlock(txn, pageSlotId).data,
-            "testing"_bb);
 
+  Transaction _txn = txnManager->begin();
+  // Assert slot not removed due to aborted transaction
+  ASSERT_EQ(bufferManager->get(location.pageId)
+                ->getPageSlot(location.slotId, _txn)
+                .data,
+            "testing"_bb);
+  txnManager->commit(_txn);
+
+  // Retrive all log records for transaction
   std::vector<LogRecord> logRecords;
-  SeqNumber seqNumber = txn.prevSeqNumber;
-  while (seqNumber) {
-    logRecords.push_back(logManager->get(seqNumber));
-    ASSERT_EQ(logRecords.back().header.seqNumber, seqNumber);
-    seqNumber = logRecords.back().header.prevSeqNumber;
-  }
-  ASSERT_EQ(logRecords.size(), 5);
-  ASSERT_EQ(logRecords[4].type, LogRecord::Type::BEGIN);
-  ASSERT_EQ(logRecords[3].type, LogRecord::Type::DELETE);
-  ASSERT_EQ(logRecords[3].location, RecordBlock::Location(pageId, pageSlotId));
-  ASSERT_EQ(logRecords[3].recordBlockA.data, "testing"_bb);
-  ASSERT_EQ(logRecords[3].recordBlockB.data, ""_bb);
-  ASSERT_EQ(logRecords[2].type, LogRecord::Type::ABORT);
-  ASSERT_EQ(logRecords[1].type, LogRecord::Type::INSERT);
-  ASSERT_EQ(logRecords[1].location, RecordBlock::Location(pageId, pageSlotId));
-  ASSERT_EQ(logRecords[1].recordBlockA.data, "testing"_bb);
-  ASSERT_EQ(logRecords[1].recordBlockB.data, ""_bb);
-  ASSERT_EQ(logRecords[0].type, LogRecord::Type::DONE);
+  retriveLogRecord(txn, logRecords);
+
+  // Assert Rollback log records
+  ASSERT_EQ(logRecords.size(), 4);
+  ASSERT_EQ(logRecords[3].getLogType(), LogRecord::Type::BEGIN);
+  ASSERT_EQ(logRecords[2].getLogType(), LogRecord::Type::DELETE);
+  ASSERT_EQ(logRecords[2].getLocation(), location);
+  ASSERT_EQ(logRecords[2].getPageSlotA().data, "testing"_bb);
+  ASSERT_EQ(logRecords[1].getLogType(), LogRecord::Type::INSERT);
+  ASSERT_EQ(logRecords[1].getLocation(), location);
+  ASSERT_EQ(logRecords[1].getPageSlotA().data, "testing"_bb);
+  ASSERT_EQ(logRecords[0].getLogType(), LogRecord::Type::ABORT);
 }
-*/
