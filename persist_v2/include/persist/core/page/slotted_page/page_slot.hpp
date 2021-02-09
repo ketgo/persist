@@ -247,8 +247,10 @@ public:
    *
    */
   PageSlot() {}
-  PageSlot(PageSlot::Header &header) : header(header) {}
-
+  PageSlot(PageSlot::Header header) : header(header) {}
+  PageSlot(ByteBuffer data) : data(data) {}
+  PageSlot(ByteBuffer data, PageSlot::Header header) : data(data), header(header) {}
+  
   /**
    * Get storage size of page slot.
    */

@@ -58,9 +58,6 @@ namespace persist {
  *
  */
 class Transaction {
-  friend class VLSSlottedPage;
-  friend class TransactionManager;
-
 public:
   /**
    * @brief Enumerated set of transaction states.
@@ -90,59 +87,10 @@ public:
   std::set<PageId> staged;
 
   /**
-   * @brief Location of the latest log record in the transaction. This
-   * used to link the the next log record.
+   * @brief Location of the latest log record in the transaction. This is used
+   * to link the the next log record.
    */
-  LogRecordLocation logLocation;
-
-  /**
-   * @brief Log INSERT operation.
-   *
-   * @param location location where record is inserted
-   * @param pageSlot page slot inserted
-   */
-  void logInsertOp(PageSlot::Location &location, PageSlot &pageSlot) {
-    // Log record for insert operation
-    LogRecord logRecord(id, logLocation.seqNumber, LogRecord::Type::INSERT,
-                        location, pageSlot);
-    logLocation = logManager->add(logRecord);
-  }
-
-  /**
-   * @brief Log UPDATE operation.
-   *
-   * @param location location where record is located
-   * @param oldPageSlot old page slot
-   * @param newPageSlot new page slot
-   */
-  void logUpdateOp(PageSlot::Location &location, PageSlot &oldPageSlot,
-                   PageSlot &newPageSlot) {
-    // Log record for update operation
-    LogRecord logRecord(id, logLocation.seqNumber, LogRecord::Type::UPDATE,
-                        location, oldPageSlot, newPageSlot);
-    logLocation = logManager->add(logRecord);
-  }
-
-  /**
-   * @brief Log DELETE operation.
-   *
-   * @param location location where record is located
-   * @param pageSlot page slot deleted
-   */
-  void logDeleteOp(PageSlot::Location &location, PageSlot &pageSlot) {
-    // Log record for delete operation
-    LogRecord logRecord(id, logLocation.seqNumber, LogRecord::Type::DELETE,
-                        location, pageSlot);
-    logLocation = logManager->add(logRecord);
-  }
-
-  /**
-   * Stage the page with given ID for commit. This adds the page ID to the
-   * stage list and marks the corresponding page as modified.
-   *
-   * @param pageId page identifier
-   */
-  void stage(PageId pageId) { staged.insert(pageId); }
+  LogRecord::Location logLocation;
 
 public:
   /**
@@ -156,18 +104,93 @@ public:
       : logManager(logManager), id(id), state(state), logLocation(0, 0) {}
 
   /**
+   * @brief Log INSERT operation.
+   *
+   * @param location location where record is inserted
+   * @param pageSlot page slot inserted
+   */
+  void logInsertOp(PageSlot::Location &location, PageSlot &pageSlot) {
+    // Stage Page ID
+    staged.insert(location.pageId);
+    // Log record for insert operation
+    LogRecord logRecord(id, logLocation, LogRecord::Type::INSERT, location,
+                        pageSlot);
+    logLocation = logManager->add(logRecord);
+  }
+
+  /**
+   * @brief Log UPDATE operation.
+   *
+   * @param location location where record is located
+   * @param oldPageSlot old page slot
+   * @param newPageSlot new page slot
+   */
+  void logUpdateOp(PageSlot::Location &location, PageSlot &oldPageSlot,
+                   PageSlot &newPageSlot) {
+    // Stage Page ID
+    staged.insert(location.pageId);
+    // Log record for update operation
+    LogRecord logRecord(id, logLocation, LogRecord::Type::UPDATE, location,
+                        oldPageSlot, newPageSlot);
+    logLocation = logManager->add(logRecord);
+  }
+
+  /**
+   * @brief Log DELETE operation.
+   *
+   * @param location location where record is located
+   * @param pageSlot page slot deleted
+   */
+  void logDeleteOp(PageSlot::Location &location, PageSlot &pageSlot) {
+    // Stage Page ID
+    staged.insert(location.pageId);
+    // Log record for delete operation
+    LogRecord logRecord(id, logLocation, LogRecord::Type::DELETE, location,
+                        pageSlot);
+    logLocation = logManager->add(logRecord);
+  }
+
+  /**
+   * @brief Get the staged page IDs in the transaction.
+   *
+   * @returns constant reference to set of staged page IDs
+   */
+  const std::set<PageId> &getStaged() const { return staged; }
+
+  /**
    * @brief Get the transaction ID
    *
-   * returns transaction unique identifier
+   * @returns transaction unique identifier
    */
-  TransactionId getId() { return id; }
+  TransactionId getId() const { return id; }
 
   /**
    * Get the state of transaction.
    *
    * @returns transaction state
    */
-  State getState() { return state; }
+  const State getState() const { return state; }
+
+  /**
+   * Set the state of transaction.
+   *
+   * @param state transaction state to set
+   */
+  void setState(State state) { this->state = state; }
+
+  /**
+   * @brief Get the location of the lastest log record in the transaction.
+   *
+   * @returns sequence number of the lastest log record in the transaction
+   */
+  const LogRecord::Location getLogLocation() const { return logLocation; }
+
+  /**
+   * @brief Set the location of the lastest log record in the transaction.
+   *
+   * @param location location of the lastest log record in the transaction
+   */
+  void setLogLocation(LogRecord::Location location) { logLocation = location; }
 
   /**
    * @brief Equality comparision operator.

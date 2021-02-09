@@ -27,11 +27,11 @@
 
 #include <persist/core/page/base.hpp>
 #include <persist/core/page/slotted_page/page_slot.hpp>
-#include <persist/core/transaction.hpp>
+#include <persist/core/transaction/transaction.hpp>
 
 namespace persist {
 
-// TODO: Use move operations in interface
+// TODO: Use move operations in interface for writing page slots in page.
 
 /**
  * @brief Slotted Page Base Class
@@ -47,7 +47,7 @@ namespace persist {
  * collections storing fixed length records. Similarly, the variable length
  * slot slotted page is used in collections storing variable length records.
  */
-class SlottedPage : public Page {
+class SlottedPage : public virtual Page {
 public:
   /**
    * @brief Destroy the Slotted Page Base object
@@ -69,6 +69,7 @@ public:
   // TODO: The insert interface is not thread safe as it exposes a loophole for
   // accessing protected slots by returning a pointer. We need a SlotHandle
   // which locks the access to slots from concurrent read and writes.
+  
   /**
    * Insert page slot to the page.
    *

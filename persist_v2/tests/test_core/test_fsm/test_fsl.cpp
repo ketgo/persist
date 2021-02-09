@@ -31,7 +31,7 @@
 #include <list>
 #include <memory>
 
-#include <persist/core/buffer/fsl.hpp>
+#include <persist/core/fsm/fsl.hpp>
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
 

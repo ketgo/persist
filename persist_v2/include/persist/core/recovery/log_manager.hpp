@@ -29,19 +29,11 @@
 #include <memory>
 
 #include <persist/core/buffer/buffer_manager.hpp>
-#include <persist/core/buffer/replacer/lru_replacer.hpp>
-#include <persist/core/defs.hpp>
 #include <persist/core/page/log_page/log_page.hpp>
 #include <persist/core/recovery/log_record.hpp>
 #include <persist/core/storage/base.hpp>
 
 namespace persist {
-
-/**
- * @brief Log record location type
- *
- */
-typedef LogPageSlot::Location LogRecordLocation;
 
 /**
  * @brief Log Manager Class
@@ -54,9 +46,8 @@ class LogManager {
   std::atomic<SeqNumber>
       seqNumber; //<- Sequence number of the latest log record. This is used to
                  // set sequence number of the next log record.
-  Storage<LogPage> *storage; //<- Pointer to backend log storage
-  BufferManager<LogPage, LRUReplacer>
-      bufferManager; //<- Log record buffer manager
+  Storage<LogPage> *storage;            //<- Pointer to backend log storage
+  BufferManager<LogPage> bufferManager; //<- Log record buffer manager
 
   bool started; //<- flag indicating log manager started
 
@@ -87,6 +78,8 @@ public:
         auto page = bufferManager.get(lastPageId);
         seqNumber = page->getLastSeqNumber();
       }
+      // Set state to started
+      started = true;
     }
   }
 
@@ -96,7 +89,10 @@ public:
    */
   void stop() {
     if (started) {
+      // Stop buffer manager
       bufferManager.stop();
+      // Set state to stopped
+      started = false;
     }
   }
 
@@ -106,7 +102,7 @@ public:
    * @param logRecord reference to the log record object to add
    * @returns sequence number of the added log record
    */
-  LogRecordLocation add(LogRecord &logRecord) {
+  LogRecord::Location add(LogRecord &logRecord) {
     // Set log record sequence number
     logRecord.setSeqNumber(++seqNumber);
     // Dump log record bytes
@@ -171,7 +167,7 @@ public:
    * @param seqNumber sequence number of the log record to get
    * @returns unique pointer to the loaded log record
    */
-  std::unique_ptr<LogRecord> get(LogRecordLocation location) {
+  std::unique_ptr<LogRecord> get(LogRecord::Location location) {
     // Get the first page slot from the given location and create the log record
     // by joining all related slots.
 

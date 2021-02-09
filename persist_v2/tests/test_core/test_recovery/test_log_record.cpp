@@ -44,31 +44,33 @@ protected:
   PageSlot pageSlotA, pageSlotB;
   const TransactionId txnId = 432;
   const PageSlot::Location location = {10, 1};
-  const SeqNumber seqNumber = 5, prevSeqNumber = 3;
+  const SeqNumber seqNumber = 5;
+  const LogRecord::Location prevLogRecordLocation = {1, 3};
   std::unique_ptr<LogRecord> logRecord;
   ByteBuffer input;
 
   void SetUp() override {
     pageSlotA.data = "testing-A"_bb;
     pageSlotB.data = "testing-B"_bb;
-    logRecord = std::make_unique<LogRecord>(txnId, prevSeqNumber,
+    logRecord = std::make_unique<LogRecord>(txnId, prevLogRecordLocation,
                                             LogRecord::Type::UPDATE, location,
                                             pageSlotA, pageSlotB);
     logRecord->header.seqNumber = seqNumber;
 
-    input = {5,   0,   0,   0,   0,   0,   0,   0,   3,   0,   0,   0,   0,
-             0,   0,   0,   176, 1,   0,   0,   0,   0,   0,   0,   76,  7,
-             7,   161, 44,  155, 219, 237, 2,   0,   0,   0,   10,  0,   0,
-             0,   0,   0,   0,   0,   1,   0,   0,   0,   0,   0,   0,   0,
+    input = {5,   0,   0,   0,   0,   0,   0,   0,   1,   0,   0,   0,   0,
+             0,   0,   0,   3,   0,   0,   0,   0,   0,   0,   0,   176, 1,
+             0,   0,   0,   0,   0,   0,   238, 51,  31,  30,  100, 49,  129,
+             95,  2,   0,   0,   0,   10,  0,   0,   0,   0,   0,   0,   0,
+             1,   0,   0,   0,   0,   0,   0,   0,   49,  0,   0,   0,   0,
+             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+             0,   0,   0,   0,   0,   0,   0,   0,   0,   195, 164, 223, 200,
+             40,  173, 239, 136, 116, 101, 115, 116, 105, 110, 103, 45,  65,
              49,  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
              0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
              0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-             0,   195, 164, 223, 200, 40,  173, 239, 136, 116, 101, 115, 116,
-             105, 110, 103, 45,  65,  49,  0,   0,   0,   0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   194, 164, 223, 200, 40,  173, 239,
-             136, 116, 101, 115, 116, 105, 110, 103, 45,  66};
+             0,   194, 164, 223, 200, 40,  173, 239, 136, 116, 101, 115, 116,
+             105, 110, 103, 45,  66};
   }
 };
 

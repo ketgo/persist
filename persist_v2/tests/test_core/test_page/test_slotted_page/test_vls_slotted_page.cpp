@@ -232,6 +232,7 @@ protected:
   const ByteBuffer pageSlotData_1 = "testing_1"_bb,
                    pageSlotData_2 = "testing_2"_bb;
   std::unique_ptr<Storage<LogPage>> storage;
+  // TODO: Use Mock LogManager
   std::unique_ptr<LogManager> logManager;
   MockVLSSlottedPageObserver observer;
 
@@ -415,7 +416,7 @@ TEST_F(VLSSlottedPageTestFixture, TestAddPageSlot) {
   auto logRecord = logManager->get(txn.logLocation);
   ASSERT_EQ(logRecord->header.transactionId, txn.getId());
   ASSERT_EQ(logRecord->header.seqNumber, txn.logLocation.seqNumber);
-  ASSERT_EQ(logRecord->header.prevSeqNumber, 0);
+  ASSERT_EQ(logRecord->header.prevLogRecordLocation.seqNumber, 0);
   ASSERT_EQ(logRecord->type, LogRecord::Type::INSERT);
   ASSERT_EQ(logRecord->location, PageSlot::Location(page->getId(), slotId));
   ASSERT_EQ(logRecord->pageSlotA, pageSlot);
@@ -441,7 +442,7 @@ TEST_F(VLSSlottedPageTestFixture, TestUpdatePageSlot) {
   auto logRecord = logManager->get(txn.logLocation);
   ASSERT_EQ(logRecord->header.transactionId, txn.getId());
   ASSERT_EQ(logRecord->header.seqNumber, txn.logLocation.seqNumber);
-  ASSERT_EQ(logRecord->header.prevSeqNumber, 0);
+  ASSERT_EQ(logRecord->header.prevLogRecordLocation.seqNumber, 0);
   ASSERT_EQ(logRecord->type, LogRecord::Type::UPDATE);
   ASSERT_EQ(logRecord->location, PageSlot::Location(page->getId(), slotId_1));
   ASSERT_EQ(logRecord->pageSlotA, *pageSlot_1);
@@ -464,7 +465,7 @@ TEST_F(VLSSlottedPageTestFixture, TestRemovePageSlot) {
   auto logRecord = logManager->get(txn.logLocation);
   ASSERT_EQ(logRecord->header.transactionId, txn.getId());
   ASSERT_EQ(logRecord->header.seqNumber, txn.logLocation.seqNumber);
-  ASSERT_EQ(logRecord->header.prevSeqNumber, 0);
+  ASSERT_EQ(logRecord->header.prevLogRecordLocation.seqNumber, 0);
   ASSERT_EQ(logRecord->type, LogRecord::Type::DELETE);
   ASSERT_EQ(logRecord->location, PageSlot::Location(page->getId(), slotId_2));
   ASSERT_EQ(logRecord->pageSlotA, *pageSlot_2);
