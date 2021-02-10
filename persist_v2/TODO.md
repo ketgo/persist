@@ -75,4 +75,6 @@
     - Implement different types of concurrency control policies
     - Implement RECORD-LEVEL atomic operations
 
-11. Split tests into unit-tests and integration-tests
+11. Benchmarking and Lazy serialization
+
+12. Split tests into unit-tests and integration-tests

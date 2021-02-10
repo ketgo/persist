@@ -36,14 +36,16 @@
 #include <persist/core/page/base.hpp>
 #include <persist/core/storage/base.hpp>
 
-#include <persist/core/fsm/fsl.hpp>
 #include <persist/core/buffer/page_handle.hpp>
 #include <persist/core/buffer/replacer/factory.hpp>
+#include <persist/core/fsm/fsl.hpp>
 
 // At the minimum 2 pages are needed in memory by record manager.
 #define MINIMUM_BUFFER_SIZE 2
 
 namespace persist {
+
+// TODO: Read-write lock for page.
 
 /**
  * @brief Buffer Manager
@@ -79,7 +81,7 @@ template <class PageType> class BufferManager : public PageObserver {
   Storage<PageType> *storage; //<- opened backend storage
   std::unique_ptr<FSL> fsl;   //<- free space list
 
-  uint64_t maxSize;                       //<- maximum size of buffer
+  uint64_t maxSize;                   //<- maximum size of buffer
   std::unique_ptr<Replacer> replacer; //<- page replacer
   typedef typename std::unordered_map<PageId, PageSlot> Buffer;
   Buffer buffer; //<- buffer of page slots
@@ -253,7 +255,7 @@ public:
   }
 
   /**
-   * Save a single page to backend storage-> The page will be stored only
+   * Save a single page to backend storage. The page will be stored only
    * if it is marked as modified and is unpinned.
    *
    * @param pageId page identifer

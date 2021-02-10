@@ -30,7 +30,8 @@
 #include <persist/core/page/slotted_page/vls_slotted_page.hpp>
 #include <persist/core/recovery/log_manager.hpp>
 #include <persist/core/transaction/transaction.hpp>
-#include <persist/core/utility.hpp>
+
+#include <persist/utility/uid.hpp>
 
 namespace persist {
 
@@ -148,7 +149,8 @@ public:
    */
   Transaction begin() {
     // Create a new transaction
-    Transaction txn(logManager, uuid::generate(), Transaction::State::ACTIVE);
+    Transaction txn(logManager, utility::generateUID(),
+                    Transaction::State::ACTIVE);
     // Log transaction begin record
     logBegin(txn);
 

@@ -41,15 +41,22 @@
 #include <persist/core/page/base.hpp>
 
 // TODO: Add interface for segmenting storage. Instead of storing all the data
-// into one big chunk of persistent memory, this can be used to split into
-// multiple smaller chunks. For example, storing data into multiple heap files.
+// into one big chunk of persistent memory, split into multiple smaller chunks.
+// For example, storing data into multiple heap files.
 
 namespace persist {
+
+// TODO: Read-write lock when concurrently read and write operations of the same
+// page.
 
 /**
  * @brief Storage Abstract Class
  *
- * Exposes interface to open and close a backend storage.
+ * Exposes interface to open and close a backend storage. The backend storage
+ * should provide the following concurency control:
+ *
+ *  - Read-write lock when concurrently acessing same page.
+ *  - Atomic allocate and de-allocate operations.
  *
  * @tparam PageType type of page to store
  */

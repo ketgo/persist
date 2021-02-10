@@ -1,7 +1,7 @@
 /**
- * utility.hpp - Persist
+ * utility/map.hpp - Persist
  *
- * Copyright 2020 Ketan Goyal
+ * Copyright 2021 Ketan Goyal
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,38 +22,23 @@
  * SOFTWARE.
  */
 
-/**
- * The header contains utility methods and class.
- */
-
-#ifndef UTILITY_HPP
-#define UTILITY_HPP
-
-#include <fstream>
-#include <limits>
-#include <random>
-
-#include <persist/core/defs.hpp>
+#ifndef MAP_HPP
+#define MAP_HPP
 
 namespace persist {
 
-namespace uuid {
+namespace utility {
+
 /**
- * @brief Generate 64 bit UUID
+ * @brief Thread safe key-value map class
  *
- * @returns 64 bit unique identifier.
+ * @tparam Key type of key
+ * @tparam Value type of value
  */
-static uint64_t generate() {
-  std::random_device rd;
-  std::mt19937_64 e2(rd());
-  std::uniform_int_distribution<uint64_t> dist(
-      0, std::numeric_limits<uint64_t>::max());
+template <class Key, class Value> class Map {};
 
-  return dist(e2);
-}
-
-} // namespace uuid
+} // namespace utility
 
 } // namespace persist
 
-#endif /* UTILITY_HPP */
+#endif /* MAP_HPP */

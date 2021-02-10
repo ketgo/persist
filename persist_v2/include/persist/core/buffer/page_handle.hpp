@@ -25,20 +25,21 @@
 #ifndef PAGE_HANDLE_HPP
 #define PAGE_HANDLE_HPP
 
-#include <iostream>
-
 #include <persist/core/buffer/replacer/base.hpp>
 #include <persist/core/page/base.hpp>
 
 namespace persist {
 
+// TODO: Pass read-write lock for page from buffer manager.
+
 /**
  * @brief Page Handle Class
  *
  * Page handles are objects used to safely access loaded pages in the buffer.
- * They are essentially pointers. Internally, a page handle object holds a
- * raw pointer to a loaded page and performs the pinning and unpinning
- * operation upon construction and destruction respectively. The page can be
+ * They are essentially pointers but with concurrent access control through a
+ * read-write lock. Internally, a page handle object holds a raw pointer to
+ * desired page. It performs the pinning and locking operation upon construction
+ * while unpinning and unlocking operations upon destruction. The page can be
  * accessed using the standard -> operator.
  *
  * @tparam PageType type of page handled by the class
@@ -49,8 +50,53 @@ template <class PageType> class PageHandle {
 
   PERSIST_PRIVATE
 
-  PageType *page;     //<- pinter to loaded page in buffer
-  Replacer *replacer; //<- pointer to page replacer
+  /**
+   * @brief Pointer to loaded page in buffer
+   *
+   */
+  PageType *page;
+
+  /**
+   * @brief Pointer to page replacer
+   *
+   */
+  Replacer *replacer;
+
+  /**
+   * @brief Flag to indicate handle has ownership
+   *
+   */
+  bool isOwner;
+
+  /**
+   * @brief Unset access ownserhip of the page.
+   *
+   */
+  void unset() {
+    isOwner = false;
+    page = nullptr;
+    replacer = nullptr;
+  }
+
+  /**
+   * @brief Acquire access ownership of page.
+   *
+   */
+  void acquire() {
+    // Pin page
+    replacer->pin(page->getId());
+  }
+
+  /**
+   * @brief Release access ownership of page.
+   *
+   */
+  void release() {
+    if (isOwner) {
+      // Unpin page
+      replacer->unpin(page->getId());
+    }
+  }
 
 public:
   /**
@@ -58,24 +104,56 @@ public:
    *
    */
   PageHandle(PageType *page, Replacer *replacer)
-      : page(page), replacer(replacer) {
-    // Pin page
-    replacer->pin(page->getId());
+      : page(page), replacer(replacer), isOwner(true) {
+    // Acquire access ownership of page
+    acquire();
   }
 
   /**
-   * @brief Destroy the Page Handle object
-   *
+   * @brief Move constructor for page handle
    */
-  ~PageHandle() {
-    // Unpin page
-    replacer->unpin(page->getId());
+  PageHandle(PageHandle &&other)
+      : page(other.page), replacer(other.replacer), isOwner(other.isOwner) {
+    // Unset ownership of the moved object
+    other.unset();
+  }
+
+  /**
+   * @brief Move assignment operator
+   */
+  PageHandle &operator=(PageHandle &&other) {
+    // Check for moving same object
+    if (this != &other) {
+      // Release access ownership of the current page.
+      if (isOwner) {
+        // Unpin page
+        replacer->unpin(page->getId());
+      }
+
+      // Copy members of moved object
+      page = other.page;
+      replacer = other.replacer;
+      isOwner = other.isOwner;
+
+      // Unset access ownership of the moved object
+      other.unset();
+    }
+
+    return *this;
   }
 
   /**
    * @brief Page access operator
    */
   PageType *operator->() const { return page; }
+
+  /**
+   * @brief Destroy the Page Handle object
+   */
+  ~PageHandle() {
+    // Release access ownership of page
+    release();
+  }
 };
 
 } // namespace persist

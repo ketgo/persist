@@ -38,32 +38,76 @@ using namespace persist;
 
 class PageHandleTestFixture : public ::testing::Test {
 protected:
-  const PageId pageId = 1;
+  const PageId pageId_1 = 1, pageId_2 = 2;
   const uint64_t pageSize = DEFAULT_PAGE_SIZE;
-  std::unique_ptr<SimplePage> page;
+  std::unique_ptr<SimplePage> page_1, page_2;
   std::unique_ptr<LRUReplacer> replacer;
   typedef PageHandle<SimplePage> PageHandle;
 
   void SetUp() override {
     // setting up pages
-    page = std::make_unique<SimplePage>(pageId, pageSize);
+    page_1 = std::make_unique<SimplePage>(pageId_1, pageSize);
+    page_2 = std::make_unique<SimplePage>(pageId_2, pageSize);
 
     // setting up replacer
     replacer = std::make_unique<LRUReplacer>();
-    replacer->track(pageId);
+    replacer->track(pageId_1);
+    replacer->track(pageId_2);
   }
 
   void TearDown() override {}
+
+  /**
+   * @brief Helper function to get page handle
+   */
+  PageHandle getPageHandle(PageId pageId) {
+    if (pageId == pageId_1) {
+      return PageHandle(page_1.get(), replacer.get());
+    }
+    return PageHandle(page_2.get(), replacer.get());
+  }
 };
 
 TEST_F(PageHandleTestFixture, TestLifeCycle) {
-  ASSERT_TRUE(!replacer->isPinned(pageId));
+  ASSERT_TRUE(!replacer->isPinned(pageId_1));
 
   {
-    PageHandle pageHandle(page.get(), replacer.get());
-    ASSERT_TRUE(replacer->isPinned(pageId));
-    ASSERT_EQ(pageHandle->getId(), pageId);
+    PageHandle pageHandle = getPageHandle(pageId_1);
+    ASSERT_TRUE(replacer->isPinned(pageId_1));
+    ASSERT_EQ(pageHandle->getId(), pageId_1);
   }
 
-  ASSERT_TRUE(!replacer->isPinned(pageId));
+  ASSERT_TRUE(!replacer->isPinned(pageId_1));
+}
+
+TEST_F(PageHandleTestFixture, TestMoveConstructor) {
+  ASSERT_TRUE(!replacer->isPinned(pageId_1));
+
+  {
+    PageHandle pageHandle(std::move(getPageHandle(pageId_1)));
+    ASSERT_TRUE(replacer->isPinned(pageId_1));
+    ASSERT_EQ(pageHandle->getId(), pageId_1);
+  }
+
+  ASSERT_TRUE(!replacer->isPinned(pageId_1));
+}
+
+TEST_F(PageHandleTestFixture, TestMoveAssignment) {
+  ASSERT_TRUE(!replacer->isPinned(pageId_1));
+  ASSERT_TRUE(!replacer->isPinned(pageId_2));
+
+  {
+    PageHandle pageHandle = getPageHandle(pageId_1);
+    ASSERT_TRUE(replacer->isPinned(pageId_1));
+    ASSERT_EQ(pageHandle->getId(), pageId_1);
+
+    // Move assignment
+    pageHandle = std::move(getPageHandle(pageId_2));
+    ASSERT_TRUE(!replacer->isPinned(pageId_1));
+    ASSERT_TRUE(replacer->isPinned(pageId_2));
+    ASSERT_EQ(pageHandle->getId(), pageId_2);
+  }
+
+  ASSERT_TRUE(!replacer->isPinned(pageId_1));
+  ASSERT_TRUE(!replacer->isPinned(pageId_2));
 }
