@@ -1,5 +1,5 @@
 /**
- * test_map.cpp - Persist
+ * utility/lock_free/map.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,35 +22,39 @@
  * SOFTWARE.
  */
 
+#ifndef UTILITY_LOCK_FREE_MAP_HPP
+#define UTILITY_LOCK_FREE_MAP_HPP
+
+
+namespace persist {
+
+namespace utility {
+
 /**
- * @brief Uint Test Thread Safe Map
+ * @brief Lock Free Map Class
  *
+ * The class implements an efficient thread-safe map which can be accessed
+ * concurrently.
+ *
+ * @tparam KeyType type of key
+ * @tparam ValueType type of value
  */
-
-#include <gtest/gtest.h>
-
-#include <memory>
-#include <thread>
-
-#include <persist/utility/map.hpp>
-
-using namespace persist;
-using namespace persist::utility;
-
-class UtilityMapTestFixture : public ::testing::Test {
-protected:
-  void SetUp() override {}
-
-  void TearDown() override {}
-
+template <class KeyType, class ValueType> class LockFreeMap {
 public:
-  void insert() { ASSERT_TRUE(true); }
+  /**
+   * @brief Handle Class
+   *
+   * Handles are used to safely access values in the map. They are essentially
+   * pointers but with access control through a read-write lock. Internally, a
+   * handle object holds a raw pointer to a value. It performs the locking and
+   * unlocking operations upon construction and destruction respectively. The
+   * value can be accessed using the standard `->` operator.
+   */
+  class Handle {};
 };
 
-TEST_F(UtilityMapTestFixture, TestInsert) {
+} // namespace utility
 
-  std::thread thread_1(&UtilityMapTestFixture::insert, this);
-  std::thread thread_2(&UtilityMapTestFixture::insert, this);
-  thread_2.join();
-  thread_1.join();
-}
+} // namespace persist
+
+#endif /* UTILITY_LOCK_FREE_MAP_HPP */
