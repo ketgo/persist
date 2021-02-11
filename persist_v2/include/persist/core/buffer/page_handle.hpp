@@ -30,17 +30,18 @@
 
 namespace persist {
 
-// TODO: Pass read-write lock for page from buffer manager.
+// TODO: Pass concurency manager instance to handle for managing concurrent
+// access to page.
 
 /**
  * @brief Page Handle Class
  *
  * Page handles are objects used to safely access loaded pages in the buffer.
- * They are essentially pointers but with concurrent access control through a
- * read-write lock. Internally, a page handle object holds a raw pointer to
- * desired page. It performs the pinning and locking operation upon construction
- * while unpinning and unlocking operations upon destruction. The page can be
- * accessed using the standard -> operator.
+ * They are essentially pointers but with concurrent access control through
+ * concurency control manager. Internally, a page handle object holds a raw
+ * pointer to desired page. They utilize RAII by performing the pinning,
+ * unpinning and access control operations on construction and destruction.
+ * The page can be accessed using the standard -> operator.
  *
  * @tparam PageType type of page handled by the class
  */
@@ -119,16 +120,14 @@ public:
   }
 
   /**
-   * @brief Move assignment operator
+   * @brief Move assignment operator. This will relese access ownership of the
+   * currently owned page.
    */
   PageHandle &operator=(PageHandle &&other) {
     // Check for moving same object
     if (this != &other) {
       // Release access ownership of the current page.
-      if (isOwner) {
-        // Unpin page
-        replacer->unpin(page->getId());
-      }
+      release();
 
       // Copy members of moved object
       page = other.page;

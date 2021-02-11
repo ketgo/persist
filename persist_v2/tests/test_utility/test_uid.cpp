@@ -1,5 +1,5 @@
 /**
- * utility/lock_free/map.hpp - Persist
+ * test_uid.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,39 +22,24 @@
  * SOFTWARE.
  */
 
-#ifndef UTILITY_LOCK_FREE_MAP_HPP
-#define UTILITY_LOCK_FREE_MAP_HPP
-
-
-namespace persist {
-
-namespace utility {
-
 /**
- * @brief Lock Free Map Class
+ * @brief Uint Test UID genrator
  *
- * The class implements an efficient thread-safe map which can be accessed
- * concurrently.
- *
- * @tparam KeyType type of key
- * @tparam ValueType type of value
  */
-template <class KeyType, class ValueType> class LockFreeMap {
-public:
-  /**
-   * @brief Handle Class
-   *
-   * Handles are used to safely access values in the map. They are essentially
-   * pointers but with access control through a read-write lock. Internally, a
-   * handle object holds a raw pointer to a value. It performs the locking and
-   * unlocking operations upon construction and destruction respectively. The
-   * value can be accessed using the standard `->` operator.
-   */
-  class Handle {};
-};
 
-} // namespace utility
+#include <gtest/gtest.h>
 
-} // namespace persist
+#include <memory>
+#include <thread>
 
-#endif /* UTILITY_LOCK_FREE_MAP_HPP */
+#include <persist/utility/uid.hpp>
+
+using namespace persist;
+using namespace persist::utility;
+
+TEST(UtilityUIDTest, TestGenerateUID) {
+  auto uid_1 = generateUID();
+  auto uid_2 = generateUID();
+
+  ASSERT_NE(uid_1, uid_2);
+}

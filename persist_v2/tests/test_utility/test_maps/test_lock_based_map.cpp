@@ -1,5 +1,5 @@
 /**
- * test_lock_free/test_map.cpp - Persist
+ * test_lock_based_map.cpp - Persist
  * 
  * Copyright 2021 Ketan Goyal
  * 
@@ -24,7 +24,7 @@
 
 
 /**
- * @brief Uint Test Lock Free Map
+ * @brief Uint Test Lock Based Map
  *
  */
 
@@ -33,12 +33,12 @@
 #include <memory>
 #include <thread>
 
-#include <persist/utility/lock_free/map.hpp>
+#include <persist/utility/maps/lock_based_map.hpp>
 
 using namespace persist;
 using namespace persist::utility;
 
-class UtilityLockFreeMapTestFixture : public ::testing::Test {
+class UtilityLockBasedMapTestFixture : public ::testing::Test {
 protected:
   void SetUp() override {}
 
@@ -48,10 +48,10 @@ public:
   void insert() { ASSERT_TRUE(true); }
 };
 
-TEST_F(UtilityLockFreeMapTestFixture, TestInsert) {
+TEST_F(UtilityLockBasedMapTestFixture, TestInsert) {
 
-  std::thread thread_1(&UtilityLockFreeMapTestFixture::insert, this);
-  std::thread thread_2(&UtilityLockFreeMapTestFixture::insert, this);
+  std::thread thread_1(&UtilityLockBasedMapTestFixture::insert, this);
+  std::thread thread_2(&UtilityLockBasedMapTestFixture::insert, this);
   thread_2.join();
   thread_1.join();
 }

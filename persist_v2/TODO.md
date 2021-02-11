@@ -60,23 +60,24 @@
         - implement and use no-lock/lock-based concurrent FreeSpaceManager --> used by the buffer manager
     - create a new thread-safe slotted page implementation for SLOT-LEVEL granularity
 
-7. Implement recovery manager and checkpoint manager
+7. Create Concurrency Control Manager:
+    - Design manager class. The design should be extendable to support different concurrency control protocols
+    - Create a separate project to PoC concurrency manager design
+    - Implement different types of concurrency control policies
+    - Implement RECORD-LEVEL atomic operations
 
-8. Create collection metadata manager:
+8. Implement recovery manager and checkpoint manager
+
+9. Create collection metadata manager:
     - handles metadata containing the starting location, ending location, and number of records in a collection
     - writes metadata to the first record block of the collection
 
-9. Implement List collection
+10. Implement List collection
     - implement record manager for list collection
-    - implement list collection class
-
-10. Create Concurrency Control Manager:
-    - Design manager class. The design should be extendable to support different concurrency control protocols
-    - Implement different types of concurrency control policies
-    - Implement RECORD-LEVEL atomic operations
+    - implement list collection class 
 
 11. Benchmarking and Lazy serialization
 
 12. Split tests into unit-tests and integration-tests
 
-13. Use the libcds
+13. Use the `libcds` library.
