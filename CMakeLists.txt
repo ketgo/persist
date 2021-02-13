@@ -8,9 +8,5 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 # Enable testing
 enable_testing()
 
-# Update git submodules
-include(GitSubmodules)
-
 add_subdirectory(${PROJECT_SOURCE_DIR}/third_party)
-#add_subdirectory(${PROJECT_SOURCE_DIR}/persist)
-add_subdirectory(${PROJECT_SOURCE_DIR}/persist_v2)
+add_subdirectory(${PROJECT_SOURCE_DIR}/persist)

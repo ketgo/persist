@@ -2,118 +2,131 @@
 scale 2
 
 
-interface RecordManager <Page, Replacer, FSM> {
-    + read(RecordLocation): ByteBuffer
-    + read(RecordLocation, Txn): ByteBuffer
-    + insert(ByteBuffer): RecordLocation
-    + insert(ByteBuffer, Txn): RecordLocation
-    + update(RecordLocation, ByteBuffer)
-    + update(RecordLocation, ByteBuffer, Txn)
-    + delete(RecordLocation)
-    + delete(RecordLocation, Txn)
-}
-
-package "Concurency" {
-    class ConcurencyManager {}
-}
-
-package "Transaction" {
-    class Transaction {}
-
-    class TransactionManager <ConcurencyManager> {
-    }
-}
-
-package "Recovery" {
-    class RecoveryManager {
-        - logManager: LogManager
+package "Core" {
+    interface RecordManager <Page, Replacer, FSM> {
+        + read(RecordLocation): ByteBuffer
+        + read(RecordLocation, Txn): ByteBuffer
+        + insert(ByteBuffer): RecordLocation
+        + insert(ByteBuffer, Txn): RecordLocation
+        + update(RecordLocation, ByteBuffer)
+        + update(RecordLocation, ByteBuffer, Txn)
+        + delete(RecordLocation)
+        + delete(RecordLocation, Txn)
     }
 
-    class CheckpointManager {
-        - logManager: LogManager
+    package "Concurency" {
+        class ConcurencyManager {
+            - bufferManager<Page>
+            + track(PageSlot)
+            + forget(PageSlot)
+            + begin(Transaction, PageId, SlotId, Operation)
+            + done(Transaction, PageId, SlotiD, Operation)
+        }
     }
 
-    class LogManager {
-        - storage: Storage
-        - bufferManager: BufferManager
-        - seqNumber: SeqNumber
-        + start()
-        + stop()
-        + get(LogRecordLocation): LogRecord
-        + add(LogRecord): LogRecordLocation
+    package "Transaction" {
+        class Transaction {}
+
+        class TransactionManager <ConcurencyManager> {
+            - logManager: LogManager
+            - bufferManager: BufferManager<SlottedPage>
+            + Transaction begin()
+            + abort(Transaction)
+            + commit(Transaction, Bool)
+        }
     }
 
-    class LogRecord {}
-}
+    package "Recovery" {
+        class RecoveryManager {
+            - logManager: LogManager
+        }
 
-package "Page" {
-    enum PageOperation {
-        + READ
-        + INSERT
-        + UPDATE
-        + DELETE
+        class CheckpointManager {
+            - logManager: LogManager
+        }
+
+        class LogManager {
+            - storage: Storage
+            - bufferManager: BufferManager<LogPage>
+            - seqNumber: SeqNumber
+            + start()
+            + stop()
+            + get(LogRecordLocation): LogRecord
+            + add(LogRecord): LogRecordLocation
+        }
+
+        class LogRecord {}
     }
 
-    interface Page {
-        - observers: PageObserver []
-        ---
-        - notifyObservers()
-        + registerObserver(PageObserver)
-        ..
-        + getId(): PageId
-        + getFreeSpace(PageOperation): uint64_t
-        + load(ByteBuffer)
-        + dump(ByteBuffer)
+    package "Page" {
+        enum PageOperation {
+            + READ
+            + INSERT
+            + UPDATE
+            + DELETE
+        }
+
+        interface Page {
+            - observers: PageObserver []
+            ---
+            - notifyObservers()
+            + registerObserver(PageObserver)
+            ..
+            + getId(): PageId
+            + getFreeSpace(PageOperation): uint64_t
+            + load(ByteBuffer)
+            + dump(ByteBuffer)
+        }
+
+        interface PageObserver {
+            + handleModifiedPage(PageId)
+        }
     }
 
-    interface PageObserver {
-        + handleModifiedPage(PageId)
-    }
-}
-
-package "Storage" {
-    abstract class Storage <Page> {
-        + getPageSize(): uint64_t
-        + getPageCount(): uint64_t
-        + read(): FSM
-        + write(FSM)
-        + read(Page): Page
-        + write(Page)
-        + allocate(): PageId
-        + deallocate(PageId)
-    }
-}
-
-package "Buffer" {
-    interface Replacer {
-        + track(PageId)
-        + forget(PageId)
-        + pin(PageId)
-        + isPinned(PageId): bool
-        + unpin(PageId)
+    package "Storage" {
+        abstract class Storage <Page> {
+            + getPageSize(): uint64_t
+            + getPageCount(): uint64_t
+            + read(): FSM
+            + write(FSM)
+            + read(Page): Page
+            + write(Page)
+            + allocate(): PageId
+            + deallocate(PageId)
+        }
     }
 
-    interface FSM {
-        + get(uint64_t): PageId
-        + set(PageId, uint64_t)
-    }
+    package "Buffer" {
+        interface Replacer {
+            + track(PageId)
+            + forget(PageId)
+            + pin(PageId)
+            + isPinned(PageId): bool
+            + unpin(PageId)
+        }
 
-    class BufferManager <Page, Replacer, FSM> {
-        - buffer: Page []
-        - replacer: Replacer
-        - storage: Storage
-        - fsm: FSM
-        ---
-        - put(Page)
-        + handleModifiedPage(PageId)
-        ..
-        + start()
-        + stop()
-        + get(PageId): PageHandle<Page>
-        + getNew(): PageHandle<Page>
-        + getFree(): PageHandle<Page>
-        + flush(PageId)
-        + flushAll()
+        interface FSM {
+            + get(uint64_t): PageId
+            + set(PageId, uint64_t)
+        }
+
+        class BufferManager <Page, Replacer, FSM> {
+            - buffer: Page []
+            - replacer: Replacer
+            - storage: Storage
+            - fsm: FSM
+            ---
+            - put(Page)
+            + handleModifiedPage(PageId)
+            ..
+            + start()
+            + stop()
+            + get(PageId): PageHandle<Page>
+            + getNew(): PageHandle<Page>
+            + getFree(): PageHandle<Page>
+            + flush(PageId)
+            + flushAll()
+        }
     }
 }
 

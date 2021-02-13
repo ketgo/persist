@@ -33,25 +33,19 @@
 #include <vector>
 
 #include <persist/core/exceptions.hpp>
-#include <persist/core/log_manager.hpp>
-#include <persist/core/page.hpp>
+#include <persist/core/page/simple_page.hpp>
 #include <persist/core/storage/memory_storage.hpp>
-#include <persist/core/transaction.hpp>
 
 using namespace persist;
 
 class MemoryStorageTestFixture : public ::testing::Test {
 protected:
   const uint64_t pageSize = 512;
-  std::unique_ptr<MemoryStorage> storage;
-  std::unique_ptr<LogManager> logManager;
+  std::unique_ptr<MemoryStorage<SimplePage>> storage;
 
   void SetUp() override {
-    storage = std::make_unique<MemoryStorage>(pageSize);
+    storage = std::make_unique<MemoryStorage<SimplePage>>(pageSize);
     storage->open();
-
-    // Setup log manager
-    logManager = std::make_unique<LogManager>();
   }
 
   void TearDown() override { storage->close(); }
@@ -69,30 +63,27 @@ TEST_F(MemoryStorageTestFixture, TestReadPageError) {
 }
 
 TEST_F(MemoryStorageTestFixture, TestReadWritePage) {
-  Transaction txn(*logManager, 0);
-  RecordBlock recordBlock;
-  recordBlock.data = "testing"_bb;
+  SimplePage page(1, pageSize);
+  ByteBuffer record = "testing"_bb;
+  page.setRecord(record);
 
-  Page page(1, pageSize);
-  PageSlotId slotId = page.addRecordBlock(txn, recordBlock).first;
   storage->write(page);
-
-  std::unique_ptr<Page> _page = storage->read(1);
-  RecordBlock &_recordBlock = _page->getRecordBlock(txn, slotId);
+  std::unique_ptr<SimplePage> _page = storage->read(1);
 
   ASSERT_EQ(page.getId(), _page->getId());
-  ASSERT_EQ(recordBlock.data, _recordBlock.data);
+  ASSERT_EQ(page.getRecord(), _page->getRecord());
 }
 
-TEST_F(MemoryStorageTestFixture, TestReadWriteMetaData) {
-  MetaData metadata;
-  metadata.pageSize = pageSize;
-  metadata.freePages = {1, 2, 3};
-  storage->write(metadata);
+TEST_F(MemoryStorageTestFixture, TestAllocate) {
+  ASSERT_EQ(storage->allocate(), 1);
+}
 
-  std::unique_ptr<MetaData> _metadata = storage->read();
+TEST_F(MemoryStorageTestFixture, TestReadWriteFSL) {
+  FSL fsl;
+  fsl.freePages = {1, 2, 3};
+  storage->write(fsl);
 
-  ASSERT_EQ(metadata.freePages, _metadata->freePages);
-  ASSERT_EQ(metadata.numPages, _metadata->numPages);
-  ASSERT_EQ(metadata.pageSize, _metadata->pageSize);
+  std::unique_ptr<FSL> _fsl = storage->read();
+
+  ASSERT_EQ(fsl.freePages, _fsl->freePages);
 }
