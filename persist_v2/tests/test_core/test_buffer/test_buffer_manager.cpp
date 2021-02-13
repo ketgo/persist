@@ -130,7 +130,7 @@ TEST_F(BufferManagerTestFixture, TestGetNew) {
 }
 
 TEST_F(BufferManagerTestFixture, TestGetFree) {
-  auto page = bufferManager->getFree();
+  auto page = bufferManager->getFreeOrNew();
 
   // Check if page has free space
   ASSERT_TRUE(page->freeSpace(Page::Operation::INSERT) > 0);
@@ -144,7 +144,7 @@ TEST_F(BufferManagerTestFixture, TestGetFreeForNewPage) {
     page->setRecord(record);
   }
 
-  auto page = bufferManager->getFree();
+  auto page = bufferManager->getFreeOrNew();
 
   // Check if page has free space
   ASSERT_TRUE(page->freeSpace(Page::Operation::INSERT) > 0);

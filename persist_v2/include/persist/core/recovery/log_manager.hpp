@@ -27,6 +27,7 @@
 
 #include <atomic>
 #include <memory>
+#include <mutex>
 
 #include <persist/core/buffer/buffer_manager.hpp>
 #include <persist/core/page/log_page/log_page.hpp>
@@ -48,8 +49,12 @@ class LogManager {
                  // set sequence number of the next log record.
   Storage<LogPage> *storage;            //<- Pointer to backend log storage
   BufferManager<LogPage> bufferManager; //<- Log record buffer manager
+  bool started;                         //<- flag indicating log manager started
 
-  bool started; //<- flag indicating log manager started
+  // TODO: Need granular locking
+  std::recursive_mutex
+      lock; //<- lock for achieving thread safety via mutual exclusion
+  typedef typename std::lock_guard<std::recursive_mutex> LockGuard;
 
 public:
   /**
@@ -68,6 +73,8 @@ public:
    *
    */
   void start() {
+    LockGuard guard(lock);
+
     if (!started) {
       // Start buffer manager
       bufferManager.start();
@@ -88,6 +95,8 @@ public:
    *
    */
   void stop() {
+    LockGuard guard(lock);
+
     if (started) {
       // Stop buffer manager
       bufferManager.stop();
@@ -103,6 +112,8 @@ public:
    * @returns sequence number of the added log record
    */
   LogRecord::Location add(LogRecord &logRecord) {
+    LockGuard guard(lock);
+
     // Set log record sequence number
     logRecord.setSeqNumber(++seqNumber);
     // Dump log record bytes
@@ -124,7 +135,7 @@ public:
     // Start loop to write content in linked record blocks
     while (toWriteSize > 0) {
       // Get a free page
-      auto page = bufferManager.getFree();
+      auto page = bufferManager.getFreeOrNew();
       PageId pageId = page->getId();
 
       // Create slot to add to page
@@ -168,6 +179,8 @@ public:
    * @returns unique pointer to the loaded log record
    */
   std::unique_ptr<LogRecord> get(LogRecord::Location location) {
+    LockGuard guard(lock);
+
     // Get the first page slot from the given location and create the log record
     // by joining all related slots.
 
@@ -197,7 +210,11 @@ public:
    * @brief Flush all log records to storage. This method is used by transaction
    * manager when a transaction is committed.
    */
-  void flush() { bufferManager.flushAll(); }
+  void flush() {
+    LockGuard guard(lock);
+
+    bufferManager.flushAll();
+  }
 };
 
 } // namespace persist

@@ -55,7 +55,7 @@
     - [DONE] Refactor transaction manager to use FORCE and NO-FORCE policies
     - [SKIPPED] Maybe introduce transaction context?
 
-6. Implement thread safety:
+6. [IN-PROGRESS] Implement thread safety for different classes:
     - implement and use no-lock/lock-based concurrent hash map --> used in multiple places like buffer manager and slotted pages
     - implement and use no-lock/lock-based concurrent replacer --> used by the buffer manager
     - implement and use no-lock/lock-based concurrent FreeSpaceManager --> used by the buffer manager

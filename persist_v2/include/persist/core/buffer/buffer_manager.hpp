@@ -51,7 +51,7 @@ namespace persist {
  * @brief Buffer Manager
  *
  * The buffer manager handles buffer of pages loaded in memory from a backend
- * storage-> The reading of pages while wrting of modifed pages are perfromed in
+ * storage. The reading of pages while wrting of modifed pages are perfromed in
  * compliance with the page repleacement policy.
  *
  * @tparam PageType type of page handled by the buffer manager
@@ -211,11 +211,11 @@ public:
 
   /**
    * Get a page with free space. If no such page is available then a new page
-   * is created.
+   * is loaded into the buffer and its handle returned.
    *
    * @returns page handle object
    */
-  PageHandle<PageType> getFree() {
+  PageHandle<PageType> getFreeOrNew() {
     LockGuard guard(lock);
 
     // Create new page if no page with free space is available
