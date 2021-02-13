@@ -65,7 +65,11 @@ if(USE_SANITIZER)
       message(STATUS "Building with Thread sanitizer")
       append("-fsanitize=thread" CMAKE_C_FLAGS CMAKE_CXX_FLAGS)
       # Added by Ketan Goyal. TODO: Check clang compiler
-      append("-Wthread-safety" CMAKE_C_FLAGS CMAKE_CXX_FLAGS)
+      if(CMAKE_C_COMPILER_ID MATCHES "[Cc]lang"
+       OR CMAKE_CXX_COMPILER_ID MATCHES "[Cc]lang")
+        message(STATUS "Building with Clang thread safety analysis.")
+        append("-Wthread-safety" CMAKE_C_FLAGS CMAKE_CXX_FLAGS)
+      endif()
     elseif(USE_SANITIZER MATCHES "([Ll]eak)")
       message(STATUS "Building with Leak sanitizer")
       append("-fsanitize=leak" CMAKE_C_FLAGS CMAKE_CXX_FLAGS)
