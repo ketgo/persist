@@ -55,7 +55,14 @@ class PersistException : public std::exception {};
 class CorruptException : public PersistException {};
 
 /**
- * @brief Not found error base excpetion class.
+ * @brief Data parsing base exception class
+ *
+ * Use this to capture all parsing exceptions.
+ */
+class ParseException : public PersistException {};
+
+/**
+ * @brief Not found error base excpetion class
  *
  * Use this to capture all not found exceptions.
  */
@@ -66,6 +73,38 @@ class NotFoundException : public PersistException {};
 // --------------------------------------------------
 // Derived Exception Classes
 // --------------------------------------------------
+
+/**
+ * Free Space List Parsing Error
+ *
+ * This error is thrown if unable to parse free space list.
+ */
+class FSLParseError : public ParseException {
+private:
+  std::string msg;
+
+public:
+  FSLParseError() : msg("FSL parsing error.") {}
+  FSLParseError(const char *msg) : msg(msg) {}
+  FSLParseError(std::string &msg) : msg(msg) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
+ * Free Space List Corrupt Error
+ *
+ * This error is thrown if the loaded free space list is corrupt.
+ */
+class FSLCorruptError : public CorruptException {
+private:
+  std::string msg;
+
+public:
+  FSLCorruptError() : msg("FSL corrupt error.") {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
 
 /**
  * Record Not Found Error
@@ -130,17 +169,17 @@ public:
 };
 
 /**
- * Page Table Error
+ * Buffer Manager Error
  *
- * This error is thrown by the page table.
+ * This error is thrown by the buffer manager.
  */
-class PageTableError : public PersistException {
+class BufferManagerError : public PersistException {
 private:
   std::string msg;
 
 public:
-  PageTableError(const char *msg) : msg(msg) {}
-  PageTableError(std::string &msg) : msg(msg) {}
+  BufferManagerError(const char *msg) : msg(msg) {}
+  BufferManagerError(std::string &msg) : msg(msg) {}
 
   const char *what() const throw() { return msg.c_str(); }
 };
@@ -150,7 +189,7 @@ public:
  *
  * This error is thrown if unable to parse log record.
  */
-class LogRecordParseError : public PersistException {
+class LogRecordParseError : public ParseException {
 private:
   std::string msg;
 
@@ -178,50 +217,50 @@ public:
 };
 
 /**
- * Record Block Parsing Error
+ * Page Slot Parsing Error
  *
- * This error is thrown if unable to parse record block.
+ * This error is thrown if unable to parse page slot.
  */
-class RecordBlockParseError : public PersistException {
+class PageSlotParseError : public ParseException {
 private:
   std::string msg;
 
 public:
-  RecordBlockParseError() : msg("Record block parsing error.") {}
-  RecordBlockParseError(const char *msg) : msg(msg) {}
-  RecordBlockParseError(std::string &msg) : msg(msg) {}
+  PageSlotParseError() : msg("Page slot parsing error.") {}
+  PageSlotParseError(const char *msg) : msg(msg) {}
+  PageSlotParseError(std::string &msg) : msg(msg) {}
 
   const char *what() const throw() { return msg.c_str(); }
 };
 
 /**
- * Record Block Corrupt Error
+ * Page Slot Corrupt Error
  *
- * This error is thrown if the loaded record block is corrupt.
+ * This error is thrown if the loaded page slot is corrupt.
  */
-class RecordBlockCorruptError : public CorruptException {
+class PageSlotCorruptError : public CorruptException {
 private:
   std::string msg;
 
 public:
-  RecordBlockCorruptError() : msg("Record block corrupt error.") {}
+  PageSlotCorruptError() : msg("Page slot corrupt error.") {}
 
   const char *what() const throw() { return msg.c_str(); }
 };
 
 /**
- * Record Block Not Found Error
+ * Page Slot Not Found Error
  *
- * This error is thrown when a record block does not exists inside
+ * This error is thrown when a page slot does not exists inside
  * a page.
  */
-class RecordBlockNotFoundError : public NotFoundException {
+class PageSlotNotFoundError : public NotFoundException {
 private:
   std::string msg;
 
 public:
-  RecordBlockNotFoundError(persist::PageId pageId, persist::PageSlotId &slotId)
-      : msg(std::string("Record Block at slot '") + std::to_string(slotId) +
+  PageSlotNotFoundError(persist::PageId pageId, persist::PageSlotId slotId)
+      : msg(std::string("Page slot '") + std::to_string(slotId) +
             std::string("' in page with ID '") + std::to_string(pageId) +
             std::string("' not found.")) {}
 
@@ -233,7 +272,7 @@ public:
  *
  * This error is thrown if unable to parse page.
  */
-class PageParseError : public PersistException {
+class PageParseError : public ParseException {
 private:
   std::string msg;
 
@@ -288,7 +327,7 @@ private:
 
 public:
   PageSizeError(uint64_t &pageSize)
-      : msg(std::string("Data Block size '") + std::to_string(pageSize) +
+      : msg(std::string("Page size '") + std::to_string(pageSize) +
             std::string("' less then minimum required size of '") +
             std::to_string(MINIMUM_PAGE_SIZE) + std::string("'.")) {}
 
@@ -300,7 +339,7 @@ public:
  *
  * This error is thrown if unable to parse storage metadata.
  */
-class MetaDataParseError : public PersistException {
+class MetaDataParseError : public ParseException {
 private:
   std::string msg;
 
@@ -332,7 +371,7 @@ public:
  *
  * This error is thrown if unable to parse storage metadata delta.
  */
-class MetaDataDeltaParseError : public PersistException {
+class MetaDataDeltaParseError : public ParseException {
 private:
   std::string msg;
 

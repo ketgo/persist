@@ -37,79 +37,118 @@
 #include <list>
 #include <memory>
 
-#include <persist/core/metadata.hpp>
-#include <persist/core/page.hpp>
+#include <persist/core/fsm/fsl.hpp>
+#include <persist/core/page/base.hpp>
+
+// TODO: Add interface for segmenting storage. Instead of storing all the data
+// into one big chunk of persistent memory, split into multiple smaller chunks.
+// For example, storing data into multiple heap files.
 
 namespace persist {
 
+// TODO: Read-write lock when concurrently read and write operations of the same
+// page.
+
 /**
- * Storage Abstract Class
+ * @brief Storage Abstract Class
  *
- * Exposes interface to open and close a backend storage.
+ * Exposes interface to open and close a backend storage. The backend storage
+ * should provide the following concurency control:
+ *
+ *  - Read-write lock when concurrently acessing same page.
+ *  - Atomic allocate and de-allocate operations.
+ *
+ * @tparam PageType type of page to store
  */
-class Storage {
+template <class PageType> class Storage {
+  static_assert(std::is_base_of<Page, PageType>::value,
+                "PageType must be derived from Page class.");
+
 public:
+  /**
+   * @brief Destroy the Storage object
+   *
+   */
   virtual ~Storage() {} //<- Virtual destructor
 
   /**
-   * Open storage.
+   * @brief Open storage.
    */
   virtual void open() = 0;
 
   /**
-   * Check if storage is open.
+   * @brief Check if storage is open.
    */
   virtual bool is_open() = 0;
 
   /**
-   * Close storage.
+   * @brief Close storage.
    */
   virtual void close() = 0;
 
   /**
-   * Remove storage.
+   * @brief Remove storage.
    */
   virtual void remove() = 0;
 
   /**
-   * Read storage metadata information. In case no metadata information is
-   * available a pointer to new metadata object is returned.
+   * @brief Get page size.
    *
-   * @return pointer to MetaData object
+   * @returns page size used in storage
    */
-  virtual std::unique_ptr<MetaData> read() = 0;
+  virtual uint64_t getPageSize() = 0;
 
   /**
-   * Write MetaData object to storage.
+   * @brief Get page count.
    *
-   * @param metadata reference to MetaData object to be written
+   * @returns number of pages in storage
    */
-  virtual void write(MetaData &metadata) = 0;
+  virtual uint64_t getPageCount() = 0;
 
   /**
-   * Read Page with given identifier from storage.
+   * @brief Read free space list from storage. If no free list is found then
+   * pointer to an empty FSL object is returned.
+   *
+   * @return pointer to FSL object
+   */
+  virtual std::unique_ptr<FSL> read() = 0;
+
+  /**
+   * @brief Write FSL object to storage.
+   *
+   * @param fsl reference to FSL object to be written
+   */
+  virtual void write(FSL &fsl) = 0;
+
+  /**
+   * @brief Read Page with given identifier from storage.
    *
    * @param pageId page identifier
    * @returns pointer to Page object
    */
-  virtual std::unique_ptr<Page> read(PageId pageId) = 0;
+  virtual std::unique_ptr<PageType> read(PageId pageId) = 0;
 
   /**
-   * Write Page object to storage.
+   * @brief Write Page object to storage.
    *
    * @param page reference to Page object to be written
    */
-  virtual void write(Page &page) = 0;
+  virtual void write(PageType &page) = 0;
 
   /**
-   * @brief Factory method to create backend storage object
+   * @brief Allocate a new page in storage. The identifier of the newly created
+   * page is returned.
    *
-   * @param connectionString url containing the type of storage backend and its
-   * arguments. The url schema is `<type>://<host>/<path>?<args>`. For example a
-   * file storage url looks like `file:///myCollection.db` where the backend
-   * uses the file `myCollection.db` in the root folder `/` to store data.
+   * @returns identifier of the newly allocated page
    */
-  static std::unique_ptr<Storage> create(std::string connectionString);
+  virtual PageId allocate() = 0;
+
+  /**
+   * @brief Deallocate page with given identifier.
+   *
+   * @param pageId identifier of the page to deallocate
+   */
+  virtual void deallocate(PageId pageId) = 0;
 };
 
 } // namespace persist
