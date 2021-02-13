@@ -35,9 +35,11 @@
 #include <persist/core/page/simple_page.hpp>
 #include <persist/core/storage/file_storage.hpp>
 
+#include "common.hpp"
+
 using namespace persist;
 
-const std::string base = "persist_v2/tests/data";
+const std::string base = DATA_PATH;
 
 /********************************
  * Testing for New Storage

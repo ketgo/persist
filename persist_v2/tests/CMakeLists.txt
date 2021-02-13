@@ -14,7 +14,15 @@ add_executable(
     ${SOURCES}
 )
 
-# Code coverage
+# Set build specific information in header for unit tests
+get_target_property(DATA_PATH ${TEST_BINARY} BINARY_DIR)
+set(DATA_PATH ${DATA_PATH}/data)
+configure_file (
+    "${CMAKE_CURRENT_SOURCE_DIR}/common.hpp.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/common.hpp"
+)
+
+# Setup code coverage
 target_code_coverage(${TEST_BINARY} AUTO)
 
 # Add executable to run by ctest
@@ -39,5 +47,5 @@ target_link_libraries(
 # Copy test data directory
 add_custom_command(
     TARGET ${TEST_BINARY} PRE_BUILD
-    COMMAND ${CMAKE_COMMAND} -E remove_directory $<TARGET_FILE_DIR:${TEST_BINARY}>/data
-    COMMAND ${CMAKE_COMMAND} -E copy_directory  ${CMAKE_CURRENT_SOURCE_DIR}/data/ $<TARGET_FILE_DIR:${TEST_BINARY}>/data)
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${DATA_PATH}
+    COMMAND ${CMAKE_COMMAND} -E copy_directory  ${CMAKE_CURRENT_SOURCE_DIR}/data/ ${DATA_PATH})
