@@ -30,12 +30,14 @@
     - [DONE] refactor metadata object to FSL
     - [DONE] refactor read and write methods for metadata to that for FSL.
 
-2. [IN-PROGRESS] Refactor buffer manager to
+2. [DONE] Refactor buffer manager to
     - [DONE] use replacers for the page replacement policy
     - [DONE] new page creation using allocate method of the backend storage
     - [DONE] implement very basic thread-safety by applying a recursive mutex to each method call
 
-3. [LOW-PRIORITY] Create a FreeSpaceManager for efficient detection and handling of pages with free space
+3. [IN-PROGRESS] Create a FreeSpaceManager for efficient detection and handling of pages with free space
+    - serialize/deserialize polymorphic pages
+    - refactor buffer manager to use polymorphic page
     - refactor `getFree` method of buffer manager to take sizeHint parameter as an argument. This parameter provides a hint to the free space manager about the amount of free space requested. Note that this parameter is treated only as a hint as the FreeSpaceManager is free to return a page with less available free space.
     - create an interface for FreeSpaceManager to allow for different FreeSpaceManager implementations
     - implement a basic FreeSpaceManager
@@ -53,18 +55,16 @@
     - [DONE] Refactor transaction manager to use FORCE and NO-FORCE policies
     - [SKIPPED] Maybe introduce transaction context?
 
-6. [IN_PROGRESS] Implement PAGE-LEVEL and SLOT-LEVEL granularity of atomic operations for thread safety:
-    - refactor buffer manager for PAGE-LEVEL granularity
-        - implement and use no-lock/lock-based concurrent hash map --> used in multiple places like buffer manager and slotted pages
-        - implement and use no-lock/lock-based concurrent replacer --> used by the buffer manager
-        - implement and use no-lock/lock-based concurrent FreeSpaceManager --> used by the buffer manager
-    - create a new thread-safe slotted page implementation for SLOT-LEVEL granularity
+6. Implement thread safety:
+    - implement and use no-lock/lock-based concurrent hash map --> used in multiple places like buffer manager and slotted pages
+    - implement and use no-lock/lock-based concurrent replacer --> used by the buffer manager
+    - implement and use no-lock/lock-based concurrent FreeSpaceManager --> used by the buffer manager
 
 7. Create Concurrency Control Manager:
     - Design manager class. The design should be extendable to support different concurrency control protocols
     - Create a separate project to PoC concurrency manager design
     - Implement different types of concurrency control policies
-    - Implement RECORD-LEVEL atomic operations
+    - Implement RECORD-LEVEL atomic operations by providing concurrency control at PAGE_SLOT-LEVEL
 
 8. Implement recovery manager and checkpoint manager
 
@@ -74,10 +74,8 @@
 
 10. Implement List collection
     - implement record manager for list collection
-    - implement list collection class 
+    - implement list collection class
 
 11. Benchmarking and Lazy serialization
 
 12. Split tests into unit-tests and integration-tests
-
-13. Use the `libcds` library.

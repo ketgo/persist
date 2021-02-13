@@ -62,7 +62,6 @@ if(${SOURCES})
     else()
         target_link_libraries(
             ${LIB} 
-            libcds
             # NOTE: Add any required dependencies here
         )
     endif()

@@ -17,10 +17,10 @@ package "Core" {
     package "Concurency" {
         class ConcurencyManager {
             - bufferManager<Page>
-            + track(Page)
-            + forget(Page)
-            + begin(Transaction, PageId, Operation)
-            + done(Transaction, PageId, Operation)
+            + track(PageSlot)
+            + forget(PageSlot)
+            + begin(Transaction, PageId, SlotId, Operation)
+            + done(Transaction, PageId, SlotiD, Operation)
         }
     }
 

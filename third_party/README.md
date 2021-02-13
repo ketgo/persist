@@ -22,6 +22,6 @@
  SOFTWARE.
 -->
 
-# Third Part Dependencies
+# Third Party Dependencies
 
-The folder contains all third part dependencies.
+The folder contains all third party dependencies.
