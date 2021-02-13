@@ -6,8 +6,14 @@ configure_file (
     "${CMAKE_CURRENT_SOURCE_DIR}/include/persist/version.hpp"
 )
 
-# Set C++ standrard to 14
-set(CMAKE_CXX_STANDARD 14)
+include(c++-standards)
+include(code-coverage)
+include(formatting)
+include(sanitizers)
+include(tools)
+
+# Require C++14
+cxx_14()
 
 # Set project lib name
 set(LIB ${PROJECT_NAME}_lib)
@@ -16,27 +22,19 @@ set(TEST_BINARY ${PROJECT_NAME}_test)
 # Set test binary name
 set(BENCHMARK_BINARY ${PROJECT_NAME}_benchmark)
 
-# Coverage
-if (COVERAGE)
-    include(CodeCoverage)
-    append_coverage_compiler_flags()
-    setup_target_for_coverage_lcov(
-        NAME ${PROJECT_NAME}_cov 
-        EXECUTABLE ${TEST_BINARY} 
-        DEPENDENCIES ${LIB} ${TEST_BINARY}
-        EXCLUDE "third_party/*" "/*usr/*")
-    setup_target_for_coverage_clean(
-        NAME scrub
-    )
-endif()
-
 # Get source files
 file(
     GLOB_RECURSE 
     SOURCES 
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.[hc]pp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.[hc]
 )
+
+# Cpp checks for code quality
+cppcheck(
+  --enable=warning,performance,portability,missingInclude
+  --template="[{severity}][{id}] {message} {callstack} \(On {file}:{line}\)"
+  --suppress=missingIncludeSystem --quiet --verbose --force)
 
 # If source files found then make static lib else create header-only interface lib
 if(${SOURCES})
