@@ -27,7 +27,6 @@
 
 #include <list>
 #include <memory>
-#include <mutex>
 #include <set>
 #include <unordered_map>
 
@@ -38,8 +37,6 @@
 #include <persist/core/fsm/fsl.hpp>
 #include <persist/core/page/base.hpp>
 #include <persist/core/storage/base.hpp>
-
-#include <persist/utility/annotations.hpp>
 #include <persist/utility/mutex.hpp>
 
 // At the minimum 2 pages are needed in memory by record manager.
@@ -158,6 +155,9 @@ public:
   /**
    * @brief Start buffer manager.
    *
+   * @thread_unsafe The method not thread safe as it is expected that the user
+   * starts the buffer manager before spawning any threads.
+   *
    */
   void start() {
     LockGuard guard(lock);
@@ -178,6 +178,8 @@ public:
    * All the modified pages loaded onto the buffer are flushed to backend
    * storage before stopping the manager.
    *
+   * @thread_unsafe The method not thread safe as it is expected that the user
+   * stops the buffer manager after joining all the threads.
    */
   void stop() {
     LockGuard guard(lock);
@@ -195,6 +197,8 @@ public:
   /**
    * Get a new page. The method creates a new page and loads it into buffer.
    * The `numPage` attribute in the storage metadata is increased by one.
+   *
+   * @thread_safe
    *
    * @returns page handle object
    */
@@ -219,6 +223,8 @@ public:
    * Get a page with free space. If no such page is available then a new page
    * is loaded into the buffer and its handle returned.
    *
+   * @thread_safe
+   *
    * @returns page handle object
    */
   PageHandle<PageType> getFreeOrNew() {
@@ -242,6 +248,8 @@ public:
    * is not already found in the buffer. In case the page is not found in the
    * backend storage a PageNotFoundError exception is raised.
    *
+   * @thread_safe
+   *
    * @param pageId page ID
    * @returns page handle object
    */
@@ -263,6 +271,8 @@ public:
   /**
    * Save a single page to backend storage. The page will be stored only
    * if it is marked as modified and is unpinned.
+   *
+   * @thread_safe
    *
    * @param pageId page identifer
    */
@@ -287,6 +297,7 @@ public:
   /**
    * @brief Save all modified and unpinned pages to backend storage.
    *
+   * @thread_safe
    */
   void flushAll() {
     LockGuard guard(lock);
@@ -300,6 +311,8 @@ public:
   /**
    * @brief Handle page modifications. This method marks the page slot for given
    * page ID as modified and updates the free space list.
+   *
+   * @thread_safe
    *
    * @param pageId page identifier
    */

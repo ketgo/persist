@@ -28,7 +28,7 @@
 #include <set>
 
 #include <persist/core/defs.hpp>
-#include <persist/core/recovery/log_manager.hpp>
+#include <persist/core/log/log_manager.hpp>
 
 namespace persist {
 

@@ -28,7 +28,7 @@
 #include <persist/core/buffer/buffer_manager.hpp>
 #include <persist/core/buffer/replacer/base.hpp>
 #include <persist/core/page/slotted_page/vls_slotted_page.hpp>
-#include <persist/core/recovery/log_manager.hpp>
+#include <persist/core/log/log_manager.hpp>
 #include <persist/core/transaction/transaction.hpp>
 
 #include <persist/utility/uid.hpp>
