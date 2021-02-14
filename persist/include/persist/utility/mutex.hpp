@@ -164,7 +164,7 @@ private:
   std::lock_guard<MutexType> guard;
 
 public:
-  LockGuard(MutexType &m) ACQUIRE(m) : guard(m.native_handle()) {}
+  LockGuard(MutexType &m) ACQUIRE(m) : guard(m) {}
   ~LockGuard() RELEASE() {}
   std::lock_guard<MutexType> &native_handle() { return guard; }
 };
@@ -183,7 +183,7 @@ private:
   std::unique_lock<MutexType> guard;
 
 public:
-  UniqueLock(MutexType &m) ACQUIRE(m) : guard(m.native_handle()) {}
+  UniqueLock(MutexType &m) ACQUIRE(m) : guard(m) {}
   ~UniqueLock() RELEASE() {}
   std::unique_lock<MutexType> &native_handle() { return guard; }
 };
@@ -203,7 +203,7 @@ private:
   std::shared_lock<MutexType> guard;
 
 public:
-  SharedLock(MutexType &m) : guard(m.native_handle()) {}
+  SharedLock(MutexType &m) : guard(m) {}
   ~SharedLock() RELEASE() {}
   std::shared_lock<MutexType> &native_handle() { return guard; }
 };

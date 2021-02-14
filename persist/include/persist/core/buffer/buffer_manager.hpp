@@ -63,10 +63,14 @@ template <class PageType> class BufferManager : public PageObserver {
                 "PageType must be derived from Page class.");
 
   PERSIST_PRIVATE
+  /**
+   * @brief Recursive lock for thread safety
+   *
+   */
   // TODO: Need granular locking
-  Mutex<std::recursive_mutex>
-      lock; //<- lock for achieving thread safety via mutual exclusion
-  typedef typename std::lock_guard<Mutex<std::recursive_mutex>> LockGuard;
+  typedef typename persist::Mutex<std::recursive_mutex> Mutex;
+  Mutex lock; //<- lock for achieving thread safety via mutual exclusion
+  typedef typename persist::LockGuard<Mutex> LockGuard;
 
   /**
    * Page Slot Struct
@@ -85,9 +89,9 @@ template <class PageType> class BufferManager : public PageObserver {
     PageSlot() : page(nullptr), modified(false) {}
   };
 
-  Storage<PageType> *storage;         //<- opened backend storage
-  std::unique_ptr<FSL> fsl;           //<- free space list
-  std::unique_ptr<Replacer> replacer; //<- page replacer
+  Storage<PageType> *storage; //<- opened backend storage
+  std::unique_ptr<FSL> fsl;   //<- free space list
+  std::unique_ptr<Replacer> replacer GUARDED_BY(lock); //<- page replacer
 
   uint64_t maxSize GUARDED_BY(lock); //<- maximum size of buffer
   typedef typename std::unordered_map<PageId, PageSlot> Buffer;
