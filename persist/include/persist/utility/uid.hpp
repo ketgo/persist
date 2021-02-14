@@ -31,7 +31,6 @@
 
 namespace persist {
 
-namespace utility {
 /**
  * @brief Generate 64 bit UID
  *
@@ -45,8 +44,6 @@ static uint64_t generateUID() {
 
   return dist(e2);
 }
-
-} // namespace utility
 
 } // namespace persist
 

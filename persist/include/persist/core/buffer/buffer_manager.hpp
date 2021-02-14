@@ -31,14 +31,16 @@
 #include <set>
 #include <unordered_map>
 
+#include <persist/core/buffer/page_handle.hpp>
+#include <persist/core/buffer/replacer/factory.hpp>
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
+#include <persist/core/fsm/fsl.hpp>
 #include <persist/core/page/base.hpp>
 #include <persist/core/storage/base.hpp>
 
-#include <persist/core/buffer/page_handle.hpp>
-#include <persist/core/buffer/replacer/factory.hpp>
-#include <persist/core/fsm/fsl.hpp>
+#include <persist/utility/annotations.hpp>
+#include <persist/utility/mutex.hpp>
 
 // At the minimum 2 pages are needed in memory by record manager.
 #define MINIMUM_BUFFER_SIZE 2
@@ -61,6 +63,11 @@ template <class PageType> class BufferManager : public PageObserver {
                 "PageType must be derived from Page class.");
 
   PERSIST_PRIVATE
+  // TODO: Need granular locking
+  Mutex<std::recursive_mutex>
+      lock; //<- lock for achieving thread safety via mutual exclusion
+  typedef typename std::lock_guard<Mutex<std::recursive_mutex>> LockGuard;
+
   /**
    * Page Slot Struct
    *
@@ -78,19 +85,14 @@ template <class PageType> class BufferManager : public PageObserver {
     PageSlot() : page(nullptr), modified(false) {}
   };
 
-  Storage<PageType> *storage; //<- opened backend storage
-  std::unique_ptr<FSL> fsl;   //<- free space list
-
-  uint64_t maxSize;                   //<- maximum size of buffer
+  Storage<PageType> *storage;         //<- opened backend storage
+  std::unique_ptr<FSL> fsl;           //<- free space list
   std::unique_ptr<Replacer> replacer; //<- page replacer
-  typedef typename std::unordered_map<PageId, PageSlot> Buffer;
-  Buffer buffer; //<- buffer of page slots
-  bool started;  //<- flag indicating buffer manager started
 
-  // TODO: Need granular locking
-  std::recursive_mutex
-      lock; //<- lock for achieving thread safety via mutual exclusion
-  typedef typename std::lock_guard<std::recursive_mutex> LockGuard;
+  uint64_t maxSize GUARDED_BY(lock); //<- maximum size of buffer
+  typedef typename std::unordered_map<PageId, PageSlot> Buffer;
+  Buffer buffer GUARDED_BY(lock); //<- buffer of page slots
+  bool started GUARDED_BY(lock);  //<- flag indicating buffer manager started
 
   /**
    * Add page to buffer.

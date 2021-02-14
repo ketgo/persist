@@ -35,7 +35,6 @@
 #include <persist/utility/uid.hpp>
 
 using namespace persist;
-using namespace persist::utility;
 
 TEST(UtilityUIDTest, TestGenerateUID) {
   auto uid_1 = generateUID();
