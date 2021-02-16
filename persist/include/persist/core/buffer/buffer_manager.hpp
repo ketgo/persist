@@ -159,7 +159,7 @@ public:
    * starts the buffer manager before spawning any threads.
    *
    */
-  void start() {
+  void start() NO_THREAD_SAFETY_ANALYSIS {
     LockGuard guard(lock);
 
     if (!started) {
@@ -181,7 +181,7 @@ public:
    * @thread_unsafe The method not thread safe as it is expected that the user
    * stops the buffer manager after joining all the threads.
    */
-  void stop() {
+  void stop() NO_THREAD_SAFETY_ANALYSIS {
     LockGuard guard(lock);
 
     if (started) {
@@ -334,6 +334,48 @@ public:
       fsl->freePages.erase(pageId);
     }
   }
+
+#ifdef __PERSIST_DEBUG__
+  /**
+   * @brief Check if Page with given ID is loaded.
+   *
+   * @thread_safe
+   *
+   * @param pageId ID of page to check if loaded
+   * @returns `true` if page is loaded else `false`
+   */
+  bool isPageLoaded(PageId pageId) {
+    LockGuard guard(lock);
+
+    return buffer.find(pageId) != buffer.end();
+  }
+
+  /**
+   * @brief Check if buffer is full. The method can be used to detect if the
+   * buffer is full and any Page loaded not present in the buffer would result
+   * in replacement.
+   *
+   * @thread_safe
+   *
+   * @returns `true` if full else `false`
+   */
+  bool isFull() {
+    LockGuard guard(lock);
+
+    return buffer.size() == maxSize;
+  }
+
+  /**
+   * @brief Check if buffer is empty.
+   *
+   * @returns `true` if empty else `false`
+   */
+  bool isEmpty() {
+    LockGuard guard(lock);
+
+    return buffer.empty();
+  }
+#endif
 };
 
 } // namespace persist

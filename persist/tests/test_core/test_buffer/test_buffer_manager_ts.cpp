@@ -52,10 +52,18 @@ protected:
   std::unique_ptr<Storage<SimplePage>> storage;
 
   void SetUp() override {
+    ByteBuffer buffer;
+
     // setting up pages
     page_1 = std::make_unique<SimplePage>(1, pageSize);
+    buffer = "test_page_1"_bb;
+    page_1->setRecord(buffer);
     page_2 = std::make_unique<SimplePage>(2, pageSize);
+    buffer = "test_page_2"_bb;
+    page_2->setRecord(buffer);
     page_3 = std::make_unique<SimplePage>(3, pageSize);
+    buffer = "test_page_3"_bb;
+    page_3->setRecord(buffer);
 
     // setting up free space list
     fsl = std::make_unique<FSL>();
@@ -89,13 +97,161 @@ private:
   }
 };
 
-TEST_F(BufferManagerThreadSafetyTestFixture, TestBufferManagerError) {
-  try {
-    BufferManager manager(storage.get(), 1); //<- invalid max size value
-    FAIL() << "Expected BufferManagerError Exception.";
-  } catch (BufferManagerError &err) {
-    SUCCEED();
-  } catch (...) {
-    FAIL() << "Expected BufferManagerError Exception.";
-  }
+/**
+ * @brief Test concurrent call to `get` method for same page when the internal
+ * buffer is empty.
+ *
+ * One of the threads should load the page from the backend storage and return
+ * its page handle. The other thread should wait for the page to be done loading
+ * and then return the page handle.
+ *
+ */
+TEST_F(BufferManagerThreadSafetyTestFixture, TestEmptyBufferGetIGetI) {
+  // Assert buffer is empty
+  ASSERT_TRUE(bufferManager->isEmpty());
+
+  std::thread thread_i([this]() {
+    auto page = bufferManager->get(1);
+
+    ASSERT_EQ(page->getId(), page_1->getId());
+    ASSERT_EQ(page->getRecord(), page_1->getRecord());
+  });
+
+  std::thread thread_j([this]() {
+    auto page = bufferManager->get(1);
+
+    ASSERT_EQ(page->getId(), page_1->getId());
+    ASSERT_EQ(page->getRecord(), page_1->getRecord());
+  });
+
+  thread_i.join();
+  thread_j.join();
+
+  // Assert page loaded by the threads
+  ASSERT_TRUE(bufferManager->isPageLoaded(1));
+}
+
+/**
+ * @brief Test concurrent call to `get` method for same page when the internal
+ * buffer is full.
+ *
+ * One of the threads should load the page with replacement from the backend
+ * storage and return its page handle. The other thread should wait for the page
+ * to be done loading and then return the page handle.
+ *
+ * The replacement of page involves finding a victim page from FSM, then
+ * flushing and removing it from the internal buffer. Thus it should be done in
+ * a way that avoids data race in the FSM, the backend storage, and the internal
+ * buffer.
+ *
+ */
+TEST_F(BufferManagerThreadSafetyTestFixture, TestFullBufferGetIGetI) {
+  // Filling up buffer
+  bufferManager->get(2);
+  bufferManager->get(3);
+  ASSERT_TRUE(bufferManager->isFull());
+
+  std::thread thread_i([this]() {
+    auto page = bufferManager->get(1);
+
+    ASSERT_EQ(page->getId(), page_1->getId());
+    ASSERT_EQ(page->getRecord(), page_1->getRecord());
+  });
+
+  std::thread thread_j([this]() {
+    auto page = bufferManager->get(1);
+
+    ASSERT_EQ(page->getId(), page_1->getId());
+    ASSERT_EQ(page->getRecord(), page_1->getRecord());
+  });
+
+  thread_i.join();
+  thread_j.join();
+
+  // Assert page loaded by the threads
+  ASSERT_TRUE(bufferManager->isPageLoaded(1));
+}
+
+/**
+ * @brief Test concurrent call to `get` method for different pages when the
+ * internal buffer is empty.
+ *
+ * Both threads should load the pages from the backend storage. The loading of
+ * the two pages should be done in a way that avoids a data race in the internal
+ * buffer.
+ *
+ */
+TEST_F(BufferManagerThreadSafetyTestFixture, TestEmptyBufferGetIGetJ) {
+  // Assert buffer is empty
+  ASSERT_TRUE(bufferManager->isEmpty());
+
+  std::thread thread_i([this]() {
+    auto page = bufferManager->get(1);
+
+    ASSERT_EQ(page->getId(), page_1->getId());
+    ASSERT_EQ(page->getRecord(), page_1->getRecord());
+  });
+
+  std::thread thread_j([this]() {
+    auto page = bufferManager->get(2);
+
+    ASSERT_EQ(page->getId(), page_2->getId());
+    ASSERT_EQ(page->getRecord(), page_2->getRecord());
+  });
+
+  thread_i.join();
+  thread_j.join();
+
+  // Assert pages loaded by the threads
+  ASSERT_TRUE(bufferManager->isPageLoaded(1));
+  ASSERT_TRUE(bufferManager->isPageLoaded(2));
+}
+
+/**
+ * @brief Test concurrent call to `get` method for different pages when the
+ * internal buffer is full.
+ *
+ * Both threads should load the pages with replacement from the backend storage.
+ * The replacement of page involves finding a victim page from FSM, then
+ * flushing and removing it from the internal buffer. Thus it should be done in
+ * a way that avoids a data race in the internal buffer, FSM and the backend
+ * storage.
+ *
+ */
+TEST_F(BufferManagerThreadSafetyTestFixture, TestFullBufferGetIGetJ) {
+  // Filling up buffer
+  bufferManager->get(2);
+  bufferManager->get(3);
+  ASSERT_TRUE(bufferManager->isFull());
+
+  std::thread thread_i([this]() {
+    auto page = bufferManager->get(1);
+
+    ASSERT_EQ(page->getId(), page_1->getId());
+    ASSERT_EQ(page->getRecord(), page_1->getRecord());
+  });
+
+  std::thread thread_j([this]() {
+    auto page = bufferManager->get(2);
+
+    ASSERT_EQ(page->getId(), page_2->getId());
+    ASSERT_EQ(page->getRecord(), page_2->getRecord());
+  });
+
+  thread_i.join();
+  thread_j.join();
+
+  // Assert pages loaded by the threads
+  ASSERT_TRUE(bufferManager->isPageLoaded(1));
+  ASSERT_TRUE(bufferManager->isPageLoaded(2));
+}
+
+/**
+ * @brief Test concurrent call to `get` and `flush` methods for same page when
+ * the internal buffer is empty.
+ *
+ */
+TEST_F(BufferManagerThreadSafetyTestFixture, TestEmptyBufferGetIFlushI) {
+  // Assert buffer is empty
+  ASSERT_TRUE(bufferManager->isEmpty());
 }

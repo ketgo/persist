@@ -33,6 +33,6 @@
 /**
  * @brief Location of the test data.
  */
-#define DATA_PATH "/Users/ketan/Projects/persist/build/UILD_DOCUMENTATION=ON/persist/tests/data"
+#define DATA_PATH "/Users/ketan/Projects/persist/build/persist/tests/data"
 
 #endif /* TESTS_COMMON_HPP */
