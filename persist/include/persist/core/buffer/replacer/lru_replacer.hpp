@@ -26,10 +26,10 @@
 #define LRU_REPLACER_HPP
 
 #include <list>
-#include <mutex>
 #include <unordered_map>
 
 #include <persist/core/buffer/replacer/base.hpp>
+#include <persist/utility/mutex.hpp>
 
 namespace persist {
 
@@ -40,6 +40,10 @@ namespace persist {
  */
 class LRUReplacer : public Replacer {
   PERSIST_PRIVATE
+  // TODO: Need granular locking
+  typedef typename persist::Mutex<std::recursive_mutex> Mutex;
+  Mutex lock; //<- lock for achieving thread safety via mutual exclusion
+  typedef typename persist::LockGuard<Mutex> LockGuard;
 
   /**
    * @brief Node
@@ -56,19 +60,14 @@ class LRUReplacer : public Replacer {
    * @brief Cache of frames
    *
    */
-  std::list<Frame> cache;
+  std::list<Frame> cache GUARDED_BY(lock);
 
   /**
    * @brief Maps page ID to postion of associated frame in the cache
    *
    */
   typedef std::list<Frame>::iterator Position;
-  std::unordered_map<PageId, Position> position;
-
-  // TODO: Need granular locking
-  std::recursive_mutex
-      lock; //<- lock for achieving thread safety via mutual exclusion
-  typedef typename std::lock_guard<std::recursive_mutex> LockGuard;
+  std::unordered_map<PageId, Position> position GUARDED_BY(lock);
 
 public:
   /**
@@ -135,6 +134,8 @@ public:
   }
 
   bool isPinned(PageId pageId) override {
+    LockGuard guard(lock);
+
     return position.at(pageId)->pinCount > 0;
   }
 
@@ -149,7 +150,7 @@ public:
    */
   void unpin(PageId pageId) override {
     LockGuard guard(lock);
-    
+
     position.at(pageId)->pinCount -= 1;
   }
 };

@@ -88,7 +88,7 @@ template <class PageType> class BufferManager : public PageObserver {
 
   Storage<PageType> *storage; //<- opened backend storage
   std::unique_ptr<FSL> fsl;   //<- free space list
-  std::unique_ptr<Replacer> replacer GUARDED_BY(lock); //<- page replacer
+  std::unique_ptr<Replacer> replacer; //<- page replacer
 
   uint64_t maxSize GUARDED_BY(lock); //<- maximum size of buffer
   typedef typename std::unordered_map<PageId, PageSlot> Buffer;

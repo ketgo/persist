@@ -46,12 +46,17 @@ protected:
 
   void SetUp() override {
     replacer = std::make_unique<LRUReplacer>();
+
+    LRUReplacer::LockGuard guard(replacer->lock);
+
     replacer->cache.push_front({pageId, 0});
     replacer->position[pageId] = replacer->cache.begin();
   }
 };
 
 TEST_F(LRUReplacerTestFixture, TestTrack) {
+  LRUReplacer::LockGuard guard(replacer->lock);
+
   ASSERT_EQ(replacer->cache.size(), 1);
   ASSERT_EQ(replacer->position.size(), 1);
 
@@ -62,6 +67,8 @@ TEST_F(LRUReplacerTestFixture, TestTrack) {
 }
 
 TEST_F(LRUReplacerTestFixture, TestForget) {
+  LRUReplacer::LockGuard guard(replacer->lock);
+
   ASSERT_EQ(replacer->cache.size(), 1);
   ASSERT_EQ(replacer->position.size(), 1);
 
@@ -72,6 +79,8 @@ TEST_F(LRUReplacerTestFixture, TestForget) {
 }
 
 TEST_F(LRUReplacerTestFixture, TestPin) {
+  LRUReplacer::LockGuard guard(replacer->lock);
+
   replacer->track(2);
 
   ASSERT_EQ(replacer->position[2]->pinCount, 0);
@@ -82,6 +91,8 @@ TEST_F(LRUReplacerTestFixture, TestPin) {
 }
 
 TEST_F(LRUReplacerTestFixture, TestIsPinned) {
+  LRUReplacer::LockGuard guard(replacer->lock);
+
   replacer->track(2);
 
   ASSERT_EQ(replacer->position[2]->pinCount, 0);
@@ -93,6 +104,8 @@ TEST_F(LRUReplacerTestFixture, TestIsPinned) {
 }
 
 TEST_F(LRUReplacerTestFixture, TestUnPin) {
+  LRUReplacer::LockGuard guard(replacer->lock);
+
   replacer->track(2);
   replacer->pin(2);
   replacer->pin(2);
@@ -105,6 +118,8 @@ TEST_F(LRUReplacerTestFixture, TestUnPin) {
 }
 
 TEST_F(LRUReplacerTestFixture, TestGetVictum) {
+  LRUReplacer::LockGuard guard(replacer->lock);
+
   ASSERT_EQ(replacer->getVictumId(), 1);
 
   replacer->track(2);
