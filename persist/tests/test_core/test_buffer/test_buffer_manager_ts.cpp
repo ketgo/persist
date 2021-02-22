@@ -33,6 +33,14 @@
 #include <string>
 #include <thread>
 
+/**
+ * @brief Enable debug mode if not already enabled
+ *
+ */
+#ifndef __PERSIST_DEBUG__
+#define __PERSIST_DEBUG__
+#endif
+
 #include <persist/core/buffer/buffer_manager.hpp>
 #include <persist/core/buffer/replacer/lru_replacer.hpp>
 #include <persist/core/page/simple_page.hpp>
@@ -107,14 +115,14 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestEmptyBufferGetIGetI) {
   // Assert buffer is empty
   ASSERT_TRUE(bufferManager->isEmpty());
 
-  std::thread thread_i([this]() {
+  std::thread thread_i([&]() {
     auto page = bufferManager->get(1);
 
     ASSERT_EQ(page->getId(), page_1->getId());
     ASSERT_EQ(page->getRecord(), page_1->getRecord());
   });
 
-  std::thread thread_j([this]() {
+  std::thread thread_j([&]() {
     auto page = bufferManager->get(1);
 
     ASSERT_EQ(page->getId(), page_1->getId());
@@ -150,14 +158,14 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestFullBufferGetIGetI) {
   bufferManager->get(3);
   ASSERT_TRUE(bufferManager->isFull());
 
-  std::thread thread_i([this]() {
+  std::thread thread_i([&]() {
     auto page = bufferManager->get(1);
 
     ASSERT_EQ(page->getId(), page_1->getId());
     ASSERT_EQ(page->getRecord(), page_1->getRecord());
   });
 
-  std::thread thread_j([this]() {
+  std::thread thread_j([&]() {
     auto page = bufferManager->get(1);
 
     ASSERT_EQ(page->getId(), page_1->getId());
@@ -189,14 +197,14 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestEmptyBufferGetIGetJ) {
   // Assert buffer is empty
   ASSERT_TRUE(bufferManager->isEmpty());
 
-  std::thread thread_i([this]() {
+  std::thread thread_i([&]() {
     auto page = bufferManager->get(1);
 
     ASSERT_EQ(page->getId(), page_1->getId());
     ASSERT_EQ(page->getRecord(), page_1->getRecord());
   });
 
-  std::thread thread_j([this]() {
+  std::thread thread_j([&]() {
     auto page = bufferManager->get(2);
 
     ASSERT_EQ(page->getId(), page_2->getId());
@@ -233,14 +241,14 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestFullBufferGetIGetJ) {
   bufferManager->get(3);
   ASSERT_TRUE(bufferManager->isFull());
 
-  std::thread thread_i([this]() {
+  std::thread thread_i([&]() {
     auto page = bufferManager->get(1);
 
     ASSERT_EQ(page->getId(), page_1->getId());
     ASSERT_EQ(page->getRecord(), page_1->getRecord());
   });
 
-  std::thread thread_j([this]() {
+  std::thread thread_j([&]() {
     auto page = bufferManager->get(2);
 
     ASSERT_EQ(page->getId(), page_2->getId());
@@ -272,13 +280,13 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestEmptyBufferGetIFlushI) {
   // Assert buffer is empty
   ASSERT_TRUE(bufferManager->isEmpty());
 
-  std::thread thread_i([this]() {
+  std::thread thread_i([&]() {
     auto page = bufferManager->get(1);
 
     page->setRecord("update_testing_1"_bb);
   });
 
-  std::thread thread_j([this]() { bufferManager->flush(1); });
+  std::thread thread_j([&]() { bufferManager->flush(1); });
 
   thread_i.join();
   thread_j.join();
@@ -314,13 +322,13 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestFullBufferGetIFlushI) {
   bufferManager->get(3);
   ASSERT_TRUE(bufferManager->isFull());
 
-  std::thread thread_i([this]() {
+  std::thread thread_i([&]() {
     auto page = bufferManager->get(1);
 
     page->setRecord("update_testing_1"_bb);
   });
 
-  std::thread thread_j([this]() { bufferManager->flush(1); });
+  std::thread thread_j([&]() { bufferManager->flush(1); });
 
   thread_i.join();
   thread_j.join();

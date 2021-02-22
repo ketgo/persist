@@ -7,3 +7,6 @@
 [submodule "third_party/loguru/loguru"]
 	path = third_party/loguru/loguru
 	url = https://github.com/emilk/loguru.git
+[submodule "third_party/tstest"]
+	path = third_party/tstest
+	url = https://github.com/ketgo/tstest.git

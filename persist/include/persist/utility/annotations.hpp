@@ -319,7 +319,7 @@
  */
 #define TS_UNCHECKED_READ(x) thread_safety_analysis::ts_unchecked_read(x)
 
-namespace persist {
+namespace thread_safety_analysis {
 
 /**
  * Takes a const reference to a guarded data member, and returns an unguarded
@@ -339,6 +339,6 @@ inline T &ts_unchecked_read(T &v) NO_THREAD_SAFETY_ANALYSIS {
   return v;
 }
 
-} // namespace persist
+} // namespace thread_safety_analysis
 
 #endif /* UTILITY_ANNOTATIONS_HPP */
