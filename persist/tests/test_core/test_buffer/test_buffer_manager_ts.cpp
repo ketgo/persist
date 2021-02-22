@@ -28,6 +28,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <tstest/tstest.hpp>
 
 #include <memory>
 #include <string>
