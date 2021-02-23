@@ -59,6 +59,11 @@ protected:
   typedef BufferManager<SimplePage> BufferManager;
   std::unique_ptr<BufferManager> bufferManager;
   std::unique_ptr<Storage<SimplePage>> storage;
+  
+  // TSTest runner
+  tstest::Runner runner;
+  // TSTest assertor
+  tstest::Assertor assertor;
 
   void SetUp() override {
     ByteBuffer buffer;
@@ -116,22 +121,21 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestEmptyBufferGetIGetI) {
   // Assert buffer is empty
   ASSERT_TRUE(bufferManager->isEmpty());
 
-  std::thread thread_i([&]() {
+  THREAD(runner, "thread-a") {
     auto page = bufferManager->get(1);
 
     ASSERT_EQ(page->getId(), page_1->getId());
     ASSERT_EQ(page->getRecord(), page_1->getRecord());
-  });
+  };
 
-  std::thread thread_j([&]() {
+  THREAD(runner, "thread-b") {
     auto page = bufferManager->get(1);
 
     ASSERT_EQ(page->getId(), page_1->getId());
     ASSERT_EQ(page->getRecord(), page_1->getRecord());
-  });
+  };
 
-  thread_i.join();
-  thread_j.join();
+  runner.Run();
 
   // Assert first page is loaded and did not get corrupt due to any data race
   ASSERT_TRUE(bufferManager->isPageLoaded(1));
