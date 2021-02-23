@@ -59,7 +59,7 @@ protected:
   typedef BufferManager<SimplePage> BufferManager;
   std::unique_ptr<BufferManager> bufferManager;
   std::unique_ptr<Storage<SimplePage>> storage;
-  
+
   // TSTest runner
   tstest::Runner runner;
   // TSTest assertor
@@ -163,22 +163,21 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestFullBufferGetIGetI) {
   bufferManager->get(3);
   ASSERT_TRUE(bufferManager->isFull());
 
-  std::thread thread_i([&]() {
+  THREAD(runner, "thread-a") {
     auto page = bufferManager->get(1);
 
     ASSERT_EQ(page->getId(), page_1->getId());
     ASSERT_EQ(page->getRecord(), page_1->getRecord());
-  });
+  };
 
-  std::thread thread_j([&]() {
+  THREAD(runner, "thread-b") {
     auto page = bufferManager->get(1);
 
     ASSERT_EQ(page->getId(), page_1->getId());
     ASSERT_EQ(page->getRecord(), page_1->getRecord());
-  });
+  };
 
-  thread_i.join();
-  thread_j.join();
+  runner.Run();
 
   // Assert the page is loaded and did not get corrupt due to any data race
   ASSERT_TRUE(bufferManager->isPageLoaded(1));
@@ -202,22 +201,21 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestEmptyBufferGetIGetJ) {
   // Assert buffer is empty
   ASSERT_TRUE(bufferManager->isEmpty());
 
-  std::thread thread_i([&]() {
+  THREAD(runner, "thread-a") {
     auto page = bufferManager->get(1);
 
     ASSERT_EQ(page->getId(), page_1->getId());
     ASSERT_EQ(page->getRecord(), page_1->getRecord());
-  });
+  };
 
-  std::thread thread_j([&]() {
+  THREAD(runner, "thread-b") {
     auto page = bufferManager->get(2);
 
     ASSERT_EQ(page->getId(), page_2->getId());
     ASSERT_EQ(page->getRecord(), page_2->getRecord());
-  });
+  };
 
-  thread_i.join();
-  thread_j.join();
+  runner.Run();
 
   // Assert first page is loaded and did not get corrupt due to any data race
   ASSERT_TRUE(bufferManager->isPageLoaded(1));
@@ -246,22 +244,21 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestFullBufferGetIGetJ) {
   bufferManager->get(3);
   ASSERT_TRUE(bufferManager->isFull());
 
-  std::thread thread_i([&]() {
+  THREAD(runner, "thread-a") {
     auto page = bufferManager->get(1);
 
     ASSERT_EQ(page->getId(), page_1->getId());
     ASSERT_EQ(page->getRecord(), page_1->getRecord());
-  });
+  };
 
-  std::thread thread_j([&]() {
+  THREAD(runner, "thread-b") {
     auto page = bufferManager->get(2);
 
     ASSERT_EQ(page->getId(), page_2->getId());
     ASSERT_EQ(page->getRecord(), page_2->getRecord());
-  });
+  };
 
-  thread_i.join();
-  thread_j.join();
+  runner.Run();
 
   // Assert first page is loaded and did not get corrupt due to any data race
   ASSERT_TRUE(bufferManager->isPageLoaded(1));
@@ -285,16 +282,15 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestEmptyBufferGetIFlushI) {
   // Assert buffer is empty
   ASSERT_TRUE(bufferManager->isEmpty());
 
-  std::thread thread_i([&]() {
+  THREAD(runner, "thread-a") {
     auto page = bufferManager->get(1);
 
     page->setRecord("update_testing_1"_bb);
-  });
+  };
 
-  std::thread thread_j([&]() { bufferManager->flush(1); });
+  THREAD(runner, "thread-b") { bufferManager->flush(1); };
 
-  thread_i.join();
-  thread_j.join();
+  runner.Run();
 
   // Assert first page is loaded and did not get corrupt due to any data race
   ASSERT_TRUE(bufferManager->isPageLoaded(1));
@@ -327,16 +323,15 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestFullBufferGetIFlushI) {
   bufferManager->get(3);
   ASSERT_TRUE(bufferManager->isFull());
 
-  std::thread thread_i([&]() {
+  THREAD(runner, "thread-a") {
     auto page = bufferManager->get(1);
 
     page->setRecord("update_testing_1"_bb);
-  });
+  };
 
-  std::thread thread_j([&]() { bufferManager->flush(1); });
+  THREAD(runner, "thread-b") { bufferManager->flush(1); };
 
-  thread_i.join();
-  thread_j.join();
+  runner.Run();
 
   // Assert first page is loaded and did not get corrupt due to any data race
   ASSERT_TRUE(bufferManager->isPageLoaded(1));
