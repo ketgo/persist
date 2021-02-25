@@ -22,7 +22,9 @@
  SOFTWARE.
 -->
 
-# TODO List
+# Task List
+
+## Core Components
 
 1. [DONE] Refactor backend storage
     - [DONE] covert to template with PageType as parameter
@@ -36,7 +38,7 @@
     - [DONE] implement very basic thread-safety by applying a recursive mutex to each method call
 
 3. [IN-PROGRESS] Create a FreeSpaceManager for efficient detection and handling of pages with free space
-    - serialize/deserialize polymorphic pages
+    -[IN-PROGRESS] serialize/deserialize polymorphic pages
     - refactor buffer manager to use polymorphic page
     - refactor `getFree` method of buffer manager to take sizeHint parameter as an argument. This parameter provides a hint to the free space manager about the amount of free space requested. Note that this parameter is treated only as a hint as the FreeSpaceManager is free to return a page with less available free space.
     - create an interface for FreeSpaceManager to allow for different FreeSpaceManager implementations
@@ -93,10 +95,20 @@
     - handles metadata containing the starting location, ending location, and number of records in a collection
     - writes metadata to the first record block of the collection
 
-10. Implement List collection
+------------------------------------------------------------
+
+## Collections
+
+1. Implement List collection
     - implement record manager for list collection
     - implement list collection class
 
-11. Benchmarking and Lazy serialization
+------------------------------------------------------------
 
-12. Split tests into unit-tests and integration-tests
+## Release Related Tasks
+
+1. Benchmarking and Lazy serialization
+
+2. Split tests into unit-tests and integration-tests
+
+------------------------------------------------------------

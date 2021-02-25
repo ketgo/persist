@@ -37,9 +37,11 @@
  */
 #define PERSIST_INTRUSIVE_TESTING
 
-#include <persist/core/page/simple_page.hpp>
+#include "persist/test/simple_page.hpp"
 
 using namespace persist;
+using namespace persist::test;
+
 using ::testing::AtLeast;
 using ::testing::Return;
 

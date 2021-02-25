@@ -33,6 +33,9 @@
 
 #include <gtest/gtest.h>
 
+namespace persist {
+namespace test {
+
 /**
  * @brief Replacer thread safety test fixture.
  *
@@ -55,5 +58,9 @@ TYPED_TEST_P(ReplacerThreadSafetyTestFixture, TestGetVictumUnPin) {
 // Registering all tests
 REGISTER_TYPED_TEST_SUITE_P(ReplacerThreadSafetyTestFixture,
                             TestGetVictumUnPin);
+
+} // namespace test
+
+} // namespace persist
 
 #endif /* TEST_REPLACER_TS_HPP */

@@ -32,6 +32,8 @@
 
 namespace persist {
 
+namespace test {
+
 /**
  * @brief Simple Page Class
  *
@@ -287,6 +289,8 @@ public:
   }
 #endif
 };
+
+} // namespace test
 
 } // namespace persist
 

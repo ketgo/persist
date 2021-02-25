@@ -32,11 +32,13 @@
 #include <typeinfo>
 
 #include <persist/core/defs.hpp>
-#include <persist/core/page/simple_page.hpp>
 #include <persist/core/storage/base.hpp>
 #include <persist/core/storage/factory.hpp>
 
+#include "persist/test/simple_page.hpp"
+
 using namespace persist;
+using namespace persist::test;
 
 TEST(StorageFactoryTest, TestCreateMemoryStorage) {
   std::unique_ptr<Storage<SimplePage>> storage =

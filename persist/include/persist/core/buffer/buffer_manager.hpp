@@ -86,8 +86,8 @@ template <class PageType> class BufferManager : public PageObserver {
     PageSlot() : page(nullptr), modified(false) {}
   };
 
-  Storage<PageType> *storage; //<- opened backend storage
-  std::unique_ptr<FSL> fsl;   //<- free space list
+  Storage<PageType> *storage;         //<- opened backend storage
+  std::unique_ptr<FSL> fsl;           //<- free space list
   std::unique_ptr<Replacer> replacer; //<- page replacer
 
   uint64_t maxSize GUARDED_BY(lock); //<- maximum size of buffer
@@ -275,8 +275,9 @@ public:
    * @thread_safe
    *
    * @param pageId page identifer
+   * @returns `true` if page is flushed else `false`
    */
-  void flush(PageId pageId) {
+  bool flush(PageId pageId) {
     LockGuard guard(lock);
 
     // Find page in buffer
@@ -291,7 +292,13 @@ public:
       storage->write(*(it->second.page));
       // Since the page has been saved it is now considered as un-modified
       it->second.modified = false;
+
+      // Page successfully flushed
+      return true;
     }
+
+    // Page not flushed
+    return false;
   }
 
   /**

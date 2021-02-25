@@ -38,10 +38,12 @@
 
 #include <persist/core/buffer/buffer_manager.hpp>
 #include <persist/core/buffer/replacer/lru_replacer.hpp>
-#include <persist/core/page/simple_page.hpp>
 #include <persist/core/storage/factory.hpp>
 
+#include "persist/test/simple_page.hpp"
+
 using namespace persist;
+using namespace persist::test;
 
 class BufferManagerTestFixture : public ::testing::Test {
 protected:
@@ -162,7 +164,7 @@ TEST_F(BufferManagerTestFixture, TestFlush) {
     page->setRecord(record);
   }
 
-  bufferManager->flush(1);
+  ASSERT_TRUE(bufferManager->flush(1));
 
   // Load page from storage using a new buffer manager instance
   auto _page = storage->read(1);

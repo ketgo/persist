@@ -34,9 +34,10 @@
 
 #include <persist/core/buffer/replacer/lru_replacer.hpp>
 
-#include "test_core/test_replacer_ts.hpp"
+#include "persist/test/replacer_ts.hpp"
 
 using namespace persist;
+using namespace persist::test;
 
 INSTANTIATE_TYPED_TEST_SUITE_P(LRU, ReplacerThreadSafetyTestFixture,
                                LRUReplacer);

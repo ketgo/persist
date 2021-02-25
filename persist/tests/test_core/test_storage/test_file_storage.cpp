@@ -32,12 +32,13 @@
 #include <string>
 
 #include <persist/core/exceptions.hpp>
-#include <persist/core/page/simple_page.hpp>
 #include <persist/core/storage/file_storage.hpp>
 
 #include "common.hpp"
+#include "persist/test/simple_page.hpp"
 
 using namespace persist;
+using namespace persist::test;
 
 const std::string base = DATA_PATH;
 
