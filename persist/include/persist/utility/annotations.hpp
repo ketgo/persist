@@ -26,13 +26,9 @@
  * @brief Thread Annotations
  *
  * The file contains annotations used for static thread safety analysis. They
- * are taken from
- *
- * https://github.com/abseil/abseil-cpp/blob/master/absl/base/thread_annotations.h.
- *
- * and allow developers to document the locking policies of multi-threaded code.
- * The annotations can also help program analysis tools to identify potential
- * thread safety issues.
+ * allow developers to document the locking policies of multi-threaded code. The
+ * annotations can also help program analysis tools to identify potential thread
+ * safety issues.
  *
  * These annotations are implemented using compiler attributes. Using the macros
  * defined here instead of raw attributes allow for portability and future
@@ -51,6 +47,39 @@
 #else
 #define THREAD_ANNOTATION_ATTRIBUTE__(x) // no-op
 #endif
+
+/**
+ * @brief CAPABILITY
+ *
+ * Documents that a class has locking capability. The macro allows the user to
+ * set thread safety analysis for custom mutex classes.
+ *
+ * @example
+ *
+ *  class CAPABILITY("mutex") Mutex {
+ *    ...
+ *  };
+ *
+ */
+#define CAPABILITY(x) THREAD_ANNOTATION_ATTRIBUTE__(capability(x))
+
+/**
+ * @brief SCOPED_CAPABILITY
+ *
+ * Documents that a class does RAII locking (such as the `std::unique_lock`
+ * class). The constructor should use `ACQUIRE()` to specify the mutex that is
+ * acquired, and the destructor should use `RELEASE()` with no arguments; the
+ * analysis will assume that the destructor unlocks whatever the constructor
+ * locked.
+ *
+ * @example
+ *
+ *  class SCOPED_CAPABILITY LockGuard {
+ *    ...
+ *  };
+ *
+ */
+#define SCOPED_CAPABILITY THREAD_ANNOTATION_ATTRIBUTE__(scoped_lockable)
 
 /**
  * @brief GUARDED_BY()
@@ -119,12 +148,11 @@
  */
 #define ACQUIRED_AFTER(...)                                                    \
   THREAD_ANNOTATION_ATTRIBUTE__(acquired_after(__VA_ARGS__))
-
 #define ACQUIRED_BEFORE(...)                                                   \
   THREAD_ANNOTATION_ATTRIBUTE__(acquired_before(__VA_ARGS__))
 
 /**
- * @brief EXCLUSIVE_LOCKS_REQUIRED() / SHARED_LOCKS_REQUIRED()
+ * @brief REQUIRES() / SHARED_LOCKS_REQUIRED()
  *
  * Documents a function that expects a mutex to be held prior to entry. The
  * mutex is expected to be held both on entry to, and exit from, the function.
@@ -134,9 +162,8 @@
  * allows read-only access, and any number of threads can acquire a shared lock
  * concurrently.
  *
- * Generally, non-const methods should be annotated with
- * EXCLUSIVE_LOCKS_REQUIRED, while const methods should be annotated with
- * SHARED_LOCKS_REQUIRED.
+ * Generally, non-const methods should be annotated with REQUIRES, while const
+ * methods should be annotated with REQUIRES_SHARED.
  *
  * @example:
  *
@@ -144,89 +171,53 @@
  *  int a GUARDED_BY(mu1);
  *  int b GUARDED_BY(mu2);
  *
- *  void foo() EXCLUSIVE_LOCKS_REQUIRED(mu1, mu2) { ... }
- *  void bar() const SHARED_LOCKS_REQUIRED(mu1, mu2) { ... }
+ *  void foo() REQUIRES(mu1, mu2) { ... }
+ *  void bar() const REQUIRES_SHARED(mu1, mu2) { ... }
+ *
+ *  void test() {
+ *    mu1.lock();
+ *    mu2.lock();
+ *    foo();
+ *    bar();
+ *    mu1.unlock();
+ *    mu2.unlock();
+ *  }
  *
  */
-#define EXCLUSIVE_LOCKS_REQUIRED(...)                                          \
-  THREAD_ANNOTATION_ATTRIBUTE__(exclusive_locks_required(__VA_ARGS__))
-
-#define SHARED_LOCKS_REQUIRED(...)                                             \
-  THREAD_ANNOTATION_ATTRIBUTE__(shared_locks_required(__VA_ARGS__))
-
-/**
- * @brief LOCKS_EXCLUDED()
- *
- * Documents the locks acquired in the body of the function. These locks cannot
- * be held when calling this function, e.g. non-reentrant locks.
- *
- */
-#define LOCKS_EXCLUDED(...)                                                    \
-  THREAD_ANNOTATION_ATTRIBUTE__(locks_excluded(__VA_ARGS__))
+#define REQUIRES(...)                                                          \
+  THREAD_ANNOTATION_ATTRIBUTE__(requires_capability(__VA_ARGS__))
+#define REQUIRES_SHARED(...)                                                   \
+  THREAD_ANNOTATION_ATTRIBUTE__(requires_shared_capability(__VA_ARGS__))
 
 /**
- * @brief LOCK_RETURNED()
- *
- * Documents a function that returns a mutex without acquiring it.  For example,
- * a public getter method that returns a pointer to a private mutex should be
- * annotated with LOCK_RETURNED.
- *
- */
-#define LOCK_RETURNED(x) THREAD_ANNOTATION_ATTRIBUTE__(lock_returned(x))
-
-/**
- * @brief LOCKABLE
- *
- * Documents if a class/type is a lockable type (such as the `std::mutex`
- * class).
- *
- */
-#define LOCKABLE THREAD_ANNOTATION_ATTRIBUTE__(lockable)
-
-/**
- * @brief SCOPED_LOCKABLE
- *
- * Documents if a class does RAII locking (such as the `MutexLock` class). The
- * constructor should use `LOCK_FUNCTION()` to specify the mutex that is
- * acquired, and the destructor should use `UNLOCK_FUNCTION()` with no
- * arguments; the analysis will assume that the destructor unlocks whatever the
- * constructor locked.
- *
- */
-#define SCOPED_LOCKABLE THREAD_ANNOTATION_ATTRIBUTE__(scoped_lockable)
-
-/**
- * @brief EXCLUSIVE_LOCK_FUNCTION()
+ * @brief ACQUIRE()/ACQUIRE_SHARED()
  *
  * Documents functions that acquire a lock in the body of a function, and do not
- * release it.
+ * release it. The lock can be exclusive or shared (reader) respectively.
  *
  */
-#define EXCLUSIVE_LOCK_FUNCTION(...)                                           \
-  THREAD_ANNOTATION_ATTRIBUTE__(exclusive_lock_function(__VA_ARGS__))
+#define ACQUIRE(...)                                                           \
+  THREAD_ANNOTATION_ATTRIBUTE__(acquire_capability(__VA_ARGS__))
+#define ACQUIRE_SHARED(...)                                                    \
+  THREAD_ANNOTATION_ATTRIBUTE__(acquire_shared_capability(__VA_ARGS__))
 
 /**
- * @brief SHARED_LOCK_FUNCTION()
+ * @brief RELEASE()/RELEASE_SHARED()/RELEASE_GENERIC()
  *
- * Documents functions that acquire a shared (reader) lock in the body of a
- * function, and do not release it.
+ * Documents functions expect a lock (exclusively for RELEASE, shared for
+ * RELEASE_SHARED, exclusively or shared for RELEASE_GENERIC) to be held on
+ * entry to the function, and release it in the body of the function.
  *
  */
-#define SHARED_LOCK_FUNCTION(...)                                              \
-  THREAD_ANNOTATION_ATTRIBUTE__(shared_lock_function(__VA_ARGS__))
+#define RELEASE(...)                                                           \
+  THREAD_ANNOTATION_ATTRIBUTE__(release_capability(__VA_ARGS__))
+#define RELEASE_SHARED(...)                                                    \
+  THREAD_ANNOTATION_ATTRIBUTE__(release_shared_capability(__VA_ARGS__))
+#define RELEASE_GENERIC(...)                                                   \
+  THREAD_ANNOTATION_ATTRIBUTE__(release_generic_capability(__VA_ARGS__))
 
 /**
- * @brief UNLOCK_FUNCTION()
- *
- * Documents functions that expect a lock to be held on entry to the function,
- * and release it in the body of the function.
- *
- */
-#define UNLOCK_FUNCTION(...)                                                   \
-  THREAD_ANNOTATION_ATTRIBUTE__(unlock_function(__VA_ARGS__))
-
-/**
- * @brief EXCLUSIVE_TRYLOCK_FUNCTION() / SHARED_TRYLOCK_FUNCTION()
+ * @brief TRY_ACQUIRE() / TRY_ACQUIRE_SHARED()
  *
  * Documents functions that try to acquire a lock, and return success or failure
  * (or a non-boolean value that can be interpreted as a boolean). The first
@@ -236,24 +227,40 @@
  * assumed to be `this`.
  *
  */
-#define EXCLUSIVE_TRYLOCK_FUNCTION(...)                                        \
-  THREAD_ANNOTATION_ATTRIBUTE__(exclusive_trylock_function(__VA_ARGS__))
-
-#define SHARED_TRYLOCK_FUNCTION(...)                                           \
-  THREAD_ANNOTATION_ATTRIBUTE__(shared_trylock_function(__VA_ARGS__))
+#define TRY_ACQUIRE(...)                                                       \
+  THREAD_ANNOTATION_ATTRIBUTE__(try_acquire_capability(__VA_ARGS__))
+#define TRY_ACQUIRE_SHARED(...)                                                \
+  THREAD_ANNOTATION_ATTRIBUTE__(try_acquire_shared_capability(__VA_ARGS__))
 
 /**
- * @brief ASSERT_EXCLUSIVE_LOCK() / ASSERT_SHARED_LOCK()
+ * @brief EXCLUDES()
+ *
+ * Documents that the locks acquired in the body of the function. These locks
+ * cannot be held when calling this function, e.g. non-reentrant locks.
+ *
+ */
+#define EXCLUDES(...) THREAD_ANNOTATION_ATTRIBUTE__(locks_excluded(__VA_ARGS__))
+
+/**
+ * @brief ASSERT_CAPABILITY() / ASSERT_SHARED_CAPABILITY()
  *
  * Documents functions that dynamically check to see if a lock is held, and fail
  * if it is not held.
  *
  */
-#define ASSERT_EXCLUSIVE_LOCK(...)                                             \
-  THREAD_ANNOTATION_ATTRIBUTE__(assert_exclusive_lock(__VA_ARGS__))
+#define ASSERT_CAPABILITY(x) THREAD_ANNOTATION_ATTRIBUTE__(assert_capability(x))
+#define ASSERT_SHARED_CAPABILITY(x)                                            \
+  THREAD_ANNOTATION_ATTRIBUTE__(assert_shared_capability(x))
 
-#define ASSERT_SHARED_LOCK(...)                                                \
-  THREAD_ANNOTATION_ATTRIBUTE__(assert_shared_lock(__VA_ARGS__))
+/**
+ * @brief RETURN_CAPABILITY()
+ *
+ * Documents a function that returns a mutex without acquiring it.  For example,
+ * a public getter method that returns a pointer to a private mutex should be
+ * annotated with RETURN_CAPABILITY.
+ *
+ */
+#define RETURN_CAPABILITY(x) THREAD_ANNOTATION_ATTRIBUTE__(lock_returned(x))
 
 /**
  * @brief NO_THREAD_SAFETY_ANALYSIS

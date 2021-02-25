@@ -208,11 +208,11 @@ public:
    * @param pageSize storage size of data block. Default set to 1024
    */
   FileStorage() {}
-  FileStorage(std::string path)
+  FileStorage(const std::string &path)
       : path(path), pageSize(DEFAULT_PAGE_SIZE), pageCount(0) {}
   FileStorage(const char *path)
       : path(path), pageSize(DEFAULT_PAGE_SIZE), pageCount(0) {}
-  FileStorage(std::string path, uint64_t pageSize)
+  FileStorage(const std::string &path, uint64_t pageSize)
       : path(path), pageSize(pageSize), pageCount(0) {}
   FileStorage(const char *path, uint64_t pageSize)
       : path(path), pageSize(pageSize), pageCount(0) {}

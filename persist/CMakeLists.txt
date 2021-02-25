@@ -55,6 +55,7 @@ if(${SOURCES})
         target_link_libraries(
             ${LIB} 
             loguru::loguru
+            # NOTE: Add any required dependencies here
         )
         target_compile_definitions(${LIB} PUBLIC __PERSIST_DEBUG__)
     else()

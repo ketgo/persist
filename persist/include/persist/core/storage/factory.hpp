@@ -65,7 +65,8 @@ public:
   std::string path;
 
   // Constructor
-  ConnectionString(std::string connectionString) : raw(connectionString) {
+  ConnectionString(const std::string &connectionString)
+      : raw(connectionString) {
     std::string seperator = STORAGE_TYPE_SEPERATOR;
     std::string::size_type loc = raw.find(seperator);
     type = raw.substr(0, loc);

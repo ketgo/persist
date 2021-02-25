@@ -28,7 +28,7 @@
 #include <persist/core/buffer/buffer_manager.hpp>
 #include <persist/core/buffer/replacer/base.hpp>
 #include <persist/core/page/slotted_page/vls_slotted_page.hpp>
-#include <persist/core/recovery/log_manager.hpp>
+#include <persist/core/log/log_manager.hpp>
 #include <persist/core/transaction/transaction.hpp>
 
 #include <persist/utility/uid.hpp>
@@ -149,7 +149,7 @@ public:
    */
   Transaction begin() {
     // Create a new transaction
-    Transaction txn(logManager, utility::generateUID(),
+    Transaction txn(logManager, generateUID(),
                     Transaction::State::ACTIVE);
     // Log transaction begin record
     logBegin(txn);

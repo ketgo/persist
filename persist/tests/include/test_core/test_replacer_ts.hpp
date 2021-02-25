@@ -1,5 +1,5 @@
 /**
- * utility/uuid.hpp - Persist
+ * test_replacer_ts.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,29 +22,38 @@
  * SOFTWARE.
  */
 
-#ifndef UTILITY_UID_HPP
-#define UTILITY_UID_HPP
+/**
+ * @brief Replacer thread safety test header. The interface provided in this
+ * file can be used to test thread safety of custom Replacer implementations.
+ *
+ */
 
-#include <fstream>
-#include <limits>
-#include <random>
+#ifndef TEST_REPLACER_TS_HPP
+#define TEST_REPLACER_TS_HPP
 
-namespace persist {
+#include <gtest/gtest.h>
 
 /**
- * @brief Generate 64 bit UID
+ * @brief Replacer thread safety test fixture.
  *
- * @returns 64 bit unique identifier.
+ * @tparam ReplacerType type of replacer
  */
-static uint64_t generateUID() {
-  std::random_device rd;
-  std::mt19937_64 e2(rd());
-  std::uniform_int_distribution<uint64_t> dist(
-      0, std::numeric_limits<uint64_t>::max());
+template <class ReplacerType>
+class ReplacerThreadSafetyTestFixture : public testing::Test {};
 
-  return dist(e2);
+TYPED_TEST_SUITE_P(ReplacerThreadSafetyTestFixture);
+
+/**
+ * @brief Test concurrent call to `getVictum` and `unPin` methods.
+ *
+ */
+TYPED_TEST_P(ReplacerThreadSafetyTestFixture, TestGetVictumUnPin) {
+  // Inside a test, refer to TypeParam to get the type parameter.
+  TypeParam replace;
 }
 
-} // namespace persist
+// Registering all tests
+REGISTER_TYPED_TEST_SUITE_P(ReplacerThreadSafetyTestFixture,
+                            TestGetVictumUnPin);
 
-#endif /* UTILITY_UID_HPP */
+#endif /* TEST_REPLACER_TS_HPP */

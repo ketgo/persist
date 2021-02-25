@@ -207,6 +207,17 @@ public:
   /**
    * @brief Set data record
    *
+   * @param record lvalue reference to data record to be stored
+   */
+  void setRecord(ByteBuffer &&record) {
+    this->record = record;
+    // Notify all observers of page modification
+    notifyObservers();
+  }
+
+  /**
+   * @brief Set data record
+   *
    * @param record reference to data record to be stored
    */
   void setRecord(ByteBuffer &record) {

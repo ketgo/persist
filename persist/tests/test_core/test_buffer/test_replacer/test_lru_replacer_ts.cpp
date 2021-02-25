@@ -1,5 +1,5 @@
 /**
- * utility/uuid.hpp - Persist
+ * test_lru_replacer_ts.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,29 +22,21 @@
  * SOFTWARE.
  */
 
-#ifndef UTILITY_UID_HPP
-#define UTILITY_UID_HPP
-
-#include <fstream>
-#include <limits>
-#include <random>
-
-namespace persist {
+/**
+ * @brief LRU Replacer thread safety tests
+ *
+ */
 
 /**
- * @brief Generate 64 bit UID
- *
- * @returns 64 bit unique identifier.
+ * Enabled intrusive testing
  */
-static uint64_t generateUID() {
-  std::random_device rd;
-  std::mt19937_64 e2(rd());
-  std::uniform_int_distribution<uint64_t> dist(
-      0, std::numeric_limits<uint64_t>::max());
+#define PERSIST_INTRUSIVE_TESTING
 
-  return dist(e2);
-}
+#include <persist/core/buffer/replacer/lru_replacer.hpp>
 
-} // namespace persist
+#include "test_core/test_replacer_ts.hpp"
 
-#endif /* UTILITY_UID_HPP */
+using namespace persist;
+
+INSTANTIATE_TYPED_TEST_SUITE_P(LRU, ReplacerThreadSafetyTestFixture,
+                               LRUReplacer);

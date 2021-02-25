@@ -10,3 +10,4 @@ enable_testing()
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/third_party)
 add_subdirectory(${PROJECT_SOURCE_DIR}/persist)
+add_subdirectory(${PROJECT_SOURCE_DIR}/docs/doxygen)

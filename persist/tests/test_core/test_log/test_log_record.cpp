@@ -35,7 +35,7 @@
  */
 #define PERSIST_INTRUSIVE_TESTING
 
-#include <persist/core/recovery/log_record.hpp>
+#include <persist/core/log/log_record.hpp>
 
 using namespace persist;
 

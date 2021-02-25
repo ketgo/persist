@@ -56,9 +56,30 @@
     - [SKIPPED] Maybe introduce transaction context?
 
 6. [IN-PROGRESS] Implement thread safety for different classes:
-    - implement and use no-lock/lock-based concurrent hash map --> used in multiple places like buffer manager and slotted pages
-    - implement and use no-lock/lock-based concurrent replacer --> used by the buffer manager
-    - implement and use no-lock/lock-based concurrent FreeSpaceManager --> used by the buffer manager
+    - Implement Utility Data Structures:
+        - implement and use no-lock/lock-based concurrent hash map --> used in multiple places like buffer manager and slotted pages
+        - implement and use no-lock/lock-based concurrent replacer --> used by the buffer manager
+        - implement and use no-lock/lock-based concurrent FreeSpaceManager --> used by the buffer manager
+    -[DONE] Add thread-safety annotations
+    -[IN-PROGRESS] Add lock guards for basic thread-safety in:
+        -[DONE] BufferManager
+        -[DONE] LRUReplacer
+        -[DONE] LogManager --> Possibly can be skipped
+        - FSM
+    -[DONE] Create utility classes for unit-testing thread-safety --> [Created TSTest lib]
+        - Create an event queue to store a chronologically ordered sequence of unit operations
+        - Create an `UnitOperation` Class to run one or more statements as a single unit. The class should push the start and end event records in the event queue.
+        - Create a `Runner` class to execute a sequence of `UnitOperation` objects in multiple threads.
+        - Create an `AssertionMap` class to map a sequence of events to a lambda function. The lambda function will assert expected behavior for the mapped event sequence.
+    -[SKIPPED] Support plugin of thread-safe and unsafe Replacers for BufferManager:
+        - Add `ReplacerTraits` template class containing thread-safety trait information for replacers
+        - Create a `ThreadSafeReplacer` class to wrap thread-unsafe replacer implementations
+        - Create traits class for LRUReplacer implying it is thread-safe
+    -[IN-PROGRESS] Create Type-Parameterized thread-safety test fixtures inside test headers
+    -[IN-PROGRESS] Write thread-safety unit tests for:
+        -[IN-PROGRESS] BufferManager
+        -[IN-PROGRESS] LRUReplacer
+        - LogManager
 
 7. Create Concurrency Control Manager:
     - Design manager class. The design should be extendable to support different concurrency control protocols

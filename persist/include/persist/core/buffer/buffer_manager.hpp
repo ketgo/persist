@@ -27,18 +27,17 @@
 
 #include <list>
 #include <memory>
-#include <mutex>
 #include <set>
 #include <unordered_map>
 
-#include <persist/core/defs.hpp>
-#include <persist/core/exceptions.hpp>
-#include <persist/core/page/base.hpp>
-#include <persist/core/storage/base.hpp>
-
 #include <persist/core/buffer/page_handle.hpp>
 #include <persist/core/buffer/replacer/factory.hpp>
+#include <persist/core/defs.hpp>
+#include <persist/core/exceptions.hpp>
 #include <persist/core/fsm/fsl.hpp>
+#include <persist/core/page/base.hpp>
+#include <persist/core/storage/base.hpp>
+#include <persist/utility/mutex.hpp>
 
 // At the minimum 2 pages are needed in memory by record manager.
 #define MINIMUM_BUFFER_SIZE 2
@@ -62,6 +61,15 @@ template <class PageType> class BufferManager : public PageObserver {
 
   PERSIST_PRIVATE
   /**
+   * @brief Recursive lock for thread safety
+   *
+   */
+  // TODO: Need granular locking
+  typedef typename persist::Mutex<std::recursive_mutex> Mutex;
+  Mutex lock; //<- lock for achieving thread safety via mutual exclusion
+  typedef typename persist::LockGuard<Mutex> LockGuard;
+
+  /**
    * Page Slot Struct
    *
    * The data structure contains page pointer and status information. A
@@ -80,17 +88,12 @@ template <class PageType> class BufferManager : public PageObserver {
 
   Storage<PageType> *storage; //<- opened backend storage
   std::unique_ptr<FSL> fsl;   //<- free space list
-
-  uint64_t maxSize;                   //<- maximum size of buffer
   std::unique_ptr<Replacer> replacer; //<- page replacer
-  typedef typename std::unordered_map<PageId, PageSlot> Buffer;
-  Buffer buffer; //<- buffer of page slots
-  bool started;  //<- flag indicating buffer manager started
 
-  // TODO: Need granular locking
-  std::recursive_mutex
-      lock; //<- lock for achieving thread safety via mutual exclusion
-  typedef typename std::lock_guard<std::recursive_mutex> LockGuard;
+  uint64_t maxSize GUARDED_BY(lock); //<- maximum size of buffer
+  typedef typename std::unordered_map<PageId, PageSlot> Buffer;
+  Buffer buffer GUARDED_BY(lock); //<- buffer of page slots
+  bool started GUARDED_BY(lock);  //<- flag indicating buffer manager started
 
   /**
    * Add page to buffer.
@@ -152,8 +155,11 @@ public:
   /**
    * @brief Start buffer manager.
    *
+   * @thread_unsafe The method not thread safe as it is expected that the user
+   * starts the buffer manager before spawning any threads.
+   *
    */
-  void start() {
+  void start() NO_THREAD_SAFETY_ANALYSIS {
     LockGuard guard(lock);
 
     if (!started) {
@@ -172,8 +178,10 @@ public:
    * All the modified pages loaded onto the buffer are flushed to backend
    * storage before stopping the manager.
    *
+   * @thread_unsafe The method not thread safe as it is expected that the user
+   * stops the buffer manager after joining all the threads.
    */
-  void stop() {
+  void stop() NO_THREAD_SAFETY_ANALYSIS {
     LockGuard guard(lock);
 
     if (started) {
@@ -189,6 +197,8 @@ public:
   /**
    * Get a new page. The method creates a new page and loads it into buffer.
    * The `numPage` attribute in the storage metadata is increased by one.
+   *
+   * @thread_safe
    *
    * @returns page handle object
    */
@@ -213,6 +223,8 @@ public:
    * Get a page with free space. If no such page is available then a new page
    * is loaded into the buffer and its handle returned.
    *
+   * @thread_safe
+   *
    * @returns page handle object
    */
   PageHandle<PageType> getFreeOrNew() {
@@ -236,6 +248,8 @@ public:
    * is not already found in the buffer. In case the page is not found in the
    * backend storage a PageNotFoundError exception is raised.
    *
+   * @thread_safe
+   *
    * @param pageId page ID
    * @returns page handle object
    */
@@ -257,6 +271,8 @@ public:
   /**
    * Save a single page to backend storage. The page will be stored only
    * if it is marked as modified and is unpinned.
+   *
+   * @thread_safe
    *
    * @param pageId page identifer
    */
@@ -281,6 +297,7 @@ public:
   /**
    * @brief Save all modified and unpinned pages to backend storage.
    *
+   * @thread_safe
    */
   void flushAll() {
     LockGuard guard(lock);
@@ -294,6 +311,8 @@ public:
   /**
    * @brief Handle page modifications. This method marks the page slot for given
    * page ID as modified and updates the free space list.
+   *
+   * @thread_safe
    *
    * @param pageId page identifier
    */
@@ -315,6 +334,48 @@ public:
       fsl->freePages.erase(pageId);
     }
   }
+
+#ifdef __PERSIST_DEBUG__
+  /**
+   * @brief Check if Page with given ID is loaded.
+   *
+   * @thread_safe
+   *
+   * @param pageId ID of page to check if loaded
+   * @returns `true` if page is loaded else `false`
+   */
+  bool isPageLoaded(PageId pageId) {
+    LockGuard guard(lock);
+
+    return buffer.find(pageId) != buffer.end();
+  }
+
+  /**
+   * @brief Check if buffer is full. The method can be used to detect if the
+   * buffer is full and any Page loaded not present in the buffer would result
+   * in replacement.
+   *
+   * @thread_safe
+   *
+   * @returns `true` if full else `false`
+   */
+  bool isFull() {
+    LockGuard guard(lock);
+
+    return buffer.size() == maxSize;
+  }
+
+  /**
+   * @brief Check if buffer is empty.
+   *
+   * @returns `true` if empty else `false`
+   */
+  bool isEmpty() {
+    LockGuard guard(lock);
+
+    return buffer.empty();
+  }
+#endif
 };
 
 } // namespace persist

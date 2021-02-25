@@ -27,12 +27,12 @@
 
 #include <atomic>
 #include <memory>
-#include <mutex>
 
 #include <persist/core/buffer/buffer_manager.hpp>
+#include <persist/core/log/log_record.hpp>
 #include <persist/core/page/log_page/log_page.hpp>
-#include <persist/core/recovery/log_record.hpp>
 #include <persist/core/storage/base.hpp>
+#include <persist/utility/mutex.hpp>
 
 namespace persist {
 
@@ -43,18 +43,22 @@ namespace persist {
  */
 class LogManager {
   PERSIST_PRIVATE
+  /**
+   * @brief Recursive lock for thread safety
+   *
+   */
+  // TODO: Need granular locking
+  typedef typename persist::Mutex<std::recursive_mutex> Mutex;
+  Mutex lock; //<- lock for achieving thread safety via mutual exclusion
+  typedef typename persist::LockGuard<Mutex> LockGuard;
 
   std::atomic<SeqNumber>
       seqNumber; //<- Sequence number of the latest log record. This is used to
                  // set sequence number of the next log record.
-  Storage<LogPage> *storage;            //<- Pointer to backend log storage
+  Storage<LogPage> *
+      storage PT_GUARDED_BY(lock);      //<- Pointer to backend log storage
   BufferManager<LogPage> bufferManager; //<- Log record buffer manager
-  bool started;                         //<- flag indicating log manager started
-
-  // TODO: Need granular locking
-  std::recursive_mutex
-      lock; //<- lock for achieving thread safety via mutual exclusion
-  typedef typename std::lock_guard<std::recursive_mutex> LockGuard;
+  bool started GUARDED_BY(lock);        //<- flag indicating log manager started
 
 public:
   /**
