@@ -18,8 +18,15 @@ add_executable(
 get_target_property(DATA_PATH ${TEST_BINARY} BINARY_DIR)
 set(DATA_PATH ${DATA_PATH}/data)
 configure_file (
-    "${CMAKE_CURRENT_SOURCE_DIR}/common.hpp.in"
-    "${CMAKE_CURRENT_SOURCE_DIR}/common.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/common.hpp.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/common.hpp"
+)
+
+# Set include directories
+target_include_directories(
+    ${TEST_BINARY} 
+    PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 # Setup code coverage

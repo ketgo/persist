@@ -283,12 +283,53 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestEmptyBufferGetIFlushI) {
   ASSERT_TRUE(bufferManager->isEmpty());
 
   THREAD(runner, "thread-a") {
-    auto page = bufferManager->get(1);
-
-    page->setRecord("update_testing_1"_bb);
+    OPERATION("GetPage", auto page = bufferManager->get(1));
+    OPERATION("SetRecord", page->setRecord("update_testing_1"_bb));
   };
 
-  THREAD(runner, "thread-b") { bufferManager->flush(1); };
+  THREAD(runner, "thread-b") { OPERATION("Flush", bufferManager->flush(1)); };
+
+  // Sequence of events which do not persist any changes to page
+  assertor.InsertMany(
+      {// Sequence 1
+       {{"thread-b", "Flush", tstest::Event::Type::BEGIN},
+        {"thread-b", "Flush", tstest::Event::Type::END},
+        {"thread-a", "GetPage", tstest::Event::Type::BEGIN},
+        {"thread-a", "GetPage", tstest::Event::Type::END},
+        {"thread-a", "SetRecord", tstest::Event::Type::BEGIN},
+        {"thread-a", "SetRecord", tstest::Event::Type::END}},
+       // Sequence 2
+       {{"thread-a", "GetPage", tstest::Event::Type::BEGIN},
+        {"thread-a", "GetPage", tstest::Event::Type::END},
+        {"thread-b", "Flush", tstest::Event::Type::BEGIN},
+        {"thread-b", "Flush", tstest::Event::Type::END},
+        {"thread-a", "SetRecord", tstest::Event::Type::BEGIN},
+        {"thread-a", "SetRecord", tstest::Event::Type::END}}},
+      [&]() {
+        // Assert flush did not write changes to backend storage
+        auto page = storage->read(1);
+        ASSERT_EQ(page->getId(), page_1->getId());
+        ASSERT_EQ(page->getRecord(), page_1->getRecord());
+      });
+
+  // Sequence of events which persist changes to page
+  assertor.InsertMany(
+      {
+          // Sequence 1
+          {{"thread-a", "GetPage", tstest::Event::Type::BEGIN},
+           {"thread-a", "GetPage", tstest::Event::Type::END},
+           {"thread-a", "SetRecord", tstest::Event::Type::BEGIN},
+           {"thread-a", "SetRecord", tstest::Event::Type::END},
+           {"thread-b", "Flush", tstest::Event::Type::BEGIN},
+           {"thread-b", "Flush", tstest::Event::Type::END}}
+          // Sequence 2
+      },
+      [&]() {
+        // Assert flush wrote changes to backend storage
+        auto page = storage->read(1);
+        ASSERT_EQ(page->getId(), page_1->getId());
+        ASSERT_EQ(page->getRecord(), "update_testing_1"_bb);
+      });
 
   runner.Run();
 
@@ -297,10 +338,8 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestEmptyBufferGetIFlushI) {
   ASSERT_EQ(bufferManager->get(1)->getId(), 1);
   ASSERT_EQ(bufferManager->get(1)->getRecord(), "update_testing_1"_bb);
 
-  // Assert flush did not write page to backend storage
-  auto page = storage->read(1);
-  ASSERT_EQ(page->getId(), page_1->getId());
-  ASSERT_EQ(page->getRecord(), page_1->getRecord());
+  // Assert the observed sequence of events
+  assertor.Assert(runner.GetEventLog());
 }
 
 /**
@@ -324,12 +363,53 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestFullBufferGetIFlushI) {
   ASSERT_TRUE(bufferManager->isFull());
 
   THREAD(runner, "thread-a") {
-    auto page = bufferManager->get(1);
-
-    page->setRecord("update_testing_1"_bb);
+    OPERATION("GetPage", auto page = bufferManager->get(1));
+    OPERATION("SetRecord", page->setRecord("update_testing_1"_bb));
   };
 
-  THREAD(runner, "thread-b") { bufferManager->flush(1); };
+  THREAD(runner, "thread-b") { OPERATION("Flush", bufferManager->flush(1)); };
+
+  // Sequence of events which do not persist any changes to page
+  assertor.InsertMany(
+      {// Sequence 1
+       {{"thread-b", "Flush", tstest::Event::Type::BEGIN},
+        {"thread-b", "Flush", tstest::Event::Type::END},
+        {"thread-a", "GetPage", tstest::Event::Type::BEGIN},
+        {"thread-a", "GetPage", tstest::Event::Type::END},
+        {"thread-a", "SetRecord", tstest::Event::Type::BEGIN},
+        {"thread-a", "SetRecord", tstest::Event::Type::END}},
+       // Sequence 2
+       {{"thread-a", "GetPage", tstest::Event::Type::BEGIN},
+        {"thread-a", "GetPage", tstest::Event::Type::END},
+        {"thread-b", "Flush", tstest::Event::Type::BEGIN},
+        {"thread-b", "Flush", tstest::Event::Type::END},
+        {"thread-a", "SetRecord", tstest::Event::Type::BEGIN},
+        {"thread-a", "SetRecord", tstest::Event::Type::END}}},
+      [&]() {
+        // Assert flush did not write changes to backend storage
+        auto page = storage->read(1);
+        ASSERT_EQ(page->getId(), page_1->getId());
+        ASSERT_EQ(page->getRecord(), page_1->getRecord());
+      });
+
+  // Sequence of events which persist changes to page
+  assertor.InsertMany(
+      {
+          // Sequence 1
+          {{"thread-a", "GetPage", tstest::Event::Type::BEGIN},
+           {"thread-a", "GetPage", tstest::Event::Type::END},
+           {"thread-a", "SetRecord", tstest::Event::Type::BEGIN},
+           {"thread-a", "SetRecord", tstest::Event::Type::END},
+           {"thread-b", "Flush", tstest::Event::Type::BEGIN},
+           {"thread-b", "Flush", tstest::Event::Type::END}}
+          // Sequence 2
+      },
+      [&]() {
+        // Assert flush wrote changes to backend storage
+        auto page = storage->read(1);
+        ASSERT_EQ(page->getId(), page_1->getId());
+        ASSERT_EQ(page->getRecord(), "update_testing_1"_bb);
+      });
 
   runner.Run();
 
@@ -338,8 +418,6 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestFullBufferGetIFlushI) {
   ASSERT_EQ(bufferManager->get(1)->getId(), 1);
   ASSERT_EQ(bufferManager->get(1)->getRecord(), "update_testing_1"_bb);
 
-  // Assert flush did not write page to backend storage
-  auto page = storage->read(1);
-  ASSERT_EQ(page->getId(), page_1->getId());
-  ASSERT_EQ(page->getRecord(), page_1->getRecord());
+  // Assert the observed sequence of events
+  assertor.Assert(runner.GetEventLog());
 }
