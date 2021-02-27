@@ -144,7 +144,7 @@ public:
 
       // Create slot to add to page
       LogPageSlot slot(logRecord.getSeqNumber());
-      // Compute availble space to write data in page. Here he greedy approach
+      // Compute availble space to write data in page. Here the greedy approach
       // is utilized where all the available free space can be used to store the
       // data. The amount of data that can be stored in the page is the
       // (freeSpace of page) - (fixedSize of page slot).

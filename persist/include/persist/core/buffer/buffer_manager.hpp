@@ -155,8 +155,8 @@ public:
   /**
    * @brief Start buffer manager.
    *
-   * @thread_unsafe The method not thread safe as it is expected that the user
-   * starts the buffer manager before spawning any threads.
+   * @thread_unsafe The method is not thread safe as it is expected that the
+   * user starts the buffer manager before spawning any threads.
    *
    */
   void start() NO_THREAD_SAFETY_ANALYSIS {
@@ -178,8 +178,8 @@ public:
    * All the modified pages loaded onto the buffer are flushed to backend
    * storage before stopping the manager.
    *
-   * @thread_unsafe The method not thread safe as it is expected that the user
-   * stops the buffer manager after joining all the threads.
+   * @thread_unsafe The method is not thread safe as it is expected that the
+   * user stops the buffer manager after joining all the threads.
    */
   void stop() NO_THREAD_SAFETY_ANALYSIS {
     LockGuard guard(lock);
