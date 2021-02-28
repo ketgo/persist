@@ -227,7 +227,7 @@ protected:
   const uint64_t pageSize = DEFAULT_PAGE_SIZE;
   std::unique_ptr<SlottedPage> page;
   PageSlotId slotId_1, slotId_2;
-  std::unique_ptr<PageSlot> pageSlot_1, pageSlot_2;
+  std::unique_ptr<SlottedPageSlot> pageSlot_1, pageSlot_2;
   const ByteBuffer pageSlotData_1 = "testing_1"_bb,
                    pageSlotData_2 = "testing_2"_bb;
   std::unique_ptr<Storage<LogPage>> storage;
@@ -247,10 +247,10 @@ protected:
     page->setPrevPageId(prevPageId);
     // Add record blocks
     Transaction txn(logManager.get(), 0);
-    pageSlot_1 = std::make_unique<PageSlot>();
+    pageSlot_1 = std::make_unique<SlottedPageSlot>();
     pageSlot_1->data = pageSlotData_1;
     slotId_1 = page->insertPageSlot(*pageSlot_1, txn).first;
-    pageSlot_2 = std::make_unique<PageSlot>();
+    pageSlot_2 = std::make_unique<SlottedPageSlot>();
     pageSlot_2->data = pageSlotData_2;
     slotId_2 = page->insertPageSlot(*pageSlot_2, txn).first;
 
@@ -379,7 +379,7 @@ TEST_F(SlottedPageTestFixture, TestFreeSpace) {
 
 TEST_F(SlottedPageTestFixture, TestGetPageSlot) {
   Transaction txn(logManager.get(), 0);
-  PageSlot _pageSlot = page->getPageSlot(slotId_1, txn);
+  SlottedPageSlot _pageSlot = page->getPageSlot(slotId_1, txn);
 
   ASSERT_EQ(_pageSlot.data, pageSlotData_1);
   ASSERT_TRUE(_pageSlot.getNextLocation().isNull());
@@ -389,7 +389,7 @@ TEST_F(SlottedPageTestFixture, TestGetPageSlot) {
 TEST_F(SlottedPageTestFixture, TestGetPageSlotError) {
   try {
     Transaction txn(logManager.get(), 0);
-    PageSlot _pageSlot = page->getPageSlot(10, txn);
+    SlottedPageSlot _pageSlot = page->getPageSlot(10, txn);
     FAIL() << "Expected PageSlotNotFoundError Exception.";
   } catch (PageSlotNotFoundError &err) {
     SUCCEED();
@@ -399,7 +399,7 @@ TEST_F(SlottedPageTestFixture, TestGetPageSlotError) {
 }
 
 TEST_F(SlottedPageTestFixture, TestAddPageSlot) {
-  PageSlot pageSlot;
+  SlottedPageSlot pageSlot;
   pageSlot.data = "testing_3"_bb;
 
   // Current free space in block
@@ -414,9 +414,9 @@ TEST_F(SlottedPageTestFixture, TestAddPageSlot) {
   ASSERT_EQ(logRecord->header.seqNumber, txn.logLocation.seqNumber);
   ASSERT_EQ(logRecord->header.prevLogRecordLocation.seqNumber, 0);
   ASSERT_EQ(logRecord->type, LogRecord::Type::INSERT);
-  ASSERT_EQ(logRecord->location, PageSlot::Location(page->getId(), slotId));
+  ASSERT_EQ(logRecord->location, SlottedPageSlot::Location(page->getId(), slotId));
   ASSERT_EQ(logRecord->pageSlotA, pageSlot);
-  ASSERT_EQ(logRecord->pageSlotB, PageSlot());
+  ASSERT_EQ(logRecord->pageSlotB, SlottedPageSlot());
 
   uint64_t newFreeSize = page->header.tail() - page->header.size();
   ASSERT_EQ(oldFreeSpace - newFreeSize, pageSlot.size());
@@ -424,9 +424,9 @@ TEST_F(SlottedPageTestFixture, TestAddPageSlot) {
 }
 
 TEST_F(SlottedPageTestFixture, TestUpdatePageSlot) {
-  PageSlot pageSlot;
+  SlottedPageSlot pageSlot;
   pageSlot.data = "testing_1-update"_bb;
-  PageSlot pageSlotCopy = pageSlot;
+  SlottedPageSlot pageSlotCopy = pageSlot;
 
   // Current free space in block
   page->registerObserver(&observer);
@@ -440,12 +440,12 @@ TEST_F(SlottedPageTestFixture, TestUpdatePageSlot) {
   ASSERT_EQ(logRecord->header.seqNumber, txn.logLocation.seqNumber);
   ASSERT_EQ(logRecord->header.prevLogRecordLocation.seqNumber, 0);
   ASSERT_EQ(logRecord->type, LogRecord::Type::UPDATE);
-  ASSERT_EQ(logRecord->location, PageSlot::Location(page->getId(), slotId_1));
+  ASSERT_EQ(logRecord->location, SlottedPageSlot::Location(page->getId(), slotId_1));
   ASSERT_EQ(logRecord->pageSlotA, *pageSlot_1);
   ASSERT_EQ(logRecord->pageSlotB, pageSlotCopy);
 
   uint64_t newFreeSize = page->header.tail() - page->header.size();
-  PageSlot pageSlot_;
+  SlottedPageSlot pageSlot_;
   pageSlot_.data = "testing_1-update"_bb;
   ASSERT_EQ(oldFreeSpace - newFreeSize, pageSlot_.size() - pageSlot_1->size());
   ASSERT_EQ(page->getPageSlot(slotId_1, txn), pageSlotCopy);
@@ -463,9 +463,9 @@ TEST_F(SlottedPageTestFixture, TestRemovePageSlot) {
   ASSERT_EQ(logRecord->header.seqNumber, txn.logLocation.seqNumber);
   ASSERT_EQ(logRecord->header.prevLogRecordLocation.seqNumber, 0);
   ASSERT_EQ(logRecord->type, LogRecord::Type::DELETE);
-  ASSERT_EQ(logRecord->location, PageSlot::Location(page->getId(), slotId_2));
+  ASSERT_EQ(logRecord->location, SlottedPageSlot::Location(page->getId(), slotId_2));
   ASSERT_EQ(logRecord->pageSlotA, *pageSlot_2);
-  ASSERT_EQ(logRecord->pageSlotB, PageSlot());
+  ASSERT_EQ(logRecord->pageSlotB, SlottedPageSlot());
 
   uint64_t newFreeSize = page->header.tail() - page->header.size();
   ASSERT_THROW(page->getPageSlot(slotId_2, txn), PageSlotNotFoundError);
@@ -493,12 +493,12 @@ TEST_F(SlottedPageTestFixture, TestLoad) {
 
   Transaction txn(logManager.get(), 0);
 
-  PageSlot _pageSlot_1 = _page.getPageSlot(slotId_1, txn);
+  SlottedPageSlot _pageSlot_1 = _page.getPageSlot(slotId_1, txn);
   ASSERT_EQ(_pageSlot_1.data, pageSlotData_1);
   ASSERT_TRUE(_pageSlot_1.getNextLocation().isNull());
   ASSERT_TRUE(_pageSlot_1.getPrevLocation().isNull());
 
-  PageSlot _pageSlot_2 = _page.getPageSlot(slotId_2, txn);
+  SlottedPageSlot _pageSlot_2 = _page.getPageSlot(slotId_2, txn);
   ASSERT_EQ(_pageSlot_2.data, pageSlotData_2);
   ASSERT_TRUE(_pageSlot_2.getNextLocation().isNull());
   ASSERT_TRUE(_pageSlot_2.getPrevLocation().isNull());

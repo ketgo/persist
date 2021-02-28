@@ -36,7 +36,8 @@ namespace persist {
  * @brief The method loads a page from byte buffer.
  *
  * @param input Input buffer span to load.
- * @return std::unique_ptr<PageBase>
+ * @returns Unique pointer of base type to the created page object. The user
+ * should cast the pointer to that of the desired page type.
  */
 static std::unique_ptr<Page> loadPage(Span input) {
 
@@ -50,10 +51,10 @@ static std::unique_ptr<Page> loadPage(Span input) {
 
   PageTypeHeader type_header;
   type_header.load(input);
-
-  auto page = PageFactory::getPage(type_header.getTypeId());
   Span span(input.start + PageTypeHeader::size(),
             input.size - PageTypeHeader::size());
+
+  auto page = PageFactory::getPage(type_header.getTypeId(), 0, span.size);
   page->load(span);
 
   return page;

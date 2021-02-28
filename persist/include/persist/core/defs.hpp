@@ -119,6 +119,18 @@ typedef struct Span {
   Span() {}
   Span(Byte *start, size_t size) : start(start), size(size) {}
   Span(ByteBuffer &buffer) : start(buffer.data()), size(buffer.size()) {}
+
+  /**
+   * @brief Shift the span by specifed size. It is left to the user to make sure
+   * the specified shift is valid. An invalid size would be one which cases the
+   * span to point at invalid memory address.
+   *
+   * @param size The size by which to shift the span.
+   */
+  inline void operator+=(const size_t &size) {
+    start += size;
+    this->size -= size;
+  }
 } Span;
 
 /**

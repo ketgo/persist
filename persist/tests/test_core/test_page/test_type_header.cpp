@@ -81,11 +81,6 @@ TEST_F(PageTypeHeaderTestFixture, TestDump) {
   ByteBuffer output(header->size());
   header->dump(output);
 
-  for (int c : output) {
-    std::cout << c << ", ";
-  }
-  std::cout << "\n";
-
   ASSERT_EQ(input, output);
 }
 

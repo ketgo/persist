@@ -209,12 +209,12 @@ public:
   /**
    * @brief Record Block Location
    */
-  PageSlot::Location location;
+  SlottedPageSlot::Location location;
 
   /**
    * @brief Record Blocks
    */
-  PageSlot pageSlotA, pageSlotB;
+  SlottedPageSlot pageSlotA, pageSlotB;
 
   /**
    * @brief Computes checksum for record block.
@@ -270,7 +270,7 @@ public:
    * records.
    */
   LogRecord(TransactionId transactionId, Location prevLogRecordLocation,
-            Type type, PageSlot::Location location, PageSlot pageSlot)
+            Type type, SlottedPageSlot::Location location, SlottedPageSlot pageSlot)
       : header(0, prevLogRecordLocation, transactionId), type(type),
         location(location), pageSlotA(pageSlot) {}
 
@@ -280,8 +280,8 @@ public:
    * This constructor is used to create UPDATE type log record.
    */
   LogRecord(TransactionId transactionId, Location prevLogRecordLocation,
-            Type type, PageSlot::Location location, PageSlot oldPageSlot,
-            PageSlot newPageSlot)
+            Type type, SlottedPageSlot::Location location, SlottedPageSlot oldPageSlot,
+            SlottedPageSlot newPageSlot)
       : header(0, prevLogRecordLocation, transactionId), type(type),
         location(location), pageSlotA(oldPageSlot), pageSlotB(newPageSlot) {}
 
@@ -327,7 +327,7 @@ public:
    *
    * @returns Consant reference to page slot location targeted by log record
    */
-  const PageSlot::Location &getLocation() const { return location; }
+  const SlottedPageSlot::Location &getLocation() const { return location; }
 
   // TODO: Add const qualifier for get page slot methods.
 
@@ -336,14 +336,14 @@ public:
    *
    * @return Consant reference to page slot
    */
-  PageSlot &getPageSlotA() { return pageSlotA; }
+  SlottedPageSlot &getPageSlotA() { return pageSlotA; }
 
   /**
    * @brief Get the second PageSlot targeted by log record
    *
    * @return Consant reference to page slot
    */
-  PageSlot &getPageSlotB() { return pageSlotB; }
+  SlottedPageSlot &getPageSlotB() { return pageSlotB; }
 
   /**
    * @brief Get size of log record.
@@ -377,8 +377,8 @@ public:
     std::memcpy((void *)&type, (const void *)pos, sizeof(Type));
     pos += sizeof(Type);
     std::memcpy((void *)&location, (const void *)pos,
-                sizeof(PageSlot::Location));
-    pos += sizeof(PageSlot::Location);
+                sizeof(SlottedPageSlot::Location));
+    pos += sizeof(SlottedPageSlot::Location);
     uint64_t pageSlotASize;
     std::memcpy((void *)&pageSlotASize, (const void *)pos, sizeof(uint64_t));
     pos += sizeof(uint64_t);
@@ -416,8 +416,8 @@ public:
     std::memcpy((void *)pos, (const void *)&type, sizeof(Type));
     pos += sizeof(Type);
     std::memcpy((void *)pos, (const void *)&location,
-                sizeof(PageSlot::Location));
-    pos += sizeof(PageSlot::Location);
+                sizeof(SlottedPageSlot::Location));
+    pos += sizeof(SlottedPageSlot::Location);
     uint64_t pageSlotASize = pageSlotA.size();
     std::memcpy((void *)pos, (const void *)&pageSlotASize, sizeof(uint64_t));
     pos += sizeof(uint64_t);

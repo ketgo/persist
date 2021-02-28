@@ -110,10 +110,10 @@ TEST_F(LogManagerTestFixture, TestGet) {
 
 TEST_F(LogManagerTestFixture, TestAdd) {
   // Creating log record which should span multiple page slots
-  PageSlot pageSlotA, pageSlotB;
+  SlottedPageSlot pageSlotA, pageSlotB;
   pageSlotA.data = ByteBuffer(storage->getPageSize(), 'A');
   pageSlotB.data = ByteBuffer(storage->getPageSize(), 'B');
-  PageSlot::Location slotLocation = {10, 1};
+  SlottedPageSlot::Location slotLocation = {10, 1};
   LogRecord::Location prevLogRecordLocation = {0, 0};
   LogRecord logRecord(11, prevLogRecordLocation, LogRecord::Type::UPDATE,
                       slotLocation, pageSlotA, pageSlotB);
@@ -127,10 +127,10 @@ TEST_F(LogManagerTestFixture, TestAdd) {
 
 TEST_F(LogManagerTestFixture, TestFlush) {
   // Creating log record which should span multiple page slots
-  PageSlot pageSlotA, pageSlotB;
+  SlottedPageSlot pageSlotA, pageSlotB;
   pageSlotA.data = ByteBuffer(storage->getPageSize(), 'A');
   pageSlotB.data = ByteBuffer(storage->getPageSize(), 'B');
-  PageSlot::Location slotLocation = {10, 1};
+  SlottedPageSlot::Location slotLocation = {10, 1};
   LogRecord::Location prevLogRecordLocation = {0, 0};
   LogRecord logRecord(11, prevLogRecordLocation, LogRecord::Type::UPDATE,
                       slotLocation, pageSlotA, pageSlotB);

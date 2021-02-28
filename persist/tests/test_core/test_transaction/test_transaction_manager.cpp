@@ -45,7 +45,7 @@ protected:
   const uint64_t pageSize = DEFAULT_PAGE_SIZE;
   const uint64_t maxSize = 2;
   const std::string path = "test_transaction_manager";
-  PageSlot::Location location;
+  SlottedPageSlot::Location location;
   typedef BufferManager<SlottedPage> BufferManager;
   std::unique_ptr<BufferManager> bufferManager;
   std::unique_ptr<Storage<SlottedPage>> dataStorage;
@@ -105,8 +105,8 @@ protected:
    * @param slot reference to the page lost to insert
    * @returns location where page slot is inserted
    */
-  PageSlot::Location insert(Transaction &txn, PageSlot &slot) {
-    PageSlot::Location _location;
+  SlottedPageSlot::Location insert(Transaction &txn, SlottedPageSlot &slot) {
+    SlottedPageSlot::Location _location;
     auto page = bufferManager->getNew();
     auto inserted = page->insertPageSlot(slot, txn);
     _location.pageId = page->getId();
@@ -122,7 +122,7 @@ protected:
    * @param location reference to the location to update
    * @param slot reference to the page lost to insert
    */
-  void update(Transaction &txn, PageSlot::Location &location, PageSlot &slot) {
+  void update(Transaction &txn, SlottedPageSlot::Location &location, SlottedPageSlot &slot) {
     auto page = bufferManager->get(location.pageId);
     page->updatePageSlot(location.slotId, slot, txn);
   }
@@ -133,7 +133,7 @@ protected:
    * @param txn reference to the transaction
    * @param location reference to the location to remove
    */
-  void remove(Transaction &txn, PageSlot::Location &location) {
+  void remove(Transaction &txn, SlottedPageSlot::Location &location) {
     auto page = bufferManager->get(location.pageId);
     page->removePageSlot(location.slotId, txn);
   }
@@ -144,7 +144,7 @@ private:
    *
    */
   void insert() {
-    PageSlot slot("testing"_bb);
+    SlottedPageSlot slot("testing"_bb);
     Transaction txn = txnManager->begin();
     location = insert(txn, slot);
     txnManager->commit(txn, true);
@@ -166,8 +166,8 @@ TEST_F(TransactionManagerTestFixture, TestBegin) {
 }
 
 TEST_F(TransactionManagerTestFixture, TestCommitForce) {
-  PageSlot::Location _location;
-  PageSlot slot("testing-commit-force"_bb);
+  SlottedPageSlot::Location _location;
+  SlottedPageSlot slot("testing-commit-force"_bb);
 
   // Insert page slot as part of transaction
   Transaction txn = txnManager->begin();
@@ -195,8 +195,8 @@ TEST_F(TransactionManagerTestFixture, TestCommitForce) {
 }
 
 TEST_F(TransactionManagerTestFixture, TestCommitNoForce) {
-  PageSlot::Location _location;
-  PageSlot slot("testing-commit-no-force"_bb);
+  SlottedPageSlot::Location _location;
+  SlottedPageSlot slot("testing-commit-no-force"_bb);
 
   // Insert page slot as part of transaction
   Transaction txn = txnManager->begin();
@@ -220,8 +220,8 @@ TEST_F(TransactionManagerTestFixture, TestCommitNoForce) {
 }
 
 TEST_F(TransactionManagerTestFixture, TestInsertAbort) {
-  PageSlot::Location _location;
-  PageSlot slot("testing-insert-abort"_bb);
+  SlottedPageSlot::Location _location;
+  SlottedPageSlot slot("testing-insert-abort"_bb);
 
   // Insert page slot as part of transaction
   Transaction txn = txnManager->begin();
@@ -252,7 +252,7 @@ TEST_F(TransactionManagerTestFixture, TestInsertAbort) {
 }
 
 TEST_F(TransactionManagerTestFixture, TestUpdateAbort) {
-  PageSlot slot("testing-update-abort"_bb);
+  SlottedPageSlot slot("testing-update-abort"_bb);
 
   // Update page slot as part of transaction
   Transaction txn = txnManager->begin();

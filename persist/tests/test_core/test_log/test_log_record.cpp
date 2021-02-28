@@ -41,9 +41,9 @@ using namespace persist;
 
 class LogRecordTestFixture : public ::testing::Test {
 protected:
-  PageSlot pageSlotA, pageSlotB;
+  SlottedPageSlot pageSlotA, pageSlotB;
   const TransactionId txnId = 432;
-  const PageSlot::Location location = {10, 1};
+  const SlottedPageSlot::Location location = {10, 1};
   const SeqNumber seqNumber = 5;
   const LogRecord::Location prevLogRecordLocation = {1, 3};
   std::unique_ptr<LogRecord> logRecord;

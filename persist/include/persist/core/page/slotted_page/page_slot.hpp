@@ -47,7 +47,7 @@ namespace persist {
  * of the slot stores the data record.
  *
  */
-class PageSlot {
+class SlottedPageSlot {
 public:
   /**
    * PageSlot Location Class
@@ -240,10 +240,10 @@ public:
    * @brief Construct a new Page Slot object
    *
    */
-  PageSlot() {}
-  PageSlot(PageSlot::Header header) : header(header) {}
-  PageSlot(ByteBuffer data) : data(data) {}
-  PageSlot(ByteBuffer data, PageSlot::Header header)
+  SlottedPageSlot() {}
+  SlottedPageSlot(SlottedPageSlot::Header header) : header(header) {}
+  SlottedPageSlot(ByteBuffer data) : data(data) {}
+  SlottedPageSlot(ByteBuffer data, SlottedPageSlot::Header header)
       : data(data), header(header) {}
 
   /**
@@ -325,14 +325,14 @@ public:
   /**
    * @brief Equality comparision operator.
    */
-  bool operator==(const PageSlot &other) const {
+  bool operator==(const SlottedPageSlot &other) const {
     return header == other.header && data == other.data;
   }
 
   /**
    * @brief Non-equality comparision operator.
    */
-  bool operator!=(const PageSlot &other) const {
+  bool operator!=(const SlottedPageSlot &other) const {
     return header != other.header || data != other.data;
   }
 
@@ -340,7 +340,7 @@ public:
   /**
    * @brief Write record block to output stream
    */
-  friend std::ostream &operator<<(std::ostream &os, const PageSlot &slot) {
+  friend std::ostream &operator<<(std::ostream &os, const SlottedPageSlot &slot) {
     os << "------ PageSlot ------\n";
     os << slot.header << "\n";
     os << "data: " << slot.data << "\n";

@@ -109,7 +109,7 @@ public:
    * @param location location where record is inserted
    * @param pageSlot page slot inserted
    */
-  void logInsertOp(PageSlot::Location &location, PageSlot &pageSlot) {
+  void logInsertOp(SlottedPageSlot::Location &location, SlottedPageSlot &pageSlot) {
     // Stage Page ID
     staged.insert(location.pageId);
     // Log record for insert operation
@@ -125,8 +125,8 @@ public:
    * @param oldPageSlot old page slot
    * @param newPageSlot new page slot
    */
-  void logUpdateOp(PageSlot::Location &location, PageSlot &oldPageSlot,
-                   PageSlot &newPageSlot) {
+  void logUpdateOp(SlottedPageSlot::Location &location, SlottedPageSlot &oldPageSlot,
+                   SlottedPageSlot &newPageSlot) {
     // Stage Page ID
     staged.insert(location.pageId);
     // Log record for update operation
@@ -141,7 +141,7 @@ public:
    * @param location location where record is located
    * @param pageSlot page slot deleted
    */
-  void logDeleteOp(PageSlot::Location &location, PageSlot &pageSlot) {
+  void logDeleteOp(SlottedPageSlot::Location &location, SlottedPageSlot &pageSlot) {
     // Stage Page ID
     staged.insert(location.pageId);
     // Log record for delete operation

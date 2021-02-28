@@ -37,6 +37,21 @@
 #include <persist/core/page/slotted_page/slotted_page.hpp>
 
 namespace persist {
+
+/**
+ * @brief Create an empty page object of specified type.
+ *
+ * @tparam PageType The type of page to create.
+ * @param pageId The page identifier.
+ * @param pageSize The page size.
+ * @returns Unique pointer to the created page.
+ */
+template <class PageType>
+static std::unique_ptr<PageType> createPage(PageId pageId, uint64_t pageSize) {
+  // The page size is adjusted to incorporate the type header.
+  return std::make_unique<PageType>(pageId, pageSize - PageTypeHeader::size());
+}
+
 /**
  * @brief Private Page Factory Class
  *
@@ -53,7 +68,7 @@ private:
    * The table maps page type identifer to creator functors.
    *
    */
-  typedef std::function<std::unique_ptr<Page>()> PageCreator;
+  typedef std::function<std::unique_ptr<Page>(PageId, uint64_t)> PageCreator;
   typedef std::unordered_map<PageTypeId, PageCreator> LookupTable;
   static LookupTable table;
 
@@ -69,20 +84,23 @@ public:
     // TODO: Throw error if page type already register. The exception should
     // display the type ID value.
     if (table.find(page_type_id) == table.end()) {
-      table.insert({page_type_id, std::make_unique<PageType>});
+      table.insert({page_type_id, createPage<PageType>});
     }
   }
 
   /**
-   * @brief Get a page of specified type identifier. The default constructor is
-   * used when creating the page object.
+   * @brief Get a page of specified type identifier.
    *
    * @param page_type_id The page type identifier.
+   * @param pageId The page identifier.
+   * @param pageSize The page size.
    * @returns Unique pointer of base type to the created page object. The user
    * should cast the pointer to that of the desired page type.
    */
-  static std::unique_ptr<Page> getPage(PageTypeId page_type_id) {
-    return table.at(page_type_id)();
+  static std::unique_ptr<Page> getPage(PageTypeId page_type_id,
+                                       PageId pageId = 0,
+                                       uint64_t pageSize = DEFAULT_PAGE_SIZE) {
+    return table.at(page_type_id)(pageId, pageSize);
   }
 };
 
@@ -93,8 +111,8 @@ public:
  */
 template <class T>
 typename _PageFactory<T>::LookupTable _PageFactory<T>::table = {
-    {LogPage().getTypeId(), std::make_unique<LogPage>},
-    {SlottedPage().getTypeId(), std::make_unique<SlottedPage>}};
+    {LogPage().getTypeId(), createPage<LogPage>},
+    {SlottedPage().getTypeId(), createPage<SlottedPage>}};
 
 /**
  * @brief Page Factory Class
@@ -103,22 +121,6 @@ typename _PageFactory<T>::LookupTable _PageFactory<T>::table = {
  * access the page factory instead of the template parameterized version.
  */
 typedef _PageFactory<> PageFactory;
-
-/**
- * @brief Create an empty page object of specified type.
- *
- * @tparam PageType The type of page to create.
- * @param page_id The page identifier.
- * @param page_size The page size.
- * @returns Unique pointer to the created page.
- */
-template <class PageType>
-static std::unique_ptr<PageType>
-createPage(PageId page_id, uint64_t page_size = DEFAULT_PAGE_SIZE) {
-  // The page size is adjusted to incorporate the type header.
-  return std::make_unique<PageType>(page_id,
-                                    page_size - PageTypeHeader::size());
-}
 
 } // namespace persist
 

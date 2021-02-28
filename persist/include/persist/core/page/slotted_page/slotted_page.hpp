@@ -382,7 +382,7 @@ public:
   /**
    * @brief Collection of page slots mapped to their slotIds in page header
    */
-  typedef typename std::unordered_map<PageSlotId, PageSlot> PageSlotMap;
+  typedef typename std::unordered_map<PageSlotId, SlottedPageSlot> PageSlotMap;
   PageSlotMap pageSlots;
 
 public:
@@ -484,7 +484,7 @@ public:
    * @returns Constant reference to the PageSlot object if found
    * @throws PageSlotNotFoundError
    */
-  const PageSlot &getPageSlot(PageSlotId slotId, Transaction &txn) const {
+  const SlottedPageSlot &getPageSlot(PageSlotId slotId, Transaction &txn) const {
     // Check if slot exists
     PageSlotMap::const_iterator it = pageSlots.find(slotId);
     if (it == pageSlots.end()) {
@@ -500,13 +500,13 @@ public:
    * @param txn Reference to active transaction
    * @returns SlotId and pointer to the inserted PageSlot
    */
-  std::pair<PageSlotId, PageSlot *> insertPageSlot(PageSlot &pageSlot,
+  std::pair<PageSlotId, SlottedPageSlot *> insertPageSlot(SlottedPageSlot &pageSlot,
                                                    Transaction &txn) {
     // Create slot for record block
     PageSlotId slotId = header.createSlot(pageSlot.size());
 
     // Log insert operation
-    PageSlot::Location location(header.pageId, slotId);
+    SlottedPageSlot::Location location(header.pageId, slotId);
     txn.logInsertOp(location, pageSlot);
 
     // Insert record block at slot
@@ -515,7 +515,7 @@ public:
     // Notify observers of modification
     notifyObservers();
 
-    return std::pair<PageSlotId, PageSlot *>(slotId, &inserted.first->second);
+    return std::pair<PageSlotId, SlottedPageSlot *>(slotId, &inserted.first->second);
   }
 
   /**
@@ -526,7 +526,7 @@ public:
    * @param txn Reference to active transaction
    * @throws PageSlotNotFoundError
    */
-  virtual void updatePageSlot(PageSlotId slotId, PageSlot &pageSlot,
+  virtual void updatePageSlot(PageSlotId slotId, SlottedPageSlot &pageSlot,
                               Transaction &txn) {
     // Check if slot exists
     PageSlotMap::iterator it = pageSlots.find(slotId);
@@ -535,7 +535,7 @@ public:
     }
 
     // Log update operation
-    PageSlot::Location location(header.pageId, slotId);
+    SlottedPageSlot::Location location(header.pageId, slotId);
     txn.logUpdateOp(location, it->second, pageSlot);
 
     // Update slot for record block
@@ -562,7 +562,7 @@ public:
     }
 
     // Log delete operation
-    PageSlot::Location location(header.pageId, slotId);
+    SlottedPageSlot::Location location(header.pageId, slotId);
     txn.logDeleteOp(location, pageSlots.at(slotId));
 
     // Adjusting header
@@ -581,10 +581,10 @@ public:
    * @param pageSlot Reference to the slot to insert back
    * @param txn Reference to active transaction
    */
-  void undoRemovePageSlot(PageSlotId slotId, PageSlot &pageSlot,
+  void undoRemovePageSlot(PageSlotId slotId, SlottedPageSlot &pageSlot,
                           Transaction &txn) {
     // Log insert operation
-    PageSlot::Location location(header.pageId, slotId);
+    SlottedPageSlot::Location location(header.pageId, slotId);
     txn.logInsertOp(location, pageSlot);
 
     // Update slot for record block
@@ -613,9 +613,9 @@ public:
     for (auto &element : header.slots) {
       Header::HeaderSlot &slot = element.second;
       Span span(input.start + slot.offset, slot.size);
-      PageSlot pageSlot;
+      SlottedPageSlot pageSlot;
       pageSlot.load(span);
-      pageSlots.insert(std::pair<PageSlotId, PageSlot>(slot.id, pageSlot));
+      pageSlots.insert(std::pair<PageSlotId, SlottedPageSlot>(slot.id, pageSlot));
     }
   }
 
@@ -639,7 +639,7 @@ public:
     // Dump record blocks
     for (auto &element : header.slots) {
       Header::HeaderSlot &slot = element.second;
-      PageSlot &pageSlot = pageSlots.at(slot.id);
+      SlottedPageSlot &pageSlot = pageSlots.at(slot.id);
       span.start = output.start + slot.offset;
       span.size = slot.size;
       pageSlot.dump(span);
@@ -651,7 +651,7 @@ public:
    * @brief Write page to output stream
    */
   friend std::ostream &operator<<(std::ostream &os,
-                                  const VLSSlottedPage &page) {
+                                  const SlottedPage &page) {
     os << "--------- Page " << page.header.pageId << " ---------\n";
     os << page.header << "\n";
     for (auto element : page.pageSlots) {
