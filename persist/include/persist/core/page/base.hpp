@@ -91,6 +91,19 @@ public:
   }
 
   /**
+   * @brief Get the page type identifer.
+   *
+   * NOTES:
+   *  1. The underlying implementation does not need to serialize/deserialize
+   * this identifer as that is taken care by the polymorphic Load and Dump
+   * methods.
+   *  2. Each implementation should have a unique type ID.
+   *
+   * @returns The page type identifier
+   */
+  virtual PageTypeId getTypeId() const = 0;
+
+  /**
    * Get page ID.
    *
    * @returns page identifier

@@ -1,5 +1,5 @@
 /**
- * tests/common.hpp - Persist
+ * mocks.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,17 +22,26 @@
  * SOFTWARE.
  */
 
+#ifndef TEST_MOCKS_HPP
+#define TEST_MOCKS_HPP
+
+#include <gmock/gmock.h>
+
+#include <persist/core/page/base.hpp>
+
+namespace persist {
+namespace test {
+
 /**
- * @brief The header file contains common definitions and methods used for
- * testing.
+ * @brief Page Observer Mock
  *
  */
-#ifndef TESTS_COMMON_HPP
-#define TESTS_COMMON_HPP
+class MockPageObserver : public PageObserver {
+public:
+  MOCK_METHOD(void, handleModifiedPage, (PageId pageId), (override));
+};
 
-/**
- * @brief Location of the test data.
- */
-#define DATA_PATH "@DATA_PATH@"
+} // namespace test
+} // namespace persist
 
-#endif /* TESTS_COMMON_HPP */
+#endif /* TEST_MOCKS_HPP */

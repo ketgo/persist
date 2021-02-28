@@ -33,6 +33,12 @@
 
 namespace persist {
 
+// TODO:
+// 1. The insert is not thread safe as it exposes a loophole for
+// accessing protected slots by returning a pointer. We need a LogSlotHandle
+// which locks the access to slots from concurrent read and writes.
+// 2. Use move operations for writing page slots in page.
+
 /**
  * @brief LogPage Class
  *
@@ -210,6 +216,13 @@ public:
   }
 
   /**
+   * @brief Get the page type identifer.
+   *
+   * @returns The page type identifier
+   */
+  PageTypeId getTypeId() const override { return 1; }
+
+  /**
    * Get page ID.
    *
    * @returns page identifier
@@ -266,9 +279,6 @@ public:
     return it->second;
   }
 
-  // TODO: The insert is not thread safe as it exposes a loophole for
-  // accessing protected slots by returning a pointer. We need a SlotHandle
-  // which locks the access to slots from concurrent read and writes.
   /**
    * @brief Insert log page slot to page.
    *

@@ -37,6 +37,7 @@
  */
 #define PERSIST_INTRUSIVE_TESTING
 
+#include "persist/test/mocks.hpp"
 #include "persist/test/simple_page.hpp"
 
 using namespace persist;
@@ -126,11 +127,6 @@ TEST(SimplePageTest, PageSizeError) {
   }
 }
 
-class MockSlottedPageObserver : public PageObserver {
-public:
-  MOCK_METHOD(void, handleModifiedPage, (PageId pageId), (override));
-};
-
 class SimplePageTestFixture : public ::testing::Test {
 protected:
   ByteBuffer input;
@@ -138,7 +134,7 @@ protected:
   const uint64_t pageSize = DEFAULT_PAGE_SIZE;
   std::unique_ptr<SimplePage> page;
   const ByteBuffer record = "testing"_bb;
-  MockSlottedPageObserver observer;
+  MockPageObserver observer;
 
   void SetUp() override {
     // Setup valid page

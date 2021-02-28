@@ -1,7 +1,7 @@
 /**
- * version.hpp.in - Persist
+ * page/test_serializer.cpp - Persist
  *
- * Copyright 2020 Ketan Goyal
+ * Copyright 2021 Ketan Goyal
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,13 +22,44 @@
  * SOFTWARE.
  */
 
-#ifndef VERSION_HPP
-#define VERSION_HPP
+/**
+ * @brief Page Serializer Unit Test
+ *
+ */
 
-#define PERSIST_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
-#define PERSIST_VERSION_MINOR @PROJECT_VERSION_MINOR@
-#define PERSIST_VERSION_PATCH @PROJECT_VERSION_PATCH@
-#define PERSIST_VERSION_TWEAK @PROJECT_VERSION_TWEAK@
-#define PERSIST_VERSION "@PROJECT_VERSION@"
+#include <gtest/gtest.h>
 
-#endif /* VERSION_HPP */
+#include <memory>
+
+/**
+ * Enabled intrusive testing
+ */
+#define PERSIST_INTRUSIVE_TESTING
+
+#include <persist/core/page/serializer.hpp>
+
+#include "persist/test/mocks.hpp"
+
+using namespace persist;
+using namespace persist::test;
+
+class PageSerializerTestFixture : public ::testing::Test {
+protected:
+  ByteBuffer inputLogPage;
+  std::unique_ptr<LogPage> logPage;
+  const PageId logPageId = 12;
+  const uint64_t logPageSize = DEFAULT_PAGE_SIZE;
+
+  ByteBuffer inputSlottedPage;
+  std::unique_ptr<SlottedPage> slottedPage;
+  const PageId slottedPageId = 12;
+  const uint64_t slottedPageSize = DEFAULT_PAGE_SIZE;
+
+  MockPageObserver observer;
+
+  void SetUp() override {}
+};
+
+TEST_F(PageSerializerTestFixture, TestLoad) {}
+
+TEST_F(PageSerializerTestFixture, TestDump) {}

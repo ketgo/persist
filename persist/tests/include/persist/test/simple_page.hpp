@@ -38,7 +38,8 @@ namespace test {
  * @brief Simple Page Class
  *
  * The class represents a simple page storing a single record in bytes and
- * a header consisting of just page ID.
+ * a header consisting of just page ID. The class can be used for unit testing
+ * page dependent componenets.
  */
 class SimplePage : public Page {
 public:
@@ -172,6 +173,13 @@ public:
       throw PageSizeError(pageSize);
     }
   }
+
+  /**
+   * @brief Get the page type identifer.
+   *
+   * @returns The page type identifier
+   */
+  PageTypeId getTypeId() const override { return 0; }
 
   /**
    * Get page ID.

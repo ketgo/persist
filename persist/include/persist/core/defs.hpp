@@ -53,6 +53,11 @@
 /**
  * Global Constants
  */
+
+// Minimum user defined page type identifer value. All values below this number
+// are for package use.
+#define MINIMUM_PAGE_TYPE_ID 24
+
 // Minimum allowed page size in bytes
 #define MINIMUM_PAGE_SIZE 512
 // Default page size in bytes
@@ -68,6 +73,12 @@
 #define DEFAULT_LOG_BUFFER_SIZE 8
 
 namespace persist {
+
+/**
+ * Page type identifier type
+ *
+ */
+typedef uint8_t PageTypeId;
 
 /**
  * Page identifier type

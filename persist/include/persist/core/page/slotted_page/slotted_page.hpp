@@ -22,28 +22,53 @@
  * SOFTWARE.
  */
 
-#ifndef VLS_SLOTTED_PAGE_HPP
-#define VLS_SLOTTED_PAGE_HPP
+#ifndef SLOTTED_PAGE_HPP
+#define SLOTTED_PAGE_HPP
 
 #include <map>
 #include <unordered_map>
 
 #include <persist/core/exceptions.hpp>
-#include <persist/core/page/slotted_page/base.hpp>
+#include <persist/core/page/base.hpp>
+#include <persist/core/page/slotted_page/page_slot.hpp>
+#include <persist/core/transaction/transaction.hpp>
 
 namespace persist {
+
+// TODO :
+// 1. Implement PageSlotHandle used for accessing slots in a thread safe
+// way. The handle locks and unlocks read-write lock of the associated slot
+// during construction and destruction of the handle. The insert interface
+// is not thread safe as it exposes a loophole for accessing slots by a
+// pointer. Refactor that to use PageSlotHandle.
+// 2. Add a read-write mutex to the PageSlot class or create a wrapper
+// class.
+// 3. Use move operations for writing page slots in page.
+
 /**
- * @brief Variable Length Slots Slotted Page Class
+ * @brief Slotted Page
  *
- * The variable length slots (VLS) slotted page stores page slots of variable
- * lengths. This page can be used in collections which store variable length
- * records. Each VLS slotted page comprises of a header, free space, and stored
- * page slots. The page header contains the page unique identifier along with
- * the next and previous page identifiers in case the page is linked. It also
- * contains entries of offset values indicating where each slot in the page is
- * located.
+ * Slotted page stores data records in slots of variable lengths where each
+ * slot may contain a full or partial record. The page can be used in
+ * collections which store variable length records. It comprises of a
+ * header, free space, and stored slots. The page header comprises of the
+ * page unique identifier, called PageId, along with the next and previous
+ * page identifiers in case the page is linked. It also contains entries of
+ * offset values indicating where each slot is located within the page.
+ *
+ * Every slot in a page has a unique identifier called SlotId. The SlotId is
+ * only unique within the context of a page. For a globally unique
+ * identifier the (PageId, SlotId) tuple is used. The tuple acts as an
+ * abstract address of the slot in a backend storage.
+ *
+ * A data record spanning accross multiple slots is usually stored as a
+ * doubly-linked list of page slots. Thus, a slot contains the location,
+ * i.e. the (PageId, SlotId) tuple of the next and previous page slots to
+ * which it is linked. This information along with its own SlotId is stored
+ * in its header. The rest of the slot stores the record data.
+ *
  */
-class VLSSlottedPage : public SlottedPage {
+class SlottedPage : public Page {
 public:
   /**
    * Page Header Class
@@ -362,18 +387,25 @@ public:
 
 public:
   /**
-   * @brief Construct a new VLSSlottedPage object
+   * @brief Construct a new SlottedPage object
    *
    * @param pageId page identifer
    * @param pageSize page storage size
    */
-  VLSSlottedPage(PageId pageId = 0, uint64_t pageSize = DEFAULT_PAGE_SIZE)
+  SlottedPage(PageId pageId = 0, uint64_t pageSize = DEFAULT_PAGE_SIZE)
       : header(pageId, pageSize) {
     // Check page size greater than minimum size
     if (pageSize < MINIMUM_PAGE_SIZE) {
       throw PageSizeError(pageSize);
     }
   }
+
+  /**
+   * @brief Get the page type identifer.
+   *
+   * @returns The page type identifier
+   */
+  PageTypeId getTypeId() const override { return 2; }
 
   /**
    * Get page ID.
@@ -452,8 +484,7 @@ public:
    * @returns Constant reference to the PageSlot object if found
    * @throws PageSlotNotFoundError
    */
-  const PageSlot &getPageSlot(PageSlotId slotId,
-                              Transaction &txn) const override {
+  const PageSlot &getPageSlot(PageSlotId slotId, Transaction &txn) const {
     // Check if slot exists
     PageSlotMap::const_iterator it = pageSlots.find(slotId);
     if (it == pageSlots.end()) {
@@ -470,7 +501,7 @@ public:
    * @returns SlotId and pointer to the inserted PageSlot
    */
   std::pair<PageSlotId, PageSlot *> insertPageSlot(PageSlot &pageSlot,
-                                                   Transaction &txn) override {
+                                                   Transaction &txn) {
     // Create slot for record block
     PageSlotId slotId = header.createSlot(pageSlot.size());
 
@@ -496,7 +527,7 @@ public:
    * @throws PageSlotNotFoundError
    */
   virtual void updatePageSlot(PageSlotId slotId, PageSlot &pageSlot,
-                              Transaction &txn) override {
+                              Transaction &txn) {
     // Check if slot exists
     PageSlotMap::iterator it = pageSlots.find(slotId);
     if (it == pageSlots.end()) {
@@ -523,7 +554,7 @@ public:
    * @param txn Reference to active transaction
    * @throws PageSlotNotFoundError
    */
-  void removePageSlot(PageSlotId slotId, Transaction &txn) override {
+  void removePageSlot(PageSlotId slotId, Transaction &txn) {
     // Check if slot exists
     PageSlotMap::iterator it = pageSlots.find(slotId);
     if (it == pageSlots.end()) {
@@ -551,7 +582,7 @@ public:
    * @param txn Reference to active transaction
    */
   void undoRemovePageSlot(PageSlotId slotId, PageSlot &pageSlot,
-                          Transaction &txn) override {
+                          Transaction &txn) {
     // Log insert operation
     PageSlot::Location location(header.pageId, slotId);
     txn.logInsertOp(location, pageSlot);
@@ -636,4 +667,4 @@ public:
 
 } // namespace persist
 
-#endif /* VLS_SLOTTED_PAGE_HPP */
+#endif /* SLOTTED_PAGE_HPP */

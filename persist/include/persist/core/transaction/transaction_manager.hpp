@@ -27,13 +27,15 @@
 
 #include <persist/core/buffer/buffer_manager.hpp>
 #include <persist/core/buffer/replacer/base.hpp>
-#include <persist/core/page/slotted_page/vls_slotted_page.hpp>
 #include <persist/core/log/log_manager.hpp>
+#include <persist/core/page/slotted_page/slotted_page.hpp>
 #include <persist/core/transaction/transaction.hpp>
-
 #include <persist/utility/uid.hpp>
 
 namespace persist {
+
+// TODO: Refactor template class to use page traits. The buffer manager does not
+// need PageType anymore due to polymorphic serialization.
 
 /**
  * @brief Transaction Manager Class
@@ -42,7 +44,6 @@ namespace persist {
  *
  * @tparam PageType type of page
  */
-// TODO: This is brute force approach. Need to use polymorphic pages.
 template <class PageType> class TransactionManager {
   static_assert(std::is_base_of<SlottedPage, PageType>::value,
                 "PageType must be derived from SlottedPage class.");
@@ -149,8 +150,7 @@ public:
    */
   Transaction begin() {
     // Create a new transaction
-    Transaction txn(logManager, generateUID(),
-                    Transaction::State::ACTIVE);
+    Transaction txn(logManager, generateUID(), Transaction::State::ACTIVE);
     // Log transaction begin record
     logBegin(txn);
 

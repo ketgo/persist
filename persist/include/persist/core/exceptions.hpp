@@ -34,6 +34,9 @@
 
 #include <persist/core/defs.hpp>
 
+// TODO: Too many exception classes in one file. Move them into seprate files
+// according to the associated componenets.
+
 namespace persist {
 
 // --------------------------------------------------

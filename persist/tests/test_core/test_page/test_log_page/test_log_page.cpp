@@ -39,7 +39,11 @@
 
 #include <persist/core/page/log_page/log_page.hpp>
 
+#include "persist/test/mocks.hpp"
+
 using namespace persist;
+using namespace persist::test;
+
 using ::testing::AtLeast;
 using ::testing::Return;
 
@@ -132,11 +136,6 @@ TEST(LogPageTest, PageSizeError) {
   }
 }
 
-class MockLogPageObserver : public PageObserver {
-public:
-  MOCK_METHOD(void, handleModifiedPage, (PageId pageId), (override));
-};
-
 class LogPageTestFixture : public ::testing::Test {
 protected:
   ByteBuffer input;
@@ -148,7 +147,7 @@ protected:
   std::unique_ptr<LogPageSlot> pageSlot_1, pageSlot_2;
   const ByteBuffer pageSlotData_1 = "testing_1"_bb,
                    pageSlotData_2 = "testing_2"_bb;
-  MockLogPageObserver observer;
+  MockPageObserver observer;
 
   void SetUp() override {
     // Setup valid page

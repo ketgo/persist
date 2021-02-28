@@ -30,12 +30,6 @@
 
 namespace persist {
 
-// TODO:
-// 1. Implement PageSlotHandle used for accessing slots in a thread safe way.
-// The handle locks and unlocks read-write lock of the associated slot during
-// construction and destruction of the handle.
-// 2. Add a read-write mutex to the PageSlot class or create a wrapper class.
-
 /**
  * @brief PageSlot Class
  *
@@ -49,8 +43,8 @@ namespace persist {
  * A data record spanning accross multiple slots is stored as a doubly-linked
  * list of page slots. Thus, a slot contains the location, i.e. the (PageId,
  * SlotId) tuple, of the next and previous page slots to which it is linked.
- * This information along with its own SlotId is stored its header. The rest of
- * the slot stores the data record.
+ * This information along with its own SlotId is stored in its header. The rest
+ * of the slot stores the data record.
  *
  */
 class PageSlot {
@@ -249,8 +243,9 @@ public:
   PageSlot() {}
   PageSlot(PageSlot::Header header) : header(header) {}
   PageSlot(ByteBuffer data) : data(data) {}
-  PageSlot(ByteBuffer data, PageSlot::Header header) : data(data), header(header) {}
-  
+  PageSlot(ByteBuffer data, PageSlot::Header header)
+      : data(data), header(header) {}
+
   /**
    * Get storage size of page slot.
    */

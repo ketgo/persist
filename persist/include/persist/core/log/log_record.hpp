@@ -251,7 +251,7 @@ public:
   /**
    * Default constructor
    */
-  LogRecord(){};
+  LogRecord() = default;
 
   /**
    * @brief Construct a new Log Record object

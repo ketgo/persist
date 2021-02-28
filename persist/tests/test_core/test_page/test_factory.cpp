@@ -1,7 +1,7 @@
 /**
- * version.hpp.in - Persist
+ * test_factory.cpp - Persist
  *
- * Copyright 2020 Ketan Goyal
+ * Copyright 2021 Ketan Goyal
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,13 +22,38 @@
  * SOFTWARE.
  */
 
-#ifndef VERSION_HPP
-#define VERSION_HPP
+/**
+ * @brief Page Factory Unit Test
+ *
+ */
 
-#define PERSIST_VERSION_MAJOR 0
-#define PERSIST_VERSION_MINOR 0
-#define PERSIST_VERSION_PATCH 1
-#define PERSIST_VERSION_TWEAK 
-#define PERSIST_VERSION "0.0.1"
+#include <gtest/gtest.h>
 
-#endif /* VERSION_HPP */
+#include <memory>
+
+/**
+ * Enabled intrusive testing
+ */
+#define PERSIST_INTRUSIVE_TESTING
+
+#include <persist/core/page/factory.hpp>
+
+#include "persist/test/simple_page.hpp"
+
+using namespace persist;
+using namespace persist::test;
+
+TEST(PageFactoryTestFixture, TestGet) {
+  auto page = PageFactory::getPage(1);
+  auto *ptr = page.get();
+  std::string className = typeid(*ptr).name();
+  ASSERT_TRUE(className.find("LogPage") != std::string::npos);
+}
+
+TEST(PageFactoryTestFixture, TestRegister) {
+  PageFactory::registerPage<SimplePage>();
+  auto page = PageFactory::getPage(SimplePage().getTypeId());
+  auto *ptr = page.get();
+  std::string className = typeid(*ptr).name();
+  ASSERT_TRUE(className.find("SimplePage") != std::string::npos);
+}

@@ -34,7 +34,7 @@
 #include <persist/core/buffer/buffer_manager.hpp>
 #include <persist/core/buffer/replacer/lru_replacer.hpp>
 #include <persist/core/page/log_page/log_page.hpp>
-#include <persist/core/page/slotted_page/vls_slotted_page.hpp>
+#include <persist/core/page/slotted_page/slotted_page.hpp>
 #include <persist/core/storage/factory.hpp>
 #include <persist/core/transaction/transaction_manager.hpp>
 
@@ -46,16 +46,16 @@ protected:
   const uint64_t maxSize = 2;
   const std::string path = "test_transaction_manager";
   PageSlot::Location location;
-  typedef BufferManager<VLSSlottedPage> BufferManager;
+  typedef BufferManager<SlottedPage> BufferManager;
   std::unique_ptr<BufferManager> bufferManager;
-  std::unique_ptr<Storage<VLSSlottedPage>> dataStorage;
+  std::unique_ptr<Storage<SlottedPage>> dataStorage;
   std::unique_ptr<Storage<LogPage>> logStorage;
   std::unique_ptr<LogManager> logManager;
-  std::unique_ptr<TransactionManager<VLSSlottedPage>> txnManager;
+  std::unique_ptr<TransactionManager<SlottedPage>> txnManager;
 
   void SetUp() override {
     // Setting up storage
-    dataStorage = createStorage<VLSSlottedPage>("file://" + path);
+    dataStorage = createStorage<SlottedPage>("file://" + path);
     logStorage = createStorage<LogPage>("file://" + path + "_log");
 
     // Setting up buffer manager
@@ -67,7 +67,7 @@ protected:
     logManager->start();
 
     // Setup transaction manager
-    txnManager = std::make_unique<TransactionManager<VLSSlottedPage>>(
+    txnManager = std::make_unique<TransactionManager<SlottedPage>>(
         bufferManager.get(), logManager.get());
 
     // Setup data for test
