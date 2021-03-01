@@ -43,4 +43,14 @@ protected:
 
 TEST_F(UtilitySerializerTestFixture, TestLoad) {}
 
-TEST_F(UtilitySerializerTestFixture, TestDump) {}
+TEST_F(UtilitySerializerTestFixture, TestDump) {
+  ByteBuffer output(sizeof(uint64_t) + sizeof(char));
+  uint64_t number = 32146;
+  char c = 'r';
+  dump(output, number, c);
+
+  for (int i : output) {
+    std::cout << i << ", ";
+  }
+  std::cout << "\n";
+}

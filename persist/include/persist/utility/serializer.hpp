@@ -27,25 +27,17 @@
 
 #include <string>
 
-#include <persist/core/defs.hpp>
+#include <persist/utility/_serializer.hpp>
 
 namespace persist {
 
 /**
- * @brief Load data of specified type from byte buffer.
- *
- * @tparam T The type of data to load.
- * @param input Span of byte buffer to load data from.
- * @param data Data object to be loaded.
+ * Variadic template stop function.
  */
 template <typename T> void load(Span &input, const T &data) {
-  // Load bytes
-  std::memcpy((void *)&data, (const void *)input.start, sizeof(T));
-  // Updated span
-  input += sizeof(T);
+  // Copy data from buffer
+  _copy(input, data);
 }
-
-template <> void load(Span &input, const ByteBuffer &data) {}
 
 /**
  * @brief Load data of specified type from byte buffer.
@@ -58,26 +50,18 @@ template <> void load(Span &input, const ByteBuffer &data) {}
  */
 template <typename T, typename... Args>
 void load(Span &input, const T &data, const Args &...args) {
-  // Load bytes
-  std::memcpy((void *)data, (const void *)input.start, sizeof(T));
-  // Updated span
-  input += sizeof(T);
+  // Copy data from buffer
+  _copy(input, data);
   // Load the rest of the arguments
   load(input, args...);
 }
 
 /**
- * @brief Dump data of specified type to byte buffer.
- *
- * @tparam T The type of data to dump.
- * @param output Span of byte buffer to dump data.
- * @param data Data object to be dumped.
+ * Variadic template stop function.
  */
 template <typename T> void dump(Span output, const T &data) {
-  // Dump bytes
-  std::memcpy((void *)output.start, (const void *)&data, sizeof(T));
-  // Updated span
-  output += sizeof(T);
+  // Copy data to buffer
+  _copy(data, output);
 }
 
 /**
@@ -91,12 +75,10 @@ template <typename T> void dump(Span output, const T &data) {
  */
 template <typename T, typename... Args>
 void dump(Span output, const T &data, Args &...args) {
-  // Dump bytes
-  std::memcpy((void *)output.start, (const void *)&data, sizeof(T));
-  // Updated span
-  output += sizeof(T);
+  // Copy data to buffer
+  _copy(data, output);
   // Dump the rest of the arguments
-  load(output, args...);
+  dump(output, args...);
 }
 
 } // namespace persist
