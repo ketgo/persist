@@ -34,7 +34,7 @@ namespace persist {
 /**
  * Variadic template stop function.
  */
-template <typename T> void load(Span &input, const T &data) {
+template <typename T> inline void load(Span &input, T &data) {
   // Copy data from buffer
   _copy(input, data);
 }
@@ -49,17 +49,19 @@ template <typename T> void load(Span &input, const T &data) {
  * @param args variadic arguments.
  */
 template <typename T, typename... Args>
-void load(Span &input, const T &data, const Args &...args) {
+inline void load(Span &input, T &data, Args &...args) {
   // Copy data from buffer
   _copy(input, data);
   // Load the rest of the arguments
   load(input, args...);
 }
 
+// ------------------------------------------
+
 /**
  * Variadic template stop function.
  */
-template <typename T> void dump(Span output, const T &data) {
+template <typename T> inline void dump(Span &output, const T &data) {
   // Copy data to buffer
   _copy(data, output);
 }
@@ -74,7 +76,7 @@ template <typename T> void dump(Span output, const T &data) {
  * @param args variadic arguments.
  */
 template <typename T, typename... Args>
-void dump(Span output, const T &data, Args &...args) {
+inline void dump(Span &output, const T &data, const Args &...args) {
   // Copy data to buffer
   _copy(data, output);
   // Dump the rest of the arguments

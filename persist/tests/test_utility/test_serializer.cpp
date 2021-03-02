@@ -29,28 +29,223 @@
 
 #include <gtest/gtest.h>
 
+#include <list>
+#include <map>
 #include <memory>
+#include <set>
 #include <thread>
+#include <unordered_map>
+#include <vector>
 
 #include <persist/utility/serializer.hpp>
 
 using namespace persist;
 
-class UtilitySerializerTestFixture : public ::testing::Test {
-protected:
-  void SetUp() override {}
+struct MockData {
+  uint64_t a;
+  char c;
+
+  bool operator==(const MockData &other) const {
+    return other.a == a && other.c == c;
+  }
 };
 
-TEST_F(UtilitySerializerTestFixture, TestLoad) {}
+class UtilitySerializerTestFixture : public ::testing::Test {
+protected:
+  ByteBuffer input_vector2d;
+  ByteBuffer input_set;
+  ByteBuffer input_list;
+  ByteBuffer input_umap;
+  ByteBuffer input_map;
+  ByteBuffer input_all;
+  std::vector<std::vector<MockData>> vector2d;
+  size_t vector2dSize;
+  std::set<uint64_t> set;
+  size_t setSize;
+  std::list<char> list;
+  size_t listSize;
+  std::unordered_map<char, int> umap;
+  size_t umapSize;
+  std::map<char, MockData> map;
+  size_t mapSize;
+  size_t allSize;
+  void SetUp() override {
+    // Setting up mock data
+    vector2d = {{{1, '1'}, {2, '2'}}, {{3, '3'}, {4, '4'}}};
+    set = {1, 2, 3, 4, 5};
+    list = {'a', 'b', 'c', 'd', 'e'};
+    umap = {{'1', 1}, {'2', 2}, {'3', 3}};
+    map = {{'4', {4, '4'}}, {'5', {5, '5'}}, {'6', {6, '6'}}};
 
-TEST_F(UtilitySerializerTestFixture, TestDump) {
-  ByteBuffer output(sizeof(uint64_t) + sizeof(char));
-  uint64_t number = 32146;
-  char c = 'r';
-  dump(output, number, c);
+    // Vector data size
+    vector2dSize = 0;
+    for (auto &element : vector2d) {
+      vector2dSize += element.size() * sizeof(MockData);
+      vector2dSize += sizeof(size_t);
+    }
+    vector2dSize += sizeof(size_t);
+    // Set data size
+    setSize = set.size() * sizeof(uint64_t) + sizeof(size_t);
+    // List data size
+    listSize = list.size() * sizeof(char) + sizeof(size_t);
+    // Unordered map data size
+    umapSize = umap.size() * (sizeof(char) + sizeof(int)) + sizeof(size_t);
+    // Map data size
+    mapSize = umap.size() * (sizeof(char) + sizeof(MockData)) + sizeof(size_t);
+    // Combined data size
+    allSize = vector2dSize + setSize + listSize + umapSize + mapSize;
 
-  for (int i : output) {
-    std::cout << i << ", ";
+    // Byte buffer
+    input_vector2d = {2, 0, 0, 0, 0,  0, 0,  0, 2,  0, 0,  0, 0, 0, 0, 0, 1, 0,
+                      0, 0, 0, 0, 0,  0, 49, 0, 0,  0, 0,  0, 0, 0, 2, 0, 0, 0,
+                      0, 0, 0, 0, 50, 0, 0,  0, 0,  0, 0,  0, 2, 0, 0, 0, 0, 0,
+                      0, 0, 3, 0, 0,  0, 0,  0, 0,  0, 51, 0, 0, 0, 0, 0, 0, 0,
+                      4, 0, 0, 0, 0,  0, 0,  0, 52, 0, 0,  0, 0, 0, 0, 0};
+
+    input_set = {5, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+                 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0,
+                 4, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0};
+
+    input_list = {5, 0, 0, 0, 0, 0, 0, 0, 97, 98, 99, 100, 101};
+
+    input_umap = {3, 0,  0, 0, 0, 0, 0,  0, 51, 3, 0, 0,
+                  0, 50, 2, 0, 0, 0, 49, 1, 0,  0, 0};
+
+    input_map = {3, 0, 0,  0, 0,  0, 0,  0, 52, 4, 0,  0, 0,  0, 0,
+                 0, 0, 52, 0, 0,  0, 0,  0, 0,  0, 53, 5, 0,  0, 0,
+                 0, 0, 0,  0, 53, 0, 0,  0, 0,  0, 0,  0, 54, 6, 0,
+                 0, 0, 0,  0, 0,  0, 54, 0, 0,  0, 0,  0, 0,  0};
+
+    input_all = {
+        2,  0, 0,  0,  0,  0,  0,  0,   2,   0,  0, 0, 0, 0, 0,  0, 1, 0,  0, 0,
+        0,  0, 0,  0,  49, 0,  0,  0,   0,   0,  0, 0, 2, 0, 0,  0, 0, 0,  0, 0,
+        50, 0, 0,  0,  0,  0,  0,  0,   2,   0,  0, 0, 0, 0, 0,  0, 3, 0,  0, 0,
+        0,  0, 0,  0,  51, 0,  0,  0,   0,   0,  0, 0, 4, 0, 0,  0, 0, 0,  0, 0,
+        52, 0, 0,  0,  0,  0,  0,  0,   5,   0,  0, 0, 0, 0, 0,  0, 1, 0,  0, 0,
+        0,  0, 0,  0,  2,  0,  0,  0,   0,   0,  0, 0, 3, 0, 0,  0, 0, 0,  0, 0,
+        4,  0, 0,  0,  0,  0,  0,  0,   5,   0,  0, 0, 0, 0, 0,  0, 5, 0,  0, 0,
+        0,  0, 0,  0,  97, 98, 99, 100, 101, 3,  0, 0, 0, 0, 0,  0, 0, 51, 3, 0,
+        0,  0, 50, 2,  0,  0,  0,  49,  1,   0,  0, 0, 3, 0, 0,  0, 0, 0,  0, 0,
+        52, 4, 0,  0,  0,  0,  0,  0,   0,   52, 0, 0, 0, 0, 0,  0, 0, 53, 5, 0,
+        0,  0, 0,  0,  0,  0,  53, 0,   0,   0,  0, 0, 0, 0, 54, 6, 0, 0,  0, 0,
+        0,  0, 0,  54, 0,  0,  0,  0,   0,   0,  0};
   }
-  std::cout << "\n";
+};
+
+TEST_F(UtilitySerializerTestFixture, TestLoadVector) {
+  std::vector<std::vector<MockData>> _vector2d;
+
+  Span span(input_vector2d);
+  load(span, _vector2d);
+
+  ASSERT_EQ(_vector2d, vector2d);
+}
+
+TEST_F(UtilitySerializerTestFixture, TestDumpVector) {
+  ByteBuffer output(vector2dSize);
+  Span span(output);
+  dump(span, vector2d);
+}
+
+TEST_F(UtilitySerializerTestFixture, TestLoadSet) {
+  std::set<uint64_t> _set;
+
+  Span span(input_set);
+  load(span, _set);
+
+  ASSERT_EQ(_set, set);
+}
+
+TEST_F(UtilitySerializerTestFixture, TestDumpSet) {
+  ByteBuffer output(setSize);
+  Span span(output);
+  dump(span, set);
+
+  ASSERT_EQ(output, input_set);
+}
+
+TEST_F(UtilitySerializerTestFixture, TestLoadList) {
+  std::list<char> _list;
+
+  Span span(input_list);
+  load(span, _list);
+
+  ASSERT_EQ(_list, list);
+}
+
+TEST_F(UtilitySerializerTestFixture, TestDumpList) {
+  ByteBuffer output(listSize);
+  Span span(output);
+  dump(span, list);
+
+  ASSERT_EQ(output, input_list);
+}
+
+TEST_F(UtilitySerializerTestFixture, TestLoadUmap) {
+  std::unordered_map<char, int> _umap;
+
+  Span span(input_umap);
+  load(span, _umap);
+
+  ASSERT_EQ(_umap, umap);
+}
+
+TEST_F(UtilitySerializerTestFixture, TestDumpUmap) {
+  ByteBuffer output(umapSize);
+  Span span(output);
+  dump(span, umap);
+
+  ASSERT_EQ(output, input_umap);
+}
+
+TEST_F(UtilitySerializerTestFixture, TestLoadMap) {
+  std::unordered_map<char, MockData> _map;
+
+  Span span(input_map);
+  load(span, _map);
+
+  ASSERT_EQ(_map.size(), map.size());
+  for (auto &x : _map) {
+    auto it = map.find(x.first);
+    ASSERT_TRUE(it != map.end());
+    ASSERT_EQ(it->second, x.second);
+  }
+}
+
+TEST_F(UtilitySerializerTestFixture, TestDumpMap) {
+  ByteBuffer output(mapSize);
+  Span span(output);
+  dump(span, map);
+
+  ASSERT_EQ(output, input_map);
+}
+
+TEST_F(UtilitySerializerTestFixture, TestLoadAll) {
+  std::vector<std::vector<MockData>> _vector2d;
+  std::set<uint64_t> _set;
+  std::list<char> _list;
+  std::unordered_map<char, int> _umap;
+  std::map<char, MockData> _map;
+
+  Span span(input_all);
+  load(span, _vector2d, _set, _list, _umap, _map);
+
+  ASSERT_EQ(_vector2d, vector2d);
+  ASSERT_EQ(_set, set);
+  ASSERT_EQ(_list, list);
+  ASSERT_EQ(_umap, umap);
+  ASSERT_EQ(_map.size(), map.size());
+  for (auto &x : _map) {
+    auto it = map.find(x.first);
+    ASSERT_TRUE(it != map.end());
+    ASSERT_EQ(it->second, x.second);
+  }
+}
+
+TEST_F(UtilitySerializerTestFixture, TestDumpAll) {
+  ByteBuffer output(allSize);
+  Span span(output);
+  dump(span, vector2d, set, list, umap, map);
+
+  ASSERT_EQ(output, input_all);
 }
