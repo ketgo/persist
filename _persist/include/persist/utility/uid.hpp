@@ -1,5 +1,5 @@
 /**
- * test_uid.cpp - Persist
+ * utility/uuid.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,23 +22,29 @@
  * SOFTWARE.
  */
 
+#ifndef PERSIST_UTILITY_UID_HPP
+#define PERSIST_UTILITY_UID_HPP
+
+#include <fstream>
+#include <limits>
+#include <random>
+
+namespace persist {
+
 /**
- * @brief Uint Test UID genrator
+ * @brief Generate 64 bit UID
  *
+ * @returns 64 bit unique identifier.
  */
+static uint64_t uid() {
+  std::random_device rd;
+  std::mt19937_64 e2(rd());
+  std::uniform_int_distribution<uint64_t> dist(
+      0, std::numeric_limits<uint64_t>::max());
 
-#include <gtest/gtest.h>
-
-#include <memory>
-#include <thread>
-
-#include <persist/utility/uid.hpp>
-
-using namespace persist;
-
-TEST(UtilityUIDTest, TestGenerateUID) {
-  auto uid_1 = GenerateUID();
-  auto uid_2 = GenerateUID();
-
-  ASSERT_NE(uid_1, uid_2);
+  return dist(e2);
 }
+
+} // namespace persist
+
+#endif /* PERSIST_UTILITY_UID_HPP */

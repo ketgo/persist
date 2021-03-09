@@ -1,5 +1,5 @@
 /**
- * test_uid.cpp - Persist
+ * test_factory.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -23,22 +23,25 @@
  */
 
 /**
- * @brief Uint Test UID genrator
+ * @brief Page Factory Unit Test
  *
  */
 
 #include <gtest/gtest.h>
 
 #include <memory>
-#include <thread>
 
-#include <persist/utility/uid.hpp>
+#include <persist/core/page/factory.hpp>
+
+#include "persist/test/simple_page.hpp"
 
 using namespace persist;
+using namespace persist::test;
 
-TEST(UtilityUIDTest, TestGenerateUID) {
-  auto uid_1 = GenerateUID();
-  auto uid_2 = GenerateUID();
-
-  ASSERT_NE(uid_1, uid_2);
+TEST(PageFactoryTestFixture, TestRegisterGet) {
+  PageFactory::RegisterPage<SimplePage>();
+  auto page = PageFactory::GetPage(SimplePage().GetTypeId());
+  auto *ptr = page.get();
+  std::string className = typeid(*ptr).name();
+  ASSERT_TRUE(className.find("SimplePage") != std::string::npos);
 }

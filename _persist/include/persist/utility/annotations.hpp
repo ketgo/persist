@@ -39,8 +39,8 @@
  * when compiling with gcc.
  */
 
-#ifndef UTILITY_ANNOTATIONS_HPP
-#define UTILITY_ANNOTATIONS_HPP
+#ifndef PERSIST_UTILITY_ANNOTATIONS_HPP
+#define PERSIST_UTILITY_ANNOTATIONS_HPP
 
 #if defined(__clang__)
 #define THREAD_ANNOTATION_ATTRIBUTE__(x) __attribute__((x))
@@ -341,4 +341,4 @@ inline T &TSUncheckedRead(T &v) NO_THREAD_SAFETY_ANALYSIS {
 
 } // namespace thread_safety_analysis
 
-#endif /* UTILITY_ANNOTATIONS_HPP */
+#endif /* PERSIST_UTILITY_ANNOTATIONS_HPP */

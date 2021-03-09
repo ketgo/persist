@@ -36,7 +36,7 @@ namespace persist {
  *
  * @returns 64 bit unique identifier.
  */
-static uint64_t generateUID() {
+static uint64_t GenerateUID() {
   std::random_device rd;
   std::mt19937_64 e2(rd());
   std::uniform_int_distribution<uint64_t> dist(

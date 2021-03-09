@@ -1,7 +1,7 @@
 /**
- * test_uid.cpp - Persist
+ * version.hpp.in - Persist
  *
- * Copyright 2021 Ketan Goyal
+ * Copyright 2020 Ketan Goyal
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,23 +22,13 @@
  * SOFTWARE.
  */
 
-/**
- * @brief Uint Test UID genrator
- *
- */
+#ifndef PERSIST_VERSION_HPP
+#define PERSIST_VERSION_HPP
 
-#include <gtest/gtest.h>
+#define PERSIST_VERSION_MAJOR 0
+#define PERSIST_VERSION_MINOR 0
+#define PERSIST_VERSION_PATCH 1
+#define PERSIST_VERSION_TWEAK 
+#define PERSIST_VERSION "0.0.1"
 
-#include <memory>
-#include <thread>
-
-#include <persist/utility/uid.hpp>
-
-using namespace persist;
-
-TEST(UtilityUIDTest, TestGenerateUID) {
-  auto uid_1 = GenerateUID();
-  auto uid_2 = GenerateUID();
-
-  ASSERT_NE(uid_1, uid_2);
-}
+#endif /* PERSIST_VERSION_HPP */

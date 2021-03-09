@@ -1,5 +1,5 @@
 /**
- * test_uid.cpp - Persist
+ * test_checksum.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -23,22 +23,18 @@
  */
 
 /**
- * @brief Uint Test UID genrator
+ * @brief Uint Test Serializer
  *
  */
 
 #include <gtest/gtest.h>
 
-#include <memory>
-#include <thread>
-
-#include <persist/utility/uid.hpp>
+#include <persist/utility/checksum.hpp>
 
 using namespace persist;
 
-TEST(UtilityUIDTest, TestGenerateUID) {
-  auto uid_1 = GenerateUID();
-  auto uid_2 = GenerateUID();
-
-  ASSERT_NE(uid_1, uid_2);
+TEST(ChecksumTestFixture, TestChecksumAlder32) {
+  ByteBuffer input = "testing_checksum"_bb;
+  Checksum value = checksum(input);
+  ASSERT_EQ(value, 956630705);
 }

@@ -150,7 +150,7 @@ public:
    */
   Transaction begin() {
     // Create a new transaction
-    Transaction txn(logManager, generateUID(), Transaction::State::ACTIVE);
+    Transaction txn(logManager, GenerateUID(), Transaction::State::ACTIVE);
     // Log transaction begin record
     logBegin(txn);
 
