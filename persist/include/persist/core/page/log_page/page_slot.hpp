@@ -130,12 +130,18 @@ public:
         : seq_number(seq_number), next_location(next_location) {}
 
     /**
+     * @brief Get the storage size of header
+     *
+     */
+    size_t GetSize() const { return sizeof(Header); }
+
+    /**
      * Load slot header from byte string.
      *
      * @param input input buffer span to load
      */
     void Load(Span input) {
-      if (input.size < sizeof(Header)) {
+      if (input.size < GetSize()) {
         throw PageSlotParseError();
       }
       persist::load(input, seq_number, next_location);
@@ -147,7 +153,7 @@ public:
      * @param output output buffer span to dump
      */
     void Dump(Span output) {
-      if (output.size < sizeof(Header)) {
+      if (output.size < GetSize()) {
         throw PageSlotParseError();
       }
       persist::dump(output, seq_number, next_location);
@@ -252,6 +258,7 @@ public:
     }
     // Load header
     header.Load(input);
+    input += header.GetSize();
     // Load bytes
     persist::load(input, data);
   }
@@ -267,6 +274,7 @@ public:
     }
     // Dump header
     header.Dump(output);
+    output += header.GetSize();
     // Dump bytes
     persist::dump(output, data);
   }

@@ -71,7 +71,7 @@ public:
      * @brief Number of slots in the page
      *
      */
-    uint64_t slot_count;
+    size_t slot_count;
 
     /**
      * @brief Storage size of the page.
@@ -152,14 +152,14 @@ public:
   /**
    * @brief Size of free space available on the page.
    */
-  uint64_t dataSize;
+  size_t data_Size;
 
 public:
   /**
    * @brief Construct a new Log Page object
    */
   LogPage(PageId page_id = 0, size_t page_size = DEFAULT_LOG_PAGE_SIZE)
-      : header(page_id, page_size), dataSize(header.GetSize()) {
+      : header(page_id, page_size), data_Size(header.GetSize()) {
     // Check page size greater than minimum size
     if (page_size < MINIMUM_PAGE_SIZE) {
       throw PageSizeError(page_size);
@@ -188,11 +188,11 @@ public:
    */
   size_t GetFreeSpaceSize(Operation operation) const override {
     // If stored data size greater than page size then return 0
-    if (header.page_size <= dataSize) {
+    if (header.page_size <= data_Size) {
       return 0;
     }
 
-    return header.page_size - dataSize;
+    return header.page_size - data_Size;
   }
 
   /**
@@ -235,7 +235,7 @@ public:
    */
   LogPageSlot *InsertPageSlot(LogPageSlot &page_slot) {
     // Update data size in page
-    dataSize += page_slot.GetSize();
+    data_Size += page_slot.GetSize();
     // Insert record block at slot
     auto inserted = slots.emplace(page_slot.GetSeqNumber(), page_slot);
 
@@ -255,10 +255,18 @@ public:
 
     // Load Page header
     header.Load(input);
-    dataSize = header.GetSize();
-    input += dataSize;
+    data_Size = header.GetSize();
+    input += data_Size;
     // Load bytes
-    persist::load(input, slots);
+    for (size_t i = 0; i < header.slot_count; ++i) {
+      // Load slot
+      LogPageSlot slot;
+      slot.Load(input);
+      size_t slot_size = slot.GetSize();
+      data_Size += slot_size;
+      input += slot_size;
+      slots.emplace(slot.GetSeqNumber(), slot);
+    }
   }
 
   /**
@@ -275,7 +283,11 @@ public:
     header.Dump(output);
     output += header.GetSize();
     // Dump bytes
-    persist::dump(output, slots);
+    for (auto &element : slots) {
+      LogPageSlot &slot = element.second;
+      slot.Dump(output);
+      output += slot.GetSize();
+    }
     // Dump free space
     std::memset((void *)output.start, 0, GetFreeSpaceSize(Operation::INSERT));
   }
