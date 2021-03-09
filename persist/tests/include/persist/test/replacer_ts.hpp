@@ -28,8 +28,8 @@
  *
  */
 
-#ifndef TEST_REPLACER_TS_HPP
-#define TEST_REPLACER_TS_HPP
+#ifndef PERSIST_TEST_REPLACER_TS_HPP
+#define PERSIST_TEST_REPLACER_TS_HPP
 
 #include <gtest/gtest.h>
 
@@ -63,4 +63,4 @@ REGISTER_TYPED_TEST_SUITE_P(ReplacerThreadSafetyTestFixture,
 
 } // namespace persist
 
-#endif /* TEST_REPLACER_TS_HPP */
+#endif /* PERSIST_TEST_REPLACER_TS_HPP */

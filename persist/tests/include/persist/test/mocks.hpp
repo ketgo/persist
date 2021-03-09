@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef TEST_MOCKS_HPP
-#define TEST_MOCKS_HPP
+#ifndef PERSIST_TEST_MOCKS_HPP
+#define PERSIST_TEST_MOCKS_HPP
 
 #include <gmock/gmock.h>
 
@@ -97,4 +97,4 @@ private:
 } // namespace test
 } // namespace persist
 
-#endif /* TEST_MOCKS_HPP */
+#endif /* PERSIST_TEST_MOCKS_HPP */

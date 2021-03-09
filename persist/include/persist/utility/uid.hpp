@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef UTILITY_UID_HPP
-#define UTILITY_UID_HPP
+#ifndef PERSIST_UTILITY_UID_HPP
+#define PERSIST_UTILITY_UID_HPP
 
 #include <fstream>
 #include <limits>
@@ -36,7 +36,7 @@ namespace persist {
  *
  * @returns 64 bit unique identifier.
  */
-static uint64_t GenerateUID() {
+static uint64_t uid() {
   std::random_device rd;
   std::mt19937_64 e2(rd());
   std::uniform_int_distribution<uint64_t> dist(
@@ -47,4 +47,4 @@ static uint64_t GenerateUID() {
 
 } // namespace persist
 
-#endif /* UTILITY_UID_HPP */
+#endif /* PERSIST_UTILITY_UID_HPP */

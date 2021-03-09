@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef SIMPLE_PAGE_HPP
-#define SIMPLE_PAGE_HPP
+#ifndef PERSIST_TEST_SIMPLE_PAGE_HPP
+#define PERSIST_TEST_SIMPLE_PAGE_HPP
 
 #include <unordered_map>
 
@@ -58,10 +58,10 @@ public:
       // Implemented hash function based on comment in
       // https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
 
-      Checksum seed = size();
+      Checksum seed = GetSize();
 
       seed =
-          std::hash<PageId>()(pageId) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+          std::hash<PageId>()(page_id) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 
       return seed;
     }
@@ -70,12 +70,12 @@ public:
     /**
      * @brief Page unique identifer
      */
-    PageId pageId;
+    PageId page_id;
 
     /**
      * @brief Storage size of the page.
      */
-    uint64_t pageSize;
+    size_t page_size;
 
     /**
      * @brief Checksum to detect page corruption
@@ -86,28 +86,28 @@ public:
      * @brief Construct a new Header object
      *
      */
-    Header(PageId pageId = 0, uint64_t pageSize = DEFAULT_PAGE_SIZE)
-        : pageId(pageId), pageSize(pageSize) {}
+    Header(PageId page_id = 0, size_t page_size = DEFAULT_PAGE_SIZE)
+        : page_id(page_id), page_size(page_size) {}
 
     /**
      * @brief Get storage size of header
      *
      */
-    uint64_t size() { return sizeof(PageId) + sizeof(Checksum); }
+    size_t GetSize() const { return sizeof(PageId) + sizeof(Checksum); }
 
     /**
      * Load object from byte string
      *
      * @param input input buffer span to load
      */
-    void load(Span input) {
-      if (input.size < size()) {
+    void Load(Span input) {
+      if (input.size < GetSize()) {
         throw PageParseError();
       }
 
       // Load bytes
       Byte *pos = input.start;
-      std::memcpy((void *)&pageId, (const void *)pos, sizeof(PageId));
+      std::memcpy((void *)&page_id, (const void *)pos, sizeof(PageId));
       pos += sizeof(PageId);
       std::memcpy((void *)&checksum, (const void *)pos, sizeof(Checksum));
 
@@ -122,8 +122,8 @@ public:
      *
      * @param output output buffer span to dump
      */
-    void dump(Span output) {
-      if (output.size < size()) {
+    void Dump(Span output) {
+      if (output.size < GetSize()) {
         throw PageParseError();
       }
 
@@ -132,7 +132,7 @@ public:
 
       // Dump bytes
       Byte *pos = output.start;
-      std::memcpy((void *)pos, (const void *)&pageId, sizeof(PageId));
+      std::memcpy((void *)pos, (const void *)&page_id, sizeof(PageId));
       pos += sizeof(PageId);
       std::memcpy((void *)pos, (const void *)&checksum, sizeof(Checksum));
     }
@@ -143,7 +143,7 @@ public:
      */
     friend std::ostream &operator<<(std::ostream &os, const Header &header) {
       os << "------- Header -------\n";
-      os << "id: " << header.pageId << "\n";
+      os << "id: " << header.page_id << "\n";
       os << "----------------------";
       return os;
     }
@@ -166,11 +166,11 @@ public:
   /**
    * Constructors
    */
-  SimplePage(PageId pageId = 0, uint64_t pageSize = DEFAULT_PAGE_SIZE)
-      : header(pageId, pageSize) {
+  SimplePage(PageId page_id = 0, size_t page_size = DEFAULT_PAGE_SIZE)
+      : header(page_id, page_size) {
     // Check page size greater than minimum size
-    if (pageSize < MINIMUM_PAGE_SIZE) {
-      throw PageSizeError(pageSize);
+    if (page_size < MINIMUM_PAGE_SIZE) {
+      throw PageSizeError(page_size);
     }
   }
 
@@ -179,32 +179,31 @@ public:
    *
    * @returns The page type identifier
    */
-  PageTypeId getTypeId() const override { return 0; }
+  PageTypeId GetTypeId() const override { return 0; }
 
   /**
    * Get page ID.
    *
    * @returns page identifier
    */
-  const PageId &getId() const override { return header.pageId; }
+  const PageId &GetId() const override { return header.page_id; }
 
   /**
-   * Get free space in bytes available in the page.
+   * @brief Get the storage free space size in the page for specified operation.
    *
-   * @param operation The type of page operation for which free space is
-   * requested.
-   * @returns free space available in page
+   * @param operation Operaion to be performed
+   * @returns Free space in bytes
    */
-  uint64_t freeSpace(Operation operation) override {
-    uint64_t dataSize = header.size() + record.size() +
-                        sizeof(size_t); // The record size is stored in the
-                                        // backend storage thus added here
+  size_t GetFreeSpaceSize(Operation operation) const override {
+    size_t data_size = header.GetSize() + record.size() +
+                       sizeof(size_t); // The record size is stored in the
+                                       // backend storage thus added here
     // If stored data size greater than page size then return 0
-    if (header.pageSize <= dataSize) {
+    if (header.page_size <= data_size) {
       return 0;
     }
 
-    return header.pageSize - dataSize;
+    return header.page_size - data_size;
   }
 
   /**
@@ -212,45 +211,37 @@ public:
    *
    * @returns reference to stored record
    */
-  const ByteBuffer &getRecord() const { return record; }
+  const ByteBuffer &GetRecord() const { return record; }
 
   /**
    * @brief Set data record
    *
    * @param record lvalue reference to data record to be stored
    */
-  void setRecord(ByteBuffer &&record) {
-    this->record = record;
-    // Notify all observers of page modification
-    notifyObservers();
-  }
+  void SetRecord(ByteBuffer &&record) { this->record = record; }
 
   /**
    * @brief Set data record
    *
    * @param record reference to data record to be stored
    */
-  void setRecord(ByteBuffer &record) {
-    this->record = record;
-    // Notify all observers of page modification
-    notifyObservers();
-  }
+  void SetRecord(ByteBuffer &record) { this->record = record; }
 
   /**
    * Load Block object from byte string.
    *
    * @param input input buffer span to load
    */
-  void load(Span input) override {
-    if (input.size < header.pageSize) {
+  void Load(Span input) override {
+    if (input.size < header.page_size) {
       throw PageParseError();
     }
     record.clear(); //<- clears data in case it is loaded
 
     // Load Page header
-    header.load(input);
+    header.Load(input);
 
-    Byte *pos = input.start + header.size();
+    Byte *pos = input.start + header.GetSize();
     // Load record size
     size_t recordSize = 0;
     std::memcpy((void *)&recordSize, (const void *)pos, sizeof(size_t));
@@ -265,16 +256,15 @@ public:
    *
    * @param output output buffer span to dump
    */
-  void dump(Span output) override {
-    if (output.size < header.pageSize) {
+  void Dump(Span output) override {
+    if (output.size < header.page_size) {
       throw PageParseError();
     }
 
-    Span span(output.start, header.size());
     // Dump header
-    header.dump(span);
+    header.Dump(output);
 
-    Byte *pos = output.start + header.size();
+    Byte *pos = output.start + header.GetSize();
     // Dump record size
     size_t recordSize = record.size();
     std::memcpy((void *)pos, (const void *)&recordSize, sizeof(size_t));
@@ -288,7 +278,7 @@ public:
    * @brief Write page to output stream
    */
   friend std::ostream &operator<<(std::ostream &os, const SimplePage &page) {
-    os << "--------- Page " << page.header.pageId << " ---------\n";
+    os << "--------- Page " << page.header.page_id << " ---------\n";
     os << page.header << "\n";
     os << page.record << "\n";
     os << "-----------------------------";
@@ -302,4 +292,4 @@ public:
 
 } // namespace persist
 
-#endif /* SIMPLE_PAGE_HPP */
+#endif /* PERSIST_TEST_SIMPLE_PAGE_HPP */

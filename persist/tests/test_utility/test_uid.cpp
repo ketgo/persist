@@ -36,9 +36,9 @@
 
 using namespace persist;
 
-TEST(UtilityUIDTest, TestGenerateUID) {
-  auto uid_1 = GenerateUID();
-  auto uid_2 = GenerateUID();
+TEST(UtilityUIDTest, TestUID) {
+  auto uid_1 = uid();
+  auto uid_2 = uid();
 
   ASSERT_NE(uid_1, uid_2);
 }

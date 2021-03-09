@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef UTILITY_SERIALIZER_HPP
-#define UTILITY_SERIALIZER_HPP
+#ifndef PERSIST_UTILITY_SERIALIZER_HPP
+#define PERSIST_UTILITY_SERIALIZER_HPP
 
 #include <string>
 
@@ -85,4 +85,4 @@ inline void dump(Span &output, const T &data, const Args &...args) {
 
 } // namespace persist
 
-#endif /* UTILITY_SERIALIZER_HPP */
+#endif /* PERSIST_UTILITY_SERIALIZER_HPP */

@@ -22,11 +22,13 @@
  * SOFTWARE.
  */
 
-#ifndef LOG_PAGE_SLOT_HPP
-#define LOG_PAGE_SLOT_HPP
+#ifndef PERSIST_CORE_PAGE_LOG_PAGE_SLOT_HPP
+#define PERSIST_CORE_PAGE_LOG_PAGE_SLOT_HPP
 
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
+
+#include <persist/utility/serializer.hpp>
 
 namespace persist {
 /**
@@ -46,47 +48,47 @@ public:
    */
   struct Location {
     /**
-     * @brief ID of page containing slot.
+     * @brief Identifier of the page containing slot.
      */
-    PageId pageId;
+    PageId page_id;
     /**
      * @brief Sequence number of the log record stored in the slot.
      */
-    SeqNumber seqNumber;
+    SeqNumber seq_number;
 
     /**
      * Constructor
      */
-    Location() : pageId(0), seqNumber(0) {}
-    Location(PageId pageId, SeqNumber seqNumber)
-        : pageId(pageId), seqNumber(seqNumber) {}
+    Location() : page_id(0), seq_number(0) {}
+    Location(PageId page_id, SeqNumber seq_number)
+        : page_id(page_id), seq_number(seq_number) {}
 
     /**
      * @brief Check if location is NULL. A NULL location will have both page ID
      * and sequence number set to `0`.
      */
-    bool isNull() const { return pageId == 0 && seqNumber == 0; }
+    bool IsNull() const { return page_id == 0 && seq_number == 0; }
 
     /**
      * @brief Set the location to NULL.
      */
-    void setNull() {
-      pageId = 0;
-      seqNumber = 0;
+    void SetNull() {
+      page_id = 0;
+      seq_number = 0;
     }
 
     /**
      * @brief Equality comparision operator.
      */
     bool operator==(const Location &other) const {
-      return pageId == other.pageId && seqNumber == other.seqNumber;
+      return page_id == other.page_id && seq_number == other.seq_number;
     }
 
     /**
      * @brief Non-equality comparision operator.
      */
     bool operator!=(const Location &other) const {
-      return pageId != other.pageId || seqNumber != other.seqNumber;
+      return page_id != other.page_id || seq_number != other.seq_number;
     }
 
 #ifdef __PERSIST_DEBUG__
@@ -95,7 +97,7 @@ public:
      */
     friend std::ostream &operator<<(std::ostream &os,
                                     const Location &location) {
-      os << "[" << location.pageId << ", " << location.seqNumber << "]";
+      os << "[" << location.page_id << ", " << location.seq_number << "]";
       return os;
     }
 #endif
@@ -112,38 +114,31 @@ public:
     /**
      * @brief Log record sequence number
      */
-    SeqNumber seqNumber;
+    SeqNumber seq_number;
 
     /**
      * @brief Next page slot location
      */
-    Location nextLocation;
-
-    /**
-     * @brief Checksum to detect slot corruption
-     */
-    Checksum checksum;
+    Location next_location;
 
     /**
      * Constructors
      */
-    Header() : seqNumber(0), checksum(0) {}
-    Header(SeqNumber seqNumber) : seqNumber(seqNumber), checksum(0) {}
-    Header(SeqNumber seqNumber, Location nextLocation)
-        : seqNumber(seqNumber), nextLocation(nextLocation), checksum(0) {}
+    Header() : seq_number(0) {}
+    Header(SeqNumber seq_number) : seq_number(seq_number) {}
+    Header(SeqNumber seq_number, Location next_location)
+        : seq_number(seq_number), next_location(next_location) {}
 
     /**
      * Load slot header from byte string.
      *
      * @param input input buffer span to load
      */
-    void load(Span input) {
+    void Load(Span input) {
       if (input.size < sizeof(Header)) {
         throw PageSlotParseError();
       }
-
-      // Load bytes
-      std::memcpy((void *)this, (const void *)input.start, sizeof(Header));
+      persist::load(input, seq_number, next_location);
     }
 
     /**
@@ -151,26 +146,27 @@ public:
      *
      * @param output output buffer span to dump
      */
-    void dump(Span output) {
+    void Dump(Span output) {
       if (output.size < sizeof(Header)) {
         throw PageSlotParseError();
       }
-      // Dump bytes
-      std::memcpy((void *)output.start, (const void *)this, sizeof(Header));
+      persist::dump(output, seq_number, next_location);
     }
 
     /**
      * @brief Equality comparision operator.
      */
     bool operator==(const Header &other) const {
-      return seqNumber == other.seqNumber && nextLocation == other.nextLocation;
+      return seq_number == other.seq_number &&
+             next_location == other.next_location;
     }
 
     /**
      * @brief Non-equality comparision operator.
      */
     bool operator!=(const Header &other) const {
-      return seqNumber != other.seqNumber || nextLocation != other.nextLocation;
+      return seq_number != other.seq_number ||
+             next_location != other.next_location;
     }
 
 #ifdef __PERSIST_DEBUG__
@@ -179,8 +175,8 @@ public:
      */
     friend std::ostream &operator<<(std::ostream &os, const Header &header) {
       os << "---- Header ----\n";
-      os << "seqNumber: " << header.seqNumber << "\n";
-      os << "next: " << header.nextLocation << "\n";
+      os << "seqNumber: " << header.seq_number << "\n";
+      os << "next: " << header.next_location << "\n";
       os << "-----------------";
       return os;
     }
@@ -194,30 +190,6 @@ public:
    */
   Header header;
 
-  /**
-   * @brief Computes checksum for page slot.
-   *
-   * @param dataSize size of data in bytes
-   */
-  Checksum _checksum(size_t dataSize) {
-
-    // Implemented hash function based on comment in
-    // https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
-
-    Checksum seed = fixedSize;
-
-    seed ^= std::hash<PageId>()(header.seqNumber) + 0x9e3779b9 + (seed << 6) +
-            (seed >> 2);
-    seed ^= std::hash<PageId>()(header.nextLocation.pageId) + 0x9e3779b9 +
-            (seed << 6) + (seed >> 2);
-    seed ^= std::hash<PageSlotId>()(header.nextLocation.seqNumber) +
-            0x9e3779b9 + (seed << 6) + (seed >> 2);
-    seed ^= std::hash<PageSlotId>()(dataSize) + 0x9e3779b9 + (seed << 6) +
-            (seed >> 2);
-
-    return seed;
-  }
-
 public:
   ByteBuffer data; //<- data contained in the record block
 
@@ -226,74 +198,62 @@ public:
    *
    */
   LogPageSlot() {}
-  LogPageSlot(SeqNumber seqNumber) : header(seqNumber) {}
-  LogPageSlot(SeqNumber seqNumber, Location nextLocation)
-      : header(seqNumber, nextLocation) {}
+  LogPageSlot(SeqNumber seq_number) : header(seq_number) {}
+  LogPageSlot(SeqNumber seq_number, Location next_location)
+      : header(seq_number, next_location) {}
 
   /**
    * @brief Size of fixed length members of slot
    *
    */
-  static const uint64_t fixedSize = sizeof(Header) + sizeof(size_t);
+  static const size_t fixedSize = sizeof(Header) + sizeof(size_t);
 
   /**
    * Get storage size of page slot.
    */
-  uint64_t size() { return fixedSize + sizeof(Byte) * data.size(); }
+  size_t GetSize() const { return fixedSize + sizeof(Byte) * data.size(); }
 
   /**
    * @brief Get the sequence number of the stored log record
    *
    * @return sequence number of the stored log record
    */
-  const SeqNumber &getSeqNumber() const { return header.seqNumber; }
+  const SeqNumber &GetSeqNumber() const { return header.seq_number; }
 
   /**
    * @brief Set the sequence number of the stored log record
    *
-   * @param seqNumber sequence number of the stored log record
+   * @param seq_number sequence number of the stored log record
    */
-  void setSeqNumber(SeqNumber &seqNumber) { header.seqNumber = seqNumber; }
+  void SetSeqNumber(SeqNumber &seq_number) { header.seq_number = seq_number; }
 
   /**
    * @brief Get the next page slot location
    *
    * @return Location of the next linked page slot
    */
-  const Location &getNextLocation() const { return header.nextLocation; }
+  const Location &GetNextLocation() const { return header.next_location; }
 
   /**
    * @brief Set the next page slot location
    *
    * @param location Location of the next linked page slot
    */
-  void setNextLocation(Location &location) { header.nextLocation = location; }
+  void SetNextLocation(Location &location) { header.next_location = location; }
 
   /**
    * Load page slot object from byte string.
    *
    * @param input input buffer span to load
    */
-  void load(Span input) {
-    // Load header
-    header.load(input);
-
-    // Load bytes
-    Byte *pos = input.start + sizeof(Header);
-    // Load data size
-    size_t dataSize;
-    std::memcpy((void *)&dataSize, (const void *)pos, sizeof(size_t));
-    pos += sizeof(size_t);
-    // Check for corruption by matching checksum
-    if (_checksum(dataSize) != header.checksum) {
-      throw PageSlotCorruptError();
-    }
-    // Load data
-    data.resize(dataSize);
-    if (input.size < size()) {
+  void Load(Span input) {
+    if (input.size < GetSize()) {
       throw PageSlotParseError();
     }
-    std::memcpy((void *)data.data(), (const void *)pos, dataSize);
+    // Load header
+    header.Load(input);
+    // Load bytes
+    persist::load(input, data);
   }
 
   /**
@@ -301,27 +261,14 @@ public:
    *
    * @param output output buffer span to dump
    */
-  void dump(Span output) {
-    if (output.size < size()) {
+  void Dump(Span output) {
+    if (output.size < GetSize()) {
       throw PageSlotParseError();
     }
-
-    // Get data size
-    size_t dataSize = data.size();
-
-    // Compute and set checksum
-    header.checksum = _checksum(dataSize);
-
     // Dump header
-    header.dump(output);
-
+    header.Dump(output);
     // Dump bytes
-    Byte *pos = output.start + sizeof(Header);
-    // Dump data size
-    std::memcpy((void *)pos, (const void *)&dataSize, sizeof(size_t));
-    pos += sizeof(size_t);
-    // Dump data
-    std::memcpy((void *)pos, (const void *)data.data(), dataSize);
+    persist::dump(output, data);
   }
 
   /**
@@ -354,4 +301,4 @@ public:
 
 } // namespace persist
 
-#endif /* LOG_PAGE_SLOT_HPP */
+#endif /* PERSIST_CORE_PAGE_LOG_PAGE_SLOT_HPP */

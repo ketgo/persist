@@ -27,8 +27,8 @@
  * package.
  */
 
-#ifndef CORE_DEFS_HPP
-#define CORE_DEFS_HPP
+#ifndef PERSIST_CORE_DEFS_HPP
+#define PERSIST_CORE_DEFS_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -73,6 +73,12 @@
 #define DEFAULT_LOG_BUFFER_SIZE 8
 
 namespace persist {
+
+/**
+ * @brief Enumerated list of data operations that can be performed.
+ *
+ */
+enum class Operation { READ, INSERT, UPDATE, DELETE };
 
 /**
  * Page type identifier type
@@ -121,6 +127,15 @@ typedef struct Span {
   Span(ByteBuffer &buffer) : start(buffer.data()), size(buffer.size()) {}
 
   /**
+   * @brief Assignment operator
+   *
+   */
+  inline void operator=(const Span &span) {
+    this->start = span.start;
+    this->size = span.size;
+  }
+
+  /**
    * @brief Shift the span by specifed size. It is left to the user to make sure
    * the specified shift is valid. An invalid size would be one which cases the
    * span to point at invalid memory address.
@@ -128,8 +143,22 @@ typedef struct Span {
    * @param size The size by which to shift the span.
    */
   inline void operator+=(const size_t &size) {
-    start += size;
+    this->start += size;
     this->size -= size;
+  }
+
+  /**
+   * @brief Shift the span by specifed size. It is left to the user to make
+   * sure the specified shift is valid. An invalid size would be one which
+   * cases the span to point at invalid memory address.
+   *
+   * @param size The size by which to shift the span.
+   */
+  inline Span operator+(const size_t &size) {
+    Span span;
+    span.start = this->start + size;
+    span.size = this->size - size;
+    return span;
   }
 } Span;
 
@@ -158,4 +187,4 @@ inline std::ostream &operator<<(std::ostream &os, const ByteBuffer &buffer) {
 
 } // namespace persist
 
-#endif /* CORE_DEFS_HPP */
+#endif /* PERSIST_CORE_DEFS_HPP */

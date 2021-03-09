@@ -1,5 +1,5 @@
 /**
- * page/test_type_header.cpp - Persist
+ * test_type_header.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -31,11 +31,6 @@
 
 #include <memory>
 
-/**
- * Enabled intrusive testing
- */
-#define PERSIST_INTRUSIVE_TESTING
-
 #include <persist/core/page/type_header.hpp>
 
 using namespace persist;
@@ -44,12 +39,12 @@ class PageTypeHeaderTestFixture : public ::testing::Test {
 protected:
   ByteBuffer input;
   ByteBuffer extra;
-  const PageTypeId typeId = 3;
+  const PageTypeId type_id = 3;
   std::unique_ptr<PageTypeHeader> header;
   void SetUp() override {
-    header = std::make_unique<PageTypeHeader>(3);
+    header = std::make_unique<PageTypeHeader>(type_id);
 
-    input = {3, 0, 0, 0, 0, 0, 0, 0, 208, 125, 55, 158, 0, 0, 0, 0};
+    input = {3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     extra = {41, 0, 6, 0, 21, 48, 4};
   }
 };
@@ -59,16 +54,16 @@ TEST_F(PageTypeHeaderTestFixture, TestLoad) {
   ByteBuffer _input;
   _input.insert(_input.end(), input.begin(), input.end());
   _input.insert(_input.end(), extra.begin(), extra.end());
-  _header.load(Span(_input));
+  _header.Load(Span(_input));
 
-  ASSERT_EQ(_header.getTypeId(), header->getTypeId());
+  ASSERT_EQ(_header.GetTypeId(), header->GetTypeId());
 }
 
 TEST_F(PageTypeHeaderTestFixture, TestLoadError) {
   try {
     ByteBuffer _input;
     PageTypeHeader _header;
-    _header.load(_input);
+    _header.Load(_input);
     FAIL() << "Expected PageParseError Exception.";
   } catch (PageParseError &err) {
     SUCCEED();
@@ -78,12 +73,12 @@ TEST_F(PageTypeHeaderTestFixture, TestLoadError) {
 }
 
 TEST_F(PageTypeHeaderTestFixture, TestDump) {
-  ByteBuffer output(header->size());
-  header->dump(output);
+  ByteBuffer output(header->GetSize());
+  header->Dump(output);
 
   ASSERT_EQ(input, output);
 }
 
-TEST_F(PageTypeHeaderTestFixture, TestSize) {
-  ASSERT_EQ(header->size(), sizeof(PageTypeHeader));
+TEST_F(PageTypeHeaderTestFixture, TestGetSize) {
+  ASSERT_EQ(header->GetSize(), sizeof(PageTypeHeader));
 }

@@ -27,8 +27,8 @@
  *
  */
 
-#ifndef UTILITY__SERIALIZER_HPP
-#define UTILITY__SERIALIZER_HPP
+#ifndef PERSIST_UTILITY__SERIALIZER_HPP
+#define PERSIST_UTILITY__SERIALIZER_HPP
 
 #include <list>
 #include <map>
@@ -164,4 +164,4 @@ inline void _copy(const C<T, Args...> &data, Span &output) {
 
 } // namespace persist
 
-#endif /* UTILITY__SERIALIZER_HPP */
+#endif /* PERSIST_UTILITY__SERIALIZER_HPP */

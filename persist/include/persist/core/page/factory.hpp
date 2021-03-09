@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef PAGE_FACTORY_HPP
-#define PAGE_FACTORY_HPP
+#ifndef PERSIST_CORE_PAGE_FACTORY_HPP
+#define PERSIST_CORE_PAGE_FACTORY_HPP
 
 #include <functional>
 #include <memory>
@@ -33,8 +33,8 @@
 #include <persist/core/page/base.hpp>
 #include <persist/core/page/type_header.hpp>
 
-#include <persist/core/page/log_page/log_page.hpp>
-#include <persist/core/page/slotted_page/slotted_page.hpp>
+// #include <persist/core/page/log_page/log_page.hpp>
+// #include <persist/core/page/slotted_page/slotted_page.hpp>
 
 namespace persist {
 
@@ -42,14 +42,14 @@ namespace persist {
  * @brief Create an empty page object of specified type.
  *
  * @tparam PageType The type of page to create.
- * @param pageId The page identifier.
- * @param pageSize The page size.
+ * @param page_id The page identifier.
+ * @param page_size The page size.
  * @returns Unique pointer to the created page.
  */
 template <class PageType>
-static std::unique_ptr<PageType> createPage(PageId pageId, uint64_t pageSize) {
+static std::unique_ptr<PageType> CreatePage(PageId page_id, size_t page_size) {
   // The page size is adjusted to incorporate the type header.
-  return std::make_unique<PageType>(pageId, pageSize - PageTypeHeader::size());
+  return std::make_unique<PageType>(page_id, page_size - PageTypeHeader::GetSize());
 }
 
 /**
@@ -78,13 +78,13 @@ public:
    *
    * @tparam PageType The type of page.
    */
-  template <class PageType> static void registerPage() {
-    PageTypeId page_type_id = PageType().getTypeId();
+  template <class PageType> static void RegisterPage() {
+    PageTypeId page_type_id = PageType().GetTypeId();
 
     // TODO: Throw error if page type already register. The exception should
     // display the type ID value.
     if (table.find(page_type_id) == table.end()) {
-      table.insert({page_type_id, createPage<PageType>});
+      table.insert({page_type_id, CreatePage<PageType>});
     }
   }
 
@@ -92,15 +92,15 @@ public:
    * @brief Get a page of specified type identifier.
    *
    * @param page_type_id The page type identifier.
-   * @param pageId The page identifier.
-   * @param pageSize The page size.
+   * @param page_id The page identifier.
+   * @param page_size The page size.
    * @returns Unique pointer of base type to the created page object. The user
    * should cast the pointer to that of the desired page type.
    */
-  static std::unique_ptr<Page> getPage(PageTypeId page_type_id,
-                                       PageId pageId = 0,
-                                       uint64_t pageSize = DEFAULT_PAGE_SIZE) {
-    return table.at(page_type_id)(pageId, pageSize);
+  static std::unique_ptr<Page> GetPage(PageTypeId page_type_id,
+                                       PageId page_id = 0,
+                                       size_t page_size = DEFAULT_PAGE_SIZE) {
+    return table.at(page_type_id)(page_id, page_size);
   }
 };
 
@@ -111,8 +111,9 @@ public:
  */
 template <class T>
 typename _PageFactory<T>::LookupTable _PageFactory<T>::table = {
-    {LogPage().getTypeId(), createPage<LogPage>},
-    {SlottedPage().getTypeId(), createPage<SlottedPage>}};
+    //{LogPage().getTypeId(), createPage<LogPage>},
+    //{SlottedPage().getTypeId(), createPage<SlottedPage>}
+};
 
 /**
  * @brief Page Factory Class
@@ -124,4 +125,4 @@ typedef _PageFactory<> PageFactory;
 
 } // namespace persist
 
-#endif /* PAGE_FACTORY_HPP */
+#endif /* PERSIST_CORE_PAGE_FACTORY_HPP */

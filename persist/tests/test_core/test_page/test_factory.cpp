@@ -31,11 +31,6 @@
 
 #include <memory>
 
-/**
- * Enabled intrusive testing
- */
-#define PERSIST_INTRUSIVE_TESTING
-
 #include <persist/core/page/factory.hpp>
 
 #include "persist/test/simple_page.hpp"
@@ -43,16 +38,9 @@
 using namespace persist;
 using namespace persist::test;
 
-TEST(PageFactoryTestFixture, TestGet) {
-  auto page = PageFactory::getPage(1);
-  auto *ptr = page.get();
-  std::string className = typeid(*ptr).name();
-  ASSERT_TRUE(className.find("LogPage") != std::string::npos);
-}
-
-TEST(PageFactoryTestFixture, TestRegister) {
-  PageFactory::registerPage<SimplePage>();
-  auto page = PageFactory::getPage(SimplePage().getTypeId());
+TEST(PageFactoryTestFixture, TestRegisterGet) {
+  PageFactory::RegisterPage<SimplePage>();
+  auto page = PageFactory::GetPage(SimplePage().GetTypeId());
   auto *ptr = page.get();
   std::string className = typeid(*ptr).name();
   ASSERT_TRUE(className.find("SimplePage") != std::string::npos);

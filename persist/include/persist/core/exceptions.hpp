@@ -26,8 +26,8 @@
  * The header file contains all the exceptions used in the package
  */
 
-#ifndef EXCEPTIONS_HPP
-#define EXCEPTIONS_HPP
+#ifndef PERSIST_CORE_EXCEPTIONS_HPP
+#define PERSIST_CORE_EXCEPTIONS_HPP
 
 #include <exception>
 #include <string>
@@ -329,7 +329,7 @@ private:
   std::string msg;
 
 public:
-  PageSizeError(uint64_t &pageSize)
+  PageSizeError(size_t &pageSize)
       : msg(std::string("Page size '") + std::to_string(pageSize) +
             std::string("' less then minimum required size of '") +
             std::to_string(MINIMUM_PAGE_SIZE) + std::string("'.")) {}
@@ -407,4 +407,4 @@ public:
 
 } // namespace persist
 
-#endif /* EXCEPTIONS_HPP */
+#endif /* PERSIST_CORE_EXCEPTIONS_HPP */

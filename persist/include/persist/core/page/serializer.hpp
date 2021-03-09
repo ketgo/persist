@@ -22,13 +22,15 @@
  * SOFTWARE.
  */
 
-#ifndef PAGE_SERIALIZER_HPP
-#define PAGE_SERIALIZER_HPP
+#ifndef PERSIST_CORE_PAGE_SERIALIZER_HPP
+#define PERSIST_CORE_PAGE_SERIALIZER_HPP
 
 #include <memory>
 
 #include <persist/core/page/factory.hpp>
 #include <persist/core/page/type_header.hpp>
+
+#include <persist/utility/checksum.hpp>
 
 namespace persist {
 
@@ -39,23 +41,22 @@ namespace persist {
  * @returns Unique pointer of base type to the created page object. The user
  * should cast the pointer to that of the desired page type.
  */
-static std::unique_ptr<Page> loadPage(Span input) {
-
-  // 1. Get PageTypeId from input buffer
-  // 2. Use PageFactory to create empty Page object
-  // 3. Call the `load` method of the page object to load rest of the buffer
-
-  if (input.size < PageTypeHeader::size()) {
+static std::unique_ptr<Page> LoadPage(Span input) {
+  if (input.size < PageTypeHeader::GetSize()) {
     throw PageParseError();
   }
 
   PageTypeHeader type_header;
-  type_header.load(input);
-  Span span(input.start + PageTypeHeader::size(),
-            input.size - PageTypeHeader::size());
+  type_header.Load(input);
 
-  auto page = PageFactory::getPage(type_header.getTypeId(), 0, span.size);
-  page->load(span);
+  Span span = input + PageTypeHeader::GetSize();
+  auto page = PageFactory::GetPage(type_header.GetTypeId(), 0, span.size);
+  page->Load(span);
+
+  // Validate checksum
+  if (checksum(span) != type_header.GetChecksum()) {
+    throw PageCorruptError();
+  }
 
   return page;
 }
@@ -66,25 +67,18 @@ static std::unique_ptr<Page> loadPage(Span input) {
  * @param page Reference to the page object to dump.
  * @param output Output buffer span to dump.
  */
-static void dumpPage(Page &page, Span output) {
-
-  // 1. Get page type id from page object
-  // 2. Dump the page type id to the output buffer
-  // 3. Call the `dump` method of the page object to dump the page to rest of
-  // the buffer
-
-  if (output.size < PageTypeHeader::size()) {
+static void DumpPage(Page &page, Span output) {
+  if (output.size < PageTypeHeader::GetSize()) {
     throw PageParseError();
   }
 
-  PageTypeHeader type_header(page.getTypeId());
-  type_header.dump(output);
+  Span span = output + PageTypeHeader::GetSize();
+  page.Dump(span);
 
-  Span span(output.start + PageTypeHeader::size(),
-            output.size - PageTypeHeader::size());
-  page.dump(span);
+  PageTypeHeader type_header(page.GetTypeId(), checksum(span));
+  type_header.Dump(output);
 }
 
 } // namespace persist
 
-#endif /* PAGE_SERIALIZER_HPP */
+#endif /* PERSIST_CORE_PAGE_SERIALIZER_HPP */
