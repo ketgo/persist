@@ -209,15 +209,12 @@ public:
       : header(seq_number, next_location) {}
 
   /**
-   * @brief Size of fixed length members of slot
-   *
-   */
-  static const size_t fixedSize = sizeof(Header) + sizeof(size_t);
-
-  /**
    * Get storage size of page slot.
+   * 
    */
-  size_t GetSize() const { return fixedSize + sizeof(Byte) * data.size(); }
+  size_t GetSize() const {
+    return header.GetSize() + sizeof(size_t) + sizeof(Byte) * data.size();
+  }
 
   /**
    * @brief Get the sequence number of the stored log record

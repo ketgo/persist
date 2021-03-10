@@ -27,8 +27,6 @@
  *
  */
 
-#define __PERSIST_DEBUG__
-
 #include <gtest/gtest.h>
 
 #include <memory>
