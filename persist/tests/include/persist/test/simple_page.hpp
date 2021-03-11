@@ -25,13 +25,13 @@
 #ifndef PERSIST_TEST_SIMPLE_PAGE_HPP
 #define PERSIST_TEST_SIMPLE_PAGE_HPP
 
+#include <memory>
 #include <unordered_map>
 
 #include <persist/core/exceptions.hpp>
 #include <persist/core/page/base.hpp>
 
 namespace persist {
-
 namespace test {
 
 /**
@@ -167,12 +167,7 @@ public:
    * Constructors
    */
   SimplePage(PageId page_id = 0, size_t page_size = DEFAULT_PAGE_SIZE)
-      : header(page_id, page_size) {
-    // Check page size greater than minimum size
-    if (page_size < MINIMUM_PAGE_SIZE) {
-      throw PageSizeError(page_size);
-    }
-  }
+      : header(page_id, page_size) {}
 
   /**
    * @brief Get the page type identifer.
@@ -218,14 +213,20 @@ public:
    *
    * @param record lvalue reference to data record to be stored
    */
-  void SetRecord(ByteBuffer &&record) { this->record = record; }
+  void SetRecord(ByteBuffer &&record) {
+    this->record = record;
+    NotifyObservers();
+  }
 
   /**
    * @brief Set data record
    *
    * @param record reference to data record to be stored
    */
-  void SetRecord(ByteBuffer &record) { this->record = record; }
+  void SetRecord(ByteBuffer &record) {
+    this->record = record;
+    NotifyObservers();
+  }
 
   /**
    * Load Block object from byte string.
@@ -289,7 +290,6 @@ public:
 };
 
 } // namespace test
-
 } // namespace persist
 
 #endif /* PERSIST_TEST_SIMPLE_PAGE_HPP */

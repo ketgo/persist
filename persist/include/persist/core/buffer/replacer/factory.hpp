@@ -1,5 +1,5 @@
 /**
- * test_factory.cpp - Persist
+ * replacer/factory.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,37 +22,34 @@
  * SOFTWARE.
  */
 
+#ifndef PERSIST_CORE_BUFFER_REPLACER_FACTORY_HPP
+#define PERSIST_CORE_BUFFER_REPLACER_FACTORY_HPP
+
+#include <persist/core/buffer/replacer/base.hpp>
+#include <persist/core/buffer/replacer/lru_replacer.hpp>
+
+namespace persist {
+
 /**
- * @brief Page Factory Unit Test
+ * @brief Enumerated list of replacer types
  *
  */
+enum class ReplacerType { LRU };
 
-#include <gtest/gtest.h>
-
-#include <memory>
-
-#include <persist/core/page/factory.hpp>
-
-#include "persist/test/simple_page.hpp"
-
-using namespace persist;
-using namespace persist::test;
-
-TEST(PageFactoryTestFixture, PageSizeError) {
-  try {
-    auto page = CreatePage<SimplePage>(1, 64);
-    FAIL() << "Expected PageSizeError Exception.";
-  } catch (PageSizeError &err) {
-    SUCCEED();
-  } catch (...) {
-    FAIL() << "Expected PageSizeError Exception.";
+/**
+ * @brief Factory method to create replacer of given type.
+ *
+ * @param replacer_type type of replacer to create
+ * @returns unique pointer to created replacer object
+ */
+static std::unique_ptr<Replacer> CreateReplacer(ReplacerType replacer_type) {
+  switch (replacer_type) {
+  case ReplacerType::LRU:
+    return std::make_unique<LRUReplacer>();
+    break;
   }
 }
 
-TEST(PageFactoryTestFixture, TestRegisterGet) {
-  PageFactory::RegisterPage<SimplePage>();
-  auto page = PageFactory::GetPage(SimplePage().GetTypeId());
-  auto *ptr = page.get();
-  std::string className = typeid(*ptr).name();
-  ASSERT_TRUE(className.find("SimplePage") != std::string::npos);
-}
+} // namespace persist
+
+#endif /* PERSIST_CORE_BUFFER_REPLACER_FACTORY_HPP */

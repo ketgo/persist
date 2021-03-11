@@ -1,5 +1,5 @@
 /**
- * mocks.hpp - Persist
+ * log_manager.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,28 +22,18 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_TEST_MOCKS_HPP
-#define PERSIST_TEST_MOCKS_HPP
+#ifndef PERSIST_TEST_MOCKS_LOG_MANAGER_HPP
+#define PERSIST_TEST_MOCKS_LOG_MANAGER_HPP
 
 #include <gmock/gmock.h>
 
 #include <persist/core/log/log_manager.hpp>
-#include <persist/core/page/base.hpp>
 
 using ::testing::_;
 using ::testing::Invoke;
 
 namespace persist {
 namespace test {
-
-/**
- * @brief Page Observer Mock
- *
- */
-class MockPageObserver : public PageObserver {
-public:
-  MOCK_METHOD(void, handleModifiedPage, (PageId pageId), (override));
-};
 
 /**
  * @brief Fake Log Manager
@@ -97,4 +87,4 @@ private:
 } // namespace test
 } // namespace persist
 
-#endif /* PERSIST_TEST_MOCKS_HPP */
+#endif /* PERSIST_TEST_MOCKS_LOG_MANAGER_HPP */

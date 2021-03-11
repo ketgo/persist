@@ -159,12 +159,7 @@ public:
    * @brief Construct a new Log Page object
    */
   LogPage(PageId page_id = 0, size_t page_size = DEFAULT_LOG_PAGE_SIZE)
-      : header(page_id, page_size), data_Size(header.GetSize()) {
-    // Check page size greater than minimum size
-    if (page_size < MINIMUM_PAGE_SIZE) {
-      throw PageSizeError(page_size);
-    }
-  }
+      : header(page_id, page_size), data_Size(header.GetSize()) {}
 
   /**
    * @brief Get the page type identifer.
@@ -209,6 +204,8 @@ public:
    */
   void SetLastSeqNumber(SeqNumber seq_number) {
     header.last_seq_number = seq_number;
+    // Notify observers of modification
+    NotifyObservers();
   }
 
   /**
@@ -238,6 +235,9 @@ public:
     data_Size += page_slot.GetSize();
     // Insert record block at slot
     auto inserted = slots.emplace(page_slot.GetSeqNumber(), page_slot);
+
+    // Notify observers of modification
+    NotifyObservers();
 
     return &inserted.first->second;
   }

@@ -25,9 +25,26 @@
 #ifndef PERSIST_CORE_PAGE_BASE_HPP
 #define PERSIST_CORE_PAGE_BASE_HPP
 
+#include <list>
+
 #include <persist/core/defs.hpp>
 
 namespace persist {
+
+/**
+ * @brief Page Observer
+ *
+ * Observes modification on page.
+ */
+class PageObserver {
+public:
+  /**
+   * @brief Handle page modification.
+   *
+   * @param page_id ID of the page modified
+   */
+  virtual void HandleModifiedPage(PageId page_id) = 0;
+};
 
 /**
  * @brief Page Base Class
@@ -37,12 +54,36 @@ namespace persist {
  *
  */
 class Page {
+  PERSIST_PROTECTED
+  /**
+   * @brief List of registered page modification observers
+   */
+  std::list<PageObserver *> observers;
+
+  /**
+   * @brief Notify all registered observers of page modification.
+   */
+  void NotifyObservers() {
+    for (auto observer : observers) {
+      observer->HandleModifiedPage(GetId());
+    }
+  }
+
 public:
   /**
    * @brief Destroy the Page Base object
    *
    */
   virtual ~Page() = default;
+
+  /**
+   * @brief Register page modification observer
+   *
+   * @param observer pointer to page modication observer
+   */
+  void RegisterObserver(PageObserver *observer) {
+    observers.insert(observers.end(), observer);
+  }
 
   /**
    * @brief Get the page type identifer.

@@ -1,5 +1,5 @@
 /**
- * test_factory.cpp - Persist
+ * page_observer.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,37 +22,29 @@
  * SOFTWARE.
  */
 
+#ifndef PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP
+#define PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP
+
+#include <gmock/gmock.h>
+
+#include <persist/core/page/base.hpp>
+
+using ::testing::_;
+using ::testing::Invoke;
+
+namespace persist {
+namespace test {
+
 /**
- * @brief Page Factory Unit Test
+ * @brief Page Observer Mock
  *
  */
+class MockPageObserver : public PageObserver {
+public:
+  MOCK_METHOD(void, HandleModifiedPage, (PageId pageId), (override));
+};
 
-#include <gtest/gtest.h>
+} // namespace test
+} // namespace persist
 
-#include <memory>
-
-#include <persist/core/page/factory.hpp>
-
-#include "persist/test/simple_page.hpp"
-
-using namespace persist;
-using namespace persist::test;
-
-TEST(PageFactoryTestFixture, PageSizeError) {
-  try {
-    auto page = CreatePage<SimplePage>(1, 64);
-    FAIL() << "Expected PageSizeError Exception.";
-  } catch (PageSizeError &err) {
-    SUCCEED();
-  } catch (...) {
-    FAIL() << "Expected PageSizeError Exception.";
-  }
-}
-
-TEST(PageFactoryTestFixture, TestRegisterGet) {
-  PageFactory::RegisterPage<SimplePage>();
-  auto page = PageFactory::GetPage(SimplePage().GetTypeId());
-  auto *ptr = page.get();
-  std::string className = typeid(*ptr).name();
-  ASSERT_TRUE(className.find("SimplePage") != std::string::npos);
-}
+#endif /* PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP */

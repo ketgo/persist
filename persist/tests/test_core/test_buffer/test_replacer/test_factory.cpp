@@ -23,36 +23,21 @@
  */
 
 /**
- * @brief Page Factory Unit Test
- *
+ * @brief Replacer factory class test.
  */
 
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <typeinfo>
 
-#include <persist/core/page/factory.hpp>
-
-#include "persist/test/simple_page.hpp"
+#include <persist/core/buffer/replacer/factory.hpp>
 
 using namespace persist;
-using namespace persist::test;
 
-TEST(PageFactoryTestFixture, PageSizeError) {
-  try {
-    auto page = CreatePage<SimplePage>(1, 64);
-    FAIL() << "Expected PageSizeError Exception.";
-  } catch (PageSizeError &err) {
-    SUCCEED();
-  } catch (...) {
-    FAIL() << "Expected PageSizeError Exception.";
-  }
-}
-
-TEST(PageFactoryTestFixture, TestRegisterGet) {
-  PageFactory::RegisterPage<SimplePage>();
-  auto page = PageFactory::GetPage(SimplePage().GetTypeId());
-  auto *ptr = page.get();
-  std::string className = typeid(*ptr).name();
-  ASSERT_TRUE(className.find("SimplePage") != std::string::npos);
+TEST(ReplacerFactoryTest, TestCreateLRUReplacer) {
+  std::unique_ptr<Replacer> replacer = CreateReplacer(ReplacerType::LRU);
+  Replacer *ptr = replacer.get();
+  std::string class_name = typeid(*ptr).name();
+  ASSERT_TRUE(class_name.find("LRUReplacer") != std::string::npos);
 }

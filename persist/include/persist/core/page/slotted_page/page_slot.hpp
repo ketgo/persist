@@ -259,21 +259,14 @@ public:
    * @param input input buffer span to load
    */
   void Load(Span input) {
-    if (input.size < size()) {
+    if (input.size < GetSize()) {
       throw PageSlotParseError();
     }
     // Load header
-    header.load(input);
+    header.Load(input);
+    input += header.GetSize();
     // Load data
-    size_t dataSize = input.size - header.size();
-    data.resize(dataSize);
-    std::memcpy((void *)data.data(),
-                (const void *)(input.start + header.size()), dataSize);
-
-    // Check for corruption by matching checksum
-    if (_checksum() != header.checksum) {
-      throw PageSlotCorruptError();
-    }
+    persist::load(input, data);
   }
 
   /**
@@ -282,18 +275,14 @@ public:
    * @param output output buffer span to dump
    */
   void Dump(Span output) {
-    if (output.size < size()) {
+    if (output.size < GetSize()) {
       throw PageSlotParseError();
     }
-
-    // Compute and set checksum
-    header.checksum = _checksum();
-
     // Dump header
-    header.dump(output);
+    header.Dump(output);
+    output += header.GetSize();
     // Dump data
-    std::memcpy((void *)(output.start + header.size()),
-                (const void *)data.data(), data.size());
+    persist::dump(output, data);
   }
 
   /**

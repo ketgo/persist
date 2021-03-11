@@ -45,14 +45,13 @@ static std::unique_ptr<Page> LoadPage(Span input) {
   if (input.size < PageTypeHeader::GetSize()) {
     throw PageParseError();
   }
-
+  // Load type header
   PageTypeHeader type_header;
   type_header.Load(input);
-
+  // Load page
   Span span = input + PageTypeHeader::GetSize();
-  auto page = PageFactory::GetPage(type_header.GetTypeId(), 0, span.size);
+  auto page = PageFactory::GetPage(type_header.GetTypeId(), 0, input.size);
   page->Load(span);
-
   // Validate checksum
   if (checksum(span) != type_header.GetChecksum()) {
     throw PageCorruptError();

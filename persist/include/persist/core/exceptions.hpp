@@ -262,10 +262,29 @@ private:
   std::string msg;
 
 public:
-  PageSlotNotFoundError(persist::PageId pageId, persist::PageSlotId slotId)
-      : msg(std::string("Page slot '") + std::to_string(slotId) +
-            std::string("' in page with ID '") + std::to_string(pageId) +
+  PageSlotNotFoundError(PageId page_id, PageSlotId slot_id)
+      : msg(std::string("Page slot '") + std::to_string(slot_id) +
+            std::string("' in page with ID '") + std::to_string(page_id) +
             std::string("' not found.")) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
+ * Page Type Not Found Error
+ *
+ * This error is thrown if page type is not found in page factory.
+ */
+class PageTypeNotFoundError : public NotFoundException {
+private:
+  std::string msg;
+
+public:
+  PageTypeNotFoundError(PageTypeId &page_type_id)
+      : msg(std::string("Page type with PageTypeID '") +
+            std::to_string(page_type_id) +
+            std::string("' not found. Please make sure the page is registered "
+                        "with PageFactory.")) {}
 
   const char *what() const throw() { return msg.c_str(); }
 };
@@ -312,8 +331,8 @@ private:
   std::string msg;
 
 public:
-  PageNotFoundError(persist::PageId &pageId)
-      : msg(std::string("Page with ID '") + std::to_string(pageId) +
+  PageNotFoundError(PageId &page_id)
+      : msg(std::string("Page with ID '") + std::to_string(page_id) +
             std::string("' not found.")) {}
 
   const char *what() const throw() { return msg.c_str(); }

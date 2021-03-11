@@ -112,17 +112,6 @@ TEST_F(SimplePageHeaderTestFixture, TestSize) {
  * Simple Page Unit Tests
  ***********************************************/
 
-TEST(SimplePageTest, PageSizeError) {
-  try {
-    SimplePage page(1, 64);
-    FAIL() << "Expected PageSizeError Exception.";
-  } catch (PageSizeError &err) {
-    SUCCEED();
-  } catch (...) {
-    FAIL() << "Expected PageSizeError Exception.";
-  }
-}
-
 class SimplePageTestFixture : public ::testing::Test {
 protected:
   ByteBuffer input;

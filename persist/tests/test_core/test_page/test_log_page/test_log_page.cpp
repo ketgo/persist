@@ -33,7 +33,13 @@
 
 #include <persist/core/page/log_page/log_page.hpp>
 
+#include "persist/test/mocks/page_observer.hpp"
+
 using namespace persist;
+using namespace persist::test;
+
+using ::testing::AtLeast;
+using ::testing::Return;
 
 /***********************************************
  * VLS Slotted Page Header Unit Tests
@@ -99,17 +105,6 @@ TEST_F(LogPageHeaderTestFixture, TestSize) {
  * LogPage Unit Tests
  ***********************************************/
 
-TEST(LogPageTest, PageSizeError) {
-  try {
-    LogPage page(1, 64);
-    FAIL() << "Expected PageSizeError Exception.";
-  } catch (PageSizeError &err) {
-    SUCCEED();
-  } catch (...) {
-    FAIL() << "Expected PageSizeError Exception.";
-  }
-}
-
 class LogPageTestFixture : public ::testing::Test {
 protected:
   ByteBuffer input;
@@ -121,6 +116,7 @@ protected:
   std::unique_ptr<LogPageSlot> page_slot_1, page_slot_2;
   const ByteBuffer page_slot_data_1 = "testing_1"_bb,
                    page_slot_data_2 = "testing_2"_bb;
+  MockPageObserver observer;
 
   void SetUp() override {
     // Setup valid page
@@ -242,6 +238,8 @@ TEST_F(LogPageTestFixture, TestInsertPageSlot) {
   page_slot.data = "testing_3"_bb;
 
   // Current free space in block
+  page->RegisterObserver(&observer);
+  EXPECT_CALL(observer, HandleModifiedPage(page->GetId())).Times(AtLeast(1));
   size_t old_free_space = page->GetFreeSpaceSize(Operation::INSERT);
   page->InsertPageSlot(page_slot);
   size_t new_free_size = page->GetFreeSpaceSize(Operation::INSERT);

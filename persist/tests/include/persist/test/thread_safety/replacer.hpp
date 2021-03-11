@@ -1,5 +1,5 @@
 /**
- * test_replacer_ts.hpp - Persist
+ * thread_safety/replacer.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -28,8 +28,8 @@
  *
  */
 
-#ifndef PERSIST_TEST_REPLACER_TS_HPP
-#define PERSIST_TEST_REPLACER_TS_HPP
+#ifndef PERSIST_TEST_THREADSAFETY_REPLACER_TS_HPP
+#define PERSIST_TEST_THREADSAFETY_REPLACER_TS_HPP
 
 #include <gtest/gtest.h>
 
@@ -47,7 +47,7 @@ class ReplacerThreadSafetyTestFixture : public testing::Test {};
 TYPED_TEST_SUITE_P(ReplacerThreadSafetyTestFixture);
 
 /**
- * @brief Test concurrent call to `getVictum` and `unPin` methods.
+ * @brief Test concurrent call to `GetVictum` and `UnPin` methods.
  *
  */
 TYPED_TEST_P(ReplacerThreadSafetyTestFixture, TestGetVictumUnPin) {
@@ -60,7 +60,6 @@ REGISTER_TYPED_TEST_SUITE_P(ReplacerThreadSafetyTestFixture,
                             TestGetVictumUnPin);
 
 } // namespace test
-
 } // namespace persist
 
-#endif /* PERSIST_TEST_REPLACER_TS_HPP */
+#endif /* PERSIST_TEST_THREADSAFETY_REPLACER_TS_HPP */

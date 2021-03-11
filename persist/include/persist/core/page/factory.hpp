@@ -33,7 +33,7 @@
 #include <persist/core/page/base.hpp>
 #include <persist/core/page/type_header.hpp>
 
-// #include <persist/core/page/log_page/log_page.hpp>
+#include <persist/core/page/log_page/log_page.hpp>
 // #include <persist/core/page/slotted_page/slotted_page.hpp>
 
 namespace persist {
@@ -48,8 +48,13 @@ namespace persist {
  */
 template <class PageType>
 static std::unique_ptr<PageType> CreatePage(PageId page_id, size_t page_size) {
+  // Check page size greater than minimum size
+  if (page_size < MINIMUM_PAGE_SIZE) {
+    throw PageSizeError(page_size);
+  }
   // The page size is adjusted to incorporate the type header.
-  return std::make_unique<PageType>(page_id, page_size - PageTypeHeader::GetSize());
+  return std::make_unique<PageType>(page_id,
+                                    page_size - PageTypeHeader::GetSize());
 }
 
 /**
@@ -100,6 +105,10 @@ public:
   static std::unique_ptr<Page> GetPage(PageTypeId page_type_id,
                                        PageId page_id = 0,
                                        size_t page_size = DEFAULT_PAGE_SIZE) {
+    // Throw exception if page type ID not found
+    if (table.find(page_type_id) == table.end()) {
+      throw PageTypeNotFoundError(page_type_id);
+    }
     return table.at(page_type_id)(page_id, page_size);
   }
 };
@@ -111,7 +120,7 @@ public:
  */
 template <class T>
 typename _PageFactory<T>::LookupTable _PageFactory<T>::table = {
-    //{LogPage().getTypeId(), createPage<LogPage>},
+    {LogPage().GetTypeId(), persist::CreatePage<LogPage>},
     //{SlottedPage().getTypeId(), createPage<SlottedPage>}
 };
 
