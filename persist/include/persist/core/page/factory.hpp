@@ -85,12 +85,25 @@ public:
    */
   template <class PageType> static void RegisterPage() {
     PageTypeId page_type_id = PageType().GetTypeId();
-
-    // TODO: Throw error if page type already register. The exception should
-    // display the type ID value.
-    if (table.find(page_type_id) == table.end()) {
-      table.insert({page_type_id, CreatePage<PageType>});
+    // Check if page type already exists.
+    if (table.find(page_type_id) != table.end()) {
+      throw PageTypeExistsError(page_type_id);
     }
+    table.insert({page_type_id, CreatePage<PageType>});
+  }
+
+  /**
+   * @brief UnRegister a page type from the factory.
+   *
+   * @tparam PageType The type of page.
+   */
+  template <class PageType> static void UnRegisterPage() {
+    PageTypeId page_type_id = PageType().GetTypeId();
+    // Check if page type already exists.
+    if (table.find(page_type_id) == table.end()) {
+      throw PageTypeNotFoundError(page_type_id);
+    }
+    table.erase(page_type_id);
   }
 
   /**
@@ -109,6 +122,8 @@ public:
     if (table.find(page_type_id) == table.end()) {
       throw PageTypeNotFoundError(page_type_id);
     }
+    // The return internally moves the unique pointer of derived class to that
+    // of base class.
     return table.at(page_type_id)(page_id, page_size);
   }
 };

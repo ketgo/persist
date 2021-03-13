@@ -30,9 +30,32 @@
 #ifndef TESTS_COMMON_HPP
 #define TESTS_COMMON_HPP
 
+#include <gtest/gtest.h>
+
+#include <persist/core/page/factory.hpp>
+
+#include "persist/test/simple_page.hpp"
+
 /**
  * @brief Location of the test data.
  */
 #define DATA_PATH "/Users/ketan/Projects/persist/build/persist/tests/data"
+
+/**
+ * @brief Global testing environment setup.
+ *
+ */
+class Environment : public ::testing::Environment {
+public:
+  void SetUp() override {
+    // Register simple page
+    persist::PageFactory::RegisterPage<persist::test::SimplePage>();
+  }
+
+  void TearDown() override {
+    // UnRegister simple page
+    persist::PageFactory::UnRegisterPage<persist::test::SimplePage>();
+  }
+};
 
 #endif /* TESTS_COMMON_HPP */

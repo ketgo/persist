@@ -47,8 +47,6 @@ protected:
   std::unique_ptr<MemoryStorage> storage;
 
   void SetUp() override {
-    PageFactory::RegisterPage<SimplePage>();
-
     storage = std::make_unique<MemoryStorage>(page_size);
     storage->Open();
   }

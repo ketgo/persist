@@ -31,6 +31,14 @@
 #include <memory>
 #include <string>
 
+/**
+ * @brief Enable debug mode if not already enabled
+ *
+ */
+#ifndef __PERSIST_DEBUG__
+#define __PERSIST_DEBUG__
+#endif
+
 #include <persist/core/buffer/buffer_manager.hpp>
 #include <persist/core/buffer/replacer/lru_replacer.hpp>
 #include <persist/core/page/factory.hpp>
@@ -52,8 +60,6 @@ protected:
   std::unique_ptr<Storage> storage;
 
   void SetUp() override {
-    PageFactory::RegisterPage<SimplePage>();
-
     // setting up pages
     page_1 = persist::CreatePage<SimplePage>(1, page_size);
     page_2 = persist::CreatePage<SimplePage>(2, page_size);

@@ -43,13 +43,13 @@ class FakeLogManager : public LogManager {
 public:
   FakeLogManager() : LogManager(nullptr) {}
 
-  void start() {}
-  void stop() {}
-  LogRecord::Location add(LogRecord &) { return LogRecord::Location(1, 1); }
-  std::unique_ptr<LogRecord> get(LogRecord::Location) {
+  void Start() {}
+  void Stop() {}
+  LogRecord::Location Add(LogRecord &) { return LogRecord::Location(1, 1); }
+  std::unique_ptr<LogRecord> Get(LogRecord::Location) {
     return std::make_unique<LogRecord>();
   }
-  void flush() {}
+  void Flush() {}
 };
 
 /**
@@ -60,24 +60,24 @@ class MockLogManager : public LogManager {
 public:
   MockLogManager() : LogManager(nullptr) {}
 
-  MOCK_METHOD(void, start, (), ());
-  MOCK_METHOD(void, stop, (), ());
-  MOCK_METHOD(LogRecord::Location, add, (LogRecord &), ());
-  MOCK_METHOD(std::unique_ptr<LogRecord>, get, (LogRecord::Location), ());
-  MOCK_METHOD(void, flush, (), ());
+  MOCK_METHOD(void, Start, (), ());
+  MOCK_METHOD(void, Stop, (), ());
+  MOCK_METHOD(LogRecord::Location, Add, (LogRecord &), ());
+  MOCK_METHOD(std::unique_ptr<LogRecord>, Get, (LogRecord::Location), ());
+  MOCK_METHOD(void, Flush, (), ());
 
-  void useFake() {
-    ON_CALL(*this, start())
-        .WillByDefault(Invoke(&fake, &FakeLogManager::start));
+  void UseFake() {
+    ON_CALL(*this, Start())
+        .WillByDefault(Invoke(&fake, &FakeLogManager::Start));
 
-    ON_CALL(*this, stop()).WillByDefault(Invoke(&fake, &FakeLogManager::stop));
+    ON_CALL(*this, Stop()).WillByDefault(Invoke(&fake, &FakeLogManager::Stop));
 
-    ON_CALL(*this, add(_)).WillByDefault(Invoke(&fake, &FakeLogManager::add));
+    ON_CALL(*this, Add(_)).WillByDefault(Invoke(&fake, &FakeLogManager::Add));
 
-    ON_CALL(*this, get(_)).WillByDefault(Invoke(&fake, &FakeLogManager::get));
+    ON_CALL(*this, Get(_)).WillByDefault(Invoke(&fake, &FakeLogManager::Get));
 
-    ON_CALL(*this, flush())
-        .WillByDefault(Invoke(&fake, &FakeLogManager::flush));
+    ON_CALL(*this, Flush())
+        .WillByDefault(Invoke(&fake, &FakeLogManager::Flush));
   }
 
 private:

@@ -1,5 +1,5 @@
 /**
- * tests/common.hpp - Persist
+ * test_transaction.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -23,39 +23,51 @@
  */
 
 /**
- * @brief The header file contains common definitions and methods used for
- * testing.
+ * @brief Transaction Manager Unit Test
  *
  */
-#ifndef TESTS_COMMON_HPP
-#define TESTS_COMMON_HPP
 
 #include <gtest/gtest.h>
 
-#include <persist/core/page/factory.hpp>
+#include <memory>
 
-#include "persist/test/simple_page.hpp"
+#include <persist/core/storage/factory.hpp>
+#include <persist/core/transaction/transaction.hpp>
 
-/**
- * @brief Location of the test data.
- */
-#define DATA_PATH "@DATA_PATH@"
+using namespace persist;
 
-/**
- * @brief Global testing environment setup.
- *
- */
-class Environment : public ::testing::Environment {
-public:
+class TransactionTestFixture : public ::testing::Test {
+protected:
+  const uint64_t page_size = DEFAULT_PAGE_SIZE;
+  const uint64_t max_size = 2;
+  const TransactionId txn_id = 10;
+  const std::string path = "test_transaction_log";
+  SlottedPageSlot::Location location;
+  std::unique_ptr<Storage> storage;
+  std::unique_ptr<LogManager> log_manager;
+  std::unique_ptr<Transaction> txn;
+
   void SetUp() override {
-    // Register simple page
-    persist::PageFactory::RegisterPage<persist::test::SimplePage>();
+    // Setting up storage
+    storage = persist::CreateStorage("file://" + path);
+
+    // Setting up log manager
+    log_manager = std::make_unique<LogManager>(storage.get(), max_size);
+    log_manager->Start();
+
+    // Setup transaction
+    txn = std::make_unique<Transaction>(log_manager.get(), txn_id);
   }
 
   void TearDown() override {
-    // UnRegister simple page
-    persist::PageFactory::UnRegisterPage<persist::test::SimplePage>();
+    storage->Remove();
+    log_manager->Stop();
   }
 };
 
-#endif /* TESTS_COMMON_HPP */
+TEST_F(TransactionTestFixture, TestGetId) { ASSERT_EQ(txn->GetId(), txn_id); }
+
+TEST_F(TransactionTestFixture, TestGetSetState) {
+  txn->SetState(Transaction::State::PARTIALLY_COMMITED);
+  ASSERT_EQ(txn->GetState(), Transaction::State::PARTIALLY_COMMITED);
+}

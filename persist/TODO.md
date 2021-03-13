@@ -83,15 +83,24 @@
         -[IN-PROGRESS] LRUReplacer
         - LogManager
 
-7. Create Concurrency Control Manager:
+7. Refactor all components to policy-based design.
+
+8. Design a Storable object interface. A storable object should expose the interface:
+    - size_t GetSize(): The amount of storage space in bytes occupied by the object
+    - size_t GetMinSize(): The minimum amount of storage space in bytes occupied by the object.
+    - size_t GetMaxSize(): The maximum amount of storage space in bytes occupied by the object. A returned value of 0 indicates no max size.
+    - void Load(Span input): Load object from byte buffer
+    - void Dump(Span output): Dump object to byte buffer
+
+9. Create Concurrency Control Manager:
     - Design manager class. The design should be extendable to support different concurrency control protocols
     - Create a separate project to PoC concurrency manager design
     - Implement different types of concurrency control policies
     - Implement RECORD-LEVEL atomic operations by providing concurrency control at PAGE_SLOT-LEVEL
 
-8. Implement recovery manager and checkpoint manager
+10. Implement recovery manager and checkpoint manager
 
-9. Create collection metadata manager:
+11. Create collection metadata manager:
     - handles metadata containing the starting location, ending location, and number of records in a collection
     - writes metadata to the first record block of the collection
 

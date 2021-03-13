@@ -271,6 +271,25 @@ public:
 };
 
 /**
+ * Page Type Exists Error
+ *
+ * This error is thrown if page type already exists in the page factory.
+ */
+class PageTypeExistsError : public PersistException {
+private:
+  std::string msg;
+
+public:
+  PageTypeExistsError(PageTypeId &page_type_id)
+      : msg(std::string("Page type with PageTypeID '") +
+            std::to_string(page_type_id) +
+            std::string("' already exists. Please use another ID value to "
+                        "register with the PageFactory.")) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
  * Page Type Not Found Error
  *
  * This error is thrown if page type is not found in page factory.

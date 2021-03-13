@@ -55,8 +55,6 @@ protected:
   std::unique_ptr<FileStorage> read_storage, write_storage;
 
   void SetUp() override {
-    PageFactory::RegisterPage<SimplePage>();
-
     read_storage = std::make_unique<FileStorage>(read_path, page_size);
     read_storage->Open();
     write_storage = std::make_unique<FileStorage>(write_path, page_size);
@@ -161,8 +159,6 @@ protected:
   std::unique_ptr<FileStorage> read_storage, write_storage;
 
   void SetUp() override {
-    PageFactory::RegisterPage<SimplePage>();
-
     read_storage = std::make_unique<FileStorage>(read_path, page_size);
     read_storage->Open();
     write_storage = std::make_unique<FileStorage>(write_path, page_size);

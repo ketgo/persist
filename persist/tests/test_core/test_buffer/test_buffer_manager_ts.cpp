@@ -68,8 +68,6 @@ protected:
   tstest::Assertor assertor;
 
   void SetUp() override {
-    PageFactory::RegisterPage<SimplePage>();
-
     // Setting up pages
     ByteBuffer buffer;
     page_1 = persist::CreatePage<SimplePage>(1, page_size);

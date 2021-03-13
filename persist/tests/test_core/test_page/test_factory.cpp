@@ -33,6 +33,7 @@
 
 #include <persist/core/page/factory.hpp>
 
+#include "persist/test/mocks/page.hpp"
 #include "persist/test/simple_page.hpp"
 
 using namespace persist;
@@ -50,9 +51,10 @@ TEST(PageFactoryTestFixture, PageSizeError) {
 }
 
 TEST(PageFactoryTestFixture, TestRegisterGet) {
-  PageFactory::RegisterPage<SimplePage>();
-  auto page = PageFactory::GetPage(SimplePage().GetTypeId());
+  PageFactory::RegisterPage<FakePage>();
+  auto page = PageFactory::GetPage(FakePage().GetTypeId());
   auto *ptr = page.get();
   std::string className = typeid(*ptr).name();
-  ASSERT_TRUE(className.find("SimplePage") != std::string::npos);
+  ASSERT_TRUE(className.find("FakePage") != std::string::npos);
+  PageFactory::UnRegisterPage<FakePage>();
 }

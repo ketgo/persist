@@ -222,7 +222,7 @@ public:
    *
    */
   size_t GetSize() const {
-    return header.GetSize() + sizeof(size_t) + sizeof(Byte) * data.size();
+    return header.GetSize() + sizeof(size_t) + data.size();
   }
 
   /**

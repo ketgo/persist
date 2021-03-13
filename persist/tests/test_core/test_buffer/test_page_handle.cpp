@@ -32,6 +32,7 @@
 
 #include <persist/core/buffer/page_handle.hpp>
 #include <persist/core/buffer/replacer/lru_replacer.hpp>
+#include <persist/core/page/factory.hpp>
 
 #include "persist/test/simple_page.hpp"
 
@@ -48,8 +49,8 @@ protected:
 
   void SetUp() override {
     // setting up pages
-    page_1 = std::make_unique<SimplePage>(page_id_1, page_size);
-    page_2 = std::make_unique<SimplePage>(page_id_2, page_size);
+    page_1 = persist::CreatePage<SimplePage>(page_id_1, page_size);
+    page_2 = persist::CreatePage<SimplePage>(page_id_2, page_size);
 
     // setting up replacer
     replacer = std::make_unique<LRUReplacer>();
