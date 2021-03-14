@@ -1,5 +1,5 @@
 /**
- * test_factory.cpp - Persist
+ * test_creator.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -23,7 +23,7 @@
  */
 
 /**
- * @brief Page Factory Unit Test
+ * @brief Test page creator.
  *
  */
 
@@ -31,18 +31,20 @@
 
 #include <memory>
 
-#include <persist/core/page/factory.hpp>
+#include <persist/core/page/creator.hpp>
 
-#include "persist/test/mocks/page.hpp"
+#include "persist/test/simple_page.hpp"
 
 using namespace persist;
 using namespace persist::test;
 
-TEST(PageFactoryTestFixture, TestRegisterGet) {
-  PageFactory::RegisterPage<FakePage>();
-  auto page = PageFactory::GetPage(FakePage().GetTypeId());
-  auto *ptr = page.get();
-  std::string className = typeid(*ptr).name();
-  ASSERT_TRUE(className.find("FakePage") != std::string::npos);
-  PageFactory::UnRegisterPage<FakePage>();
+TEST(PageCreatorTestFixture, PageSizeError) {
+  try {
+    auto page = CreatePage<SimplePage>(1, 64);
+    FAIL() << "Expected PageSizeError Exception.";
+  } catch (PageSizeError &err) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected PageSizeError Exception.";
+  }
 }

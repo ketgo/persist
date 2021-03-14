@@ -32,7 +32,7 @@
 #include <string>
 
 #include <persist/core/exceptions.hpp>
-#include <persist/core/page/factory.hpp>
+#include <persist/core/page/creator.hpp>
 #include <persist/core/storage/file_storage.hpp>
 
 #include "common.hpp"

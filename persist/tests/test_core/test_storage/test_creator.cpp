@@ -1,5 +1,5 @@
 /**
- * test_base.cpp - Persist
+ * test_creator.cpp - Persist
  *
  * Copyright 2020 Ketan Goyal
  *
@@ -23,7 +23,7 @@
  */
 
 /**
- * @brief Backend Storage base class test.
+ * @brief Backend storage creator test.
  */
 
 #include <gtest/gtest.h>
@@ -31,9 +31,8 @@
 #include <memory>
 #include <typeinfo>
 
-#include <persist/core/defs.hpp>
 #include <persist/core/storage/base.hpp>
-#include <persist/core/storage/factory.hpp>
+#include <persist/core/storage/creator.hpp>
 
 #include "persist/test/simple_page.hpp"
 

@@ -39,8 +39,8 @@
 #endif
 
 #include <persist/core/log/log_manager.hpp>
-#include <persist/core/storage/factory.hpp>
-#include <persist/core/page/factory.hpp>
+#include <persist/core/storage/creator.hpp>
+#include <persist/core/page/creator.hpp>
 
 using namespace persist;
 

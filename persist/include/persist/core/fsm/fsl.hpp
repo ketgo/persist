@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef FSL_HPP
-#define FSL_HPP
+#ifndef PERSIST_CORE_FSL_HPP
+#define PERSIST_CORE_FSL_HPP
 
 #include <cstring>
 #include <set>
@@ -168,4 +168,4 @@ public:
 
 } // namespace persist
 
-#endif /* FSL_HPP */
+#endif /* PERSIST_CORE_FSL_HPP */

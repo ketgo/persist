@@ -31,31 +31,12 @@
 
 #include <persist/core/defs.hpp>
 #include <persist/core/page/base.hpp>
-#include <persist/core/page/type_header.hpp>
+#include <persist/core/page/creator.hpp>
 
 #include <persist/core/page/log_page/log_page.hpp>
-// #include <persist/core/page/slotted_page/slotted_page.hpp>
+#include <persist/core/page/slotted_page/slotted_page.hpp>
 
 namespace persist {
-
-/**
- * @brief Create an empty page object of specified type.
- *
- * @tparam PageType The type of page to create.
- * @param page_id The page identifier.
- * @param page_size The page size.
- * @returns Unique pointer to the created page.
- */
-template <class PageType>
-static std::unique_ptr<PageType> CreatePage(PageId page_id, size_t page_size) {
-  // Check page size greater than minimum size
-  if (page_size < MINIMUM_PAGE_SIZE) {
-    throw PageSizeError(page_size);
-  }
-  // The page size is adjusted to incorporate the type header.
-  return std::make_unique<PageType>(page_id,
-                                    page_size - PageTypeHeader::GetSize());
-}
 
 /**
  * @brief Private Page Factory Class
@@ -136,8 +117,7 @@ public:
 template <class T>
 typename _PageFactory<T>::LookupTable _PageFactory<T>::table = {
     {LogPage().GetTypeId(), persist::CreatePage<LogPage>},
-    //{SlottedPage().getTypeId(), createPage<SlottedPage>}
-};
+    {SlottedPage().GetTypeId(), persist::CreatePage<SlottedPage>}};
 
 /**
  * @brief Page Factory Class

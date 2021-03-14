@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_CORE_STORAGE_FACTORY_HPP
-#define PERSIST_CORE_STORAGE_FACTORY_HPP
+#ifndef PERSIST_CORE_STORAGE_CREATOR_HPP
+#define PERSIST_CORE_STORAGE_CREATOR_HPP
 
 #include <persist/core/storage/base.hpp>
 #include <persist/core/storage/file_storage.hpp>
@@ -104,4 +104,4 @@ static std::unique_ptr<Storage> CreateStorage(std::string connectionString) {
 }
 
 } // namespace persist
-#endif /* PERSIST_CORE_STORAGE_FACTORY_HPP */
+#endif /* PERSIST_CORE_STORAGE_CREATOR_HPP */

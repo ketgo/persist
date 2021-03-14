@@ -31,12 +31,11 @@
 #include <unordered_map>
 
 #include <persist/core/buffer/page_handle.hpp>
-#include <persist/core/buffer/replacer/factory.hpp>
+#include <persist/core/buffer/replacer/creator.hpp>
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
 #include <persist/core/fsm/fsl.hpp>
-#include <persist/core/page/base.hpp>
-#include <persist/core/page/factory.hpp>
+#include <persist/core/page/creator.hpp>
 #include <persist/core/storage/base.hpp>
 #include <persist/utility/mutex.hpp>
 

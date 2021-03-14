@@ -107,13 +107,13 @@ class TransactionManager {
     case LogRecord::Type::INSERT: {
       auto page =
           buffer_manager->Get<SlottedPage>(log_record.GetLocation().page_id);
-      page->removePageSlot(log_record.GetLocation().slot_id, txn);
+      page->RemovePageSlot(log_record.GetLocation().slot_id, txn);
       break;
     }
     case LogRecord::Type::DELETE: {
       auto page =
           buffer_manager->Get<SlottedPage>(log_record.GetLocation().page_id);
-      page->undoRemovePageSlot(log_record.GetLocation().slot_id,
+      page->UndoRemovePageSlot(log_record.GetLocation().slot_id,
                                log_record.GetPageSlotA(), txn);
       break;
     }
@@ -121,7 +121,7 @@ class TransactionManager {
       auto page =
           buffer_manager->Get<SlottedPage>(log_record.GetLocation().page_id);
       // NOTE: The value from log record object is being moved
-      page->updatePageSlot(log_record.GetLocation().slot_id,
+      page->UpdatePageSlot(log_record.GetLocation().slot_id,
                            log_record.GetPageSlotA(), txn);
       break;
     }

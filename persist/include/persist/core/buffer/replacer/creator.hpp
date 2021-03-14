@@ -1,5 +1,5 @@
 /**
- * test_factory.cpp - Persist
+ * replacer/creator.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,22 +22,34 @@
  * SOFTWARE.
  */
 
+#ifndef PERSIST_CORE_BUFFER_REPLACER_CREATOR_HPP
+#define PERSIST_CORE_BUFFER_REPLACER_CREATOR_HPP
+
+#include <persist/core/buffer/replacer/base.hpp>
+#include <persist/core/buffer/replacer/lru_replacer.hpp>
+
+namespace persist {
+
 /**
- * @brief Replacer factory class test.
+ * @brief Enumerated list of replacer types
+ *
  */
+enum class ReplacerType { LRU };
 
-#include <gtest/gtest.h>
-
-#include <memory>
-#include <typeinfo>
-
-#include <persist/core/buffer/replacer/factory.hpp>
-
-using namespace persist;
-
-TEST(ReplacerFactoryTest, TestCreateLRUReplacer) {
-  std::unique_ptr<Replacer> replacer = CreateReplacer(ReplacerType::LRU);
-  Replacer *ptr = replacer.get();
-  std::string class_name = typeid(*ptr).name();
-  ASSERT_TRUE(class_name.find("LRUReplacer") != std::string::npos);
+/**
+ * @brief Factory method to create replacer of given type.
+ *
+ * @param replacer_type type of replacer to create
+ * @returns unique pointer to created replacer object
+ */
+static std::unique_ptr<Replacer> CreateReplacer(ReplacerType replacer_type) {
+  switch (replacer_type) {
+  case ReplacerType::LRU:
+    return std::make_unique<LRUReplacer>();
+    break;
+  }
 }
+
+} // namespace persist
+
+#endif /* PERSIST_CORE_BUFFER_REPLACER_CREATOR_HPP */

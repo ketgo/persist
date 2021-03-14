@@ -33,7 +33,7 @@
 #include <vector>
 
 #include <persist/core/exceptions.hpp>
-#include <persist/core/page/factory.hpp>
+#include <persist/core/page/creator.hpp>
 #include <persist/core/storage/memory_storage.hpp>
 
 #include "persist/test/simple_page.hpp"

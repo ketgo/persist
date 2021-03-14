@@ -31,7 +31,7 @@
 #include <persist/core/buffer/buffer_manager.hpp>
 #include <persist/core/log/log_record.hpp>
 #include <persist/core/page/log_page/log_page.hpp>
-#include <persist/core/storage/base.hpp>
+
 #include <persist/utility/mutex.hpp>
 
 namespace persist {

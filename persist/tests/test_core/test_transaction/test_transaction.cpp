@@ -31,7 +31,7 @@
 
 #include <memory>
 
-#include <persist/core/storage/factory.hpp>
+#include <persist/core/storage/creator.hpp>
 #include <persist/core/transaction/transaction.hpp>
 
 using namespace persist;

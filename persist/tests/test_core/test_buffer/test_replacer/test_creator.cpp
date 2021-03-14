@@ -23,26 +23,21 @@
  */
 
 /**
- * @brief Page Factory Unit Test
- *
+ * @brief Replacer creator test.
  */
 
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <typeinfo>
 
-#include <persist/core/page/factory.hpp>
-
-#include "persist/test/mocks/page.hpp"
+#include <persist/core/buffer/replacer/creator.hpp>
 
 using namespace persist;
-using namespace persist::test;
 
-TEST(PageFactoryTestFixture, TestRegisterGet) {
-  PageFactory::RegisterPage<FakePage>();
-  auto page = PageFactory::GetPage(FakePage().GetTypeId());
-  auto *ptr = page.get();
-  std::string className = typeid(*ptr).name();
-  ASSERT_TRUE(className.find("FakePage") != std::string::npos);
-  PageFactory::UnRegisterPage<FakePage>();
+TEST(ReplacerCreatorTest, TestCreateLRUReplacer) {
+  std::unique_ptr<Replacer> replacer = CreateReplacer(ReplacerType::LRU);
+  Replacer *ptr = replacer.get();
+  std::string class_name = typeid(*ptr).name();
+  ASSERT_TRUE(class_name.find("LRUReplacer") != std::string::npos);
 }

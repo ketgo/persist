@@ -1,5 +1,5 @@
 /**
- * replacer/factory.hpp - Persist
+ * page/creator.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,34 +22,34 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_CORE_BUFFER_REPLACER_FACTORY_HPP
-#define PERSIST_CORE_BUFFER_REPLACER_FACTORY_HPP
+#ifndef PERSIST_CORE_PAGE_CREATOR_HPP
+#define PERSIST_CORE_PAGE_CREATOR_HPP
 
-#include <persist/core/buffer/replacer/base.hpp>
-#include <persist/core/buffer/replacer/lru_replacer.hpp>
+#include <memory>
+
+#include <persist/core/defs.hpp>
+#include <persist/core/exceptions.hpp>
+#include <persist/core/page/type_header.hpp>
 
 namespace persist {
-
 /**
- * @brief Enumerated list of replacer types
+ * @brief Create an empty page object of specified type.
  *
+ * @tparam PageType The type of page to create.
+ * @param page_id The page identifier.
+ * @param page_size The page size.
+ * @returns Unique pointer to the created page.
  */
-enum class ReplacerType { LRU };
-
-/**
- * @brief Factory method to create replacer of given type.
- *
- * @param replacer_type type of replacer to create
- * @returns unique pointer to created replacer object
- */
-static std::unique_ptr<Replacer> CreateReplacer(ReplacerType replacer_type) {
-  switch (replacer_type) {
-  case ReplacerType::LRU:
-    return std::make_unique<LRUReplacer>();
-    break;
+template <class PageType>
+static std::unique_ptr<PageType> CreatePage(PageId page_id, size_t page_size) {
+  // Check page size greater than minimum size
+  if (page_size < MINIMUM_PAGE_SIZE) {
+    throw PageSizeError(page_size);
   }
+  // The page size is adjusted to incorporate the type header.
+  return std::make_unique<PageType>(page_id,
+                                    page_size - PageTypeHeader::GetSize());
 }
-
 } // namespace persist
 
-#endif /* PERSIST_CORE_BUFFER_REPLACER_FACTORY_HPP */
+#endif /* PERSIST_CORE_PAGE_CREATOR_HPP */

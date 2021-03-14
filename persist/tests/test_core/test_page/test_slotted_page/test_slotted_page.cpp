@@ -38,7 +38,7 @@
 #define PERSIST_INTRUSIVE_TESTING
 
 #include <persist/core/page/slotted_page/slotted_page.hpp>
-#include <persist/core/storage/factory.hpp>
+#include <persist/core/storage/creator.hpp>
 
 #include "persist/test/mocks/page_observer.hpp"
 
