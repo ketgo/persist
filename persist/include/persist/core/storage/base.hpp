@@ -86,14 +86,14 @@ public:
   /**
    * @brief Get page size.
    *
-   * @returns page size used in storage
+   * @returns Page size used in storage
    */
   virtual size_t GetPageSize() = 0;
 
   /**
    * @brief Get page count.
    *
-   * @returns number of pages in storage
+   * @returns Number of pages in storage
    */
   virtual uint64_t GetPageCount() = 0;
 
@@ -101,22 +101,22 @@ public:
    * @brief Read free space list from storage. If no free list is found then
    * pointer to an empty FSL object is returned.
    *
-   * @return pointer to FSL object
+   * @return Unique pointer to FSL object
    */
   virtual std::unique_ptr<FSL> Read() = 0;
 
   /**
    * @brief Write FSL object to storage.
    *
-   * @param fsl reference to FSL object to be written
+   * @param fsl Reference to FSL object to be written
    */
   virtual void Write(FSL &fsl) = 0;
 
   /**
    * @brief Read Page with given identifier from storage.
    *
-   * @param page_id page identifier
-   * @returns pointer to Page object
+   * @param page_id Page identifier
+   * @returns Unique pointer to Page object
    */
   virtual std::unique_ptr<Page> Read(PageId page_id) = 0;
 

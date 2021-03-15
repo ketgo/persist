@@ -531,7 +531,7 @@ public:
     header.Dump(output);
     // Dump free space
     Span span(output.start, header.GetTail());
-    span += header.GetTail();
+    span += header.GetSize();
     std::memset((void *)span.start, 0, span.size);
     // Dump record blocks
     for (auto &element : header.slots) {

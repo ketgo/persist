@@ -83,6 +83,19 @@ inline void dump(Span &output, const T &data, const Args &...args) {
   dump(output, args...);
 }
 
+/**
+ * @brief Dump one or more '0' valued byte to byte buffer.
+ *
+ * @param output Span of byte buffer to dump data.
+ * @param n Number of '0' valued bytes to dump. Deafult value set to '1'.
+ */
+static void dump0(Span &output, size_t n = 1) {
+  const Byte zero = 0;
+  for (size_t i = 0; i < n; ++i) {
+    _copy(zero, output);
+  }
+}
+
 } // namespace persist
 
 #endif /* PERSIST_UTILITY_SERIALIZER_HPP */

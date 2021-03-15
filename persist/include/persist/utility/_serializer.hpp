@@ -30,6 +30,8 @@
 #ifndef PERSIST_UTILITY__SERIALIZER_HPP
 #define PERSIST_UTILITY__SERIALIZER_HPP
 
+#include <cstring>
+
 #include <list>
 #include <map>
 #include <set>

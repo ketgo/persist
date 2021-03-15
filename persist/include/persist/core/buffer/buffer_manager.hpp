@@ -34,7 +34,7 @@
 #include <persist/core/buffer/replacer/creator.hpp>
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
-#include <persist/core/fsm/fsl.hpp>
+#include <persist/core/fsm/creator.hpp>
 #include <persist/core/page/creator.hpp>
 #include <persist/core/storage/base.hpp>
 #include <persist/utility/mutex.hpp>
@@ -55,6 +55,8 @@ namespace persist {
  *
  */
 class BufferManager : public PageObserver {
+  friend class FSList<BufferManager>;
+
   PERSIST_PRIVATE
   /**
    * @brief Recursive lock for thread safety
@@ -82,9 +84,9 @@ class BufferManager : public PageObserver {
     PageSlot() : page(nullptr), modified(false) {}
   };
 
-  Storage *storage;                   //<- opened backend storage
-  std::unique_ptr<FSL> fsl;           //<- free space list
-  std::unique_ptr<Replacer> replacer; //<- page replacer
+  Storage *storage; //<- opened backend storage
+  std::unique_ptr<FreeSpaceManager<BufferManager>> fsm; //<- free space manager
+  std::unique_ptr<Replacer> replacer;                   //<- page replacer
 
   size_t max_size GUARDED_BY(lock); //<- maximum size of buffer
   typedef typename std::unordered_map<PageId, PageSlot> Buffer;
@@ -122,23 +124,25 @@ class BufferManager : public PageObserver {
 
 public:
   /**
-   * Construct a new BufferManager object
+   * Construct a new BufferManager object.
    *
-   * @param storage pointer to backend storage
-   * @param max_size maximum buffer size. If set to 0 then no maximum limit is
-   * set
-   * @param replacerType type of page replacer to be used by buffer manager
+   * @param storage Pointer to backend storage.
+   * @param max_size Maximum buffer size. If set to 0, no maximum limit is set.
+   * @param replacer_type Type of page replacer to be used by buffer manager.
+   * @param fsm_type Type of free space manager to be used by buffer manager.
    *
    */
   BufferManager(Storage *storage, size_t max_size = DEFAULT_BUFFER_SIZE,
-                ReplacerType replacerType = ReplacerType::LRU)
+                ReplacerType replacer_type = ReplacerType::LRU,
+                FSMType fsm_type = FSMType::FSL)
       : storage(storage), max_size(max_size), started(false) {
     // Check buffer size value
     if (max_size != 0 && max_size < MINIMUM_BUFFER_SIZE) {
       throw BufferManagerError("Invalid value for max buffer size. The max "
                                "size can be 0 or greater than 2.");
     }
-    replacer = persist::CreateReplacer(replacerType);
+    replacer = persist::CreateReplacer(replacer_type);
+    fsm = persist::CreateFSM<BufferManager>(fsm_type, this);
   }
 
   /**
@@ -169,8 +173,8 @@ public:
     if (!started) {
       // Start backend storage
       storage->Open();
-      // Load free space list
-      fsl = storage->Read();
+      // Start free space manager
+      fsm->Start();
       // Set state to started
       started = true;
     }
@@ -189,6 +193,8 @@ public:
     LockGuard guard(lock);
 
     if (started) {
+      // Stop free space manager
+      fsm->Stop();
       // Flush all loaded pages
       FlushAll();
       // Close backend storage
@@ -212,11 +218,11 @@ public:
 
     // Allocate space for new page
     PageId page_id = storage->Allocate();
-    // Create entry for new page in free space list
-    fsl->freePages.insert(page_id);
     // Create an empty page
     std::unique_ptr<Page> page =
         persist::CreatePage<PageType>(page_id, storage->GetPageSize());
+    // Manage free space
+    fsm->Manage(*page);
     // Load the new page in buffer
     Put(page);
 
@@ -236,15 +242,16 @@ public:
   template <class PageType> PageHandle<PageType> GetFreeOrNew() {
     LockGuard guard(lock);
 
-    // Create new page if no page with free space is available
-    if (fsl->freePages.empty()) {
-      return GetNew<PageType>();
-    }
     // Get ID of page with free space from FSL. Currently the last ID in free
     // space list is used.
     // TODO: Implement a smart free space manager instead of just using the last
     // page in FSL
-    PageId page_id = *std::prev(fsl->freePages.end());
+    PageId page_id = fsm->GetPageId(0);
+
+    // Create new page if no page with free space is available
+    if (!page_id) {
+      return GetNew<PageType>();
+    }
 
     return Get<PageType>(page_id);
   }
@@ -294,8 +301,6 @@ public:
     // Save page if found, modified, and not pinned
     if (it != buffer.end() && it->second.modified &&
         !replacer->IsPinned(page_id)) {
-      // Persist FSL
-      storage->Write(*fsl);
       // Persist page on backend storage
       storage->Write(*(it->second.page));
       // Since the page has been saved it is now considered as un-modified
@@ -332,20 +337,11 @@ public:
   void Mark(PageId page_id) {
     LockGuard guard(lock);
 
-    buffer.at(page_id).modified = true;
-
-    // TODO: The following logic of adding page to FSL should be part of free
-    // space manager.
-
-    // Check if page has free space and update free space list accordingly. Note
-    // that since FSL is used to get pages with free space for INSERT page
-    // operation, free space for only INSERT is checked.
-    if (buffer.at(page_id).page->GetFreeSpaceSize(Operation::INSERT) > 0) {
-      // Note: FSL uses set which takes care of duplicates so no need to check
-      fsl->freePages.insert(page_id);
-    } else {
-      fsl->freePages.erase(page_id);
-    }
+    auto &slot = buffer.at(page_id);
+    // Mark slot as modified
+    slot.modified = true;
+    // Manage free space
+    fsm->Manage(*slot.page);
   }
 
 #ifdef __PERSIST_DEBUG__

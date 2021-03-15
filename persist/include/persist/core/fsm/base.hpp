@@ -1,5 +1,5 @@
 /**
- * fsl.hpp - Persist
+ * fsm/base.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,98 +22,57 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_CORE_FSM_FSL_HPP
-#define PERSIST_CORE_FSM_FSL_HPP
-
-#include <cstring>
-#include <set>
+#ifndef PERSIST_CORE_FSM_BASE_HPP
+#define PERSIST_CORE_FSM_BASE_HPP
 
 #include <persist/core/defs.hpp>
-#include <persist/core/exceptions.hpp>
-
-#include <persist/core/fsm/_fsl.hpp>
-#include <persist/core/fsm/base.hpp>
+#include <persist/core/page/base.hpp>
 
 namespace persist {
 
 /**
- * @brief Free Space List
- *
- * The class stores list of free pages.
+ * @brief Free Space Manager
  *
  * @tparam BufferManagerType Type of buffer manager.
  */
-template <class BufferManagerType>
-class FSList : public FreeSpaceManager<BufferManagerType> {
-  PERSIST_PRIVATE
-
-  /**
-   * @brief Free space list object.
-   */
-  std::unique_ptr<FSL> fsl;
-
-  /**
-   * @brief Memory buffer.
-   *
-   */
-  BufferManagerType *buffer;
-
+template <class BufferManagerType> class FreeSpaceManager {
 public:
   /**
-   * @brief Construct a new FSL object
+   * @brief Destroy the Free Space Manager object
    *
-   * @param buffer
    */
-  FSList(BufferManagerType *buffer) : buffer(buffer) {}
+  virtual ~FreeSpaceManager() = default;
 
   /**
    * @brief Start free space manager.
    *
    */
-  void Start() override { fsl = buffer->storage->Read(); }
+  virtual void Start() = 0;
 
   /**
    * @brief Stop free space manager.
    *
    */
-  void Stop() override {
-    // Persist free space list
-    buffer->storage->Write(*fsl);
-  }
+  virtual void Stop() = 0;
 
   /**
-   * @brief Get ID of page with free space. The size hint is ignored and the
-   * last recorded page ID in the free list is returned. If the free list is
-   * empty then '0' is returned.
+   * @brief Get ID of page with free space of specified size. Note that the size
+   * is treated only as a hint and the manager is free to ignore it. In case no
+   * page with free space found then '0' is returned.
    *
    * @param size_hint Desired free space size.
    * @returns Page identifer if a page with free space found else '0'.
    */
-  PageId GetPageId(size_t size_hint) override {
-    if (fsl->freePages.empty()) {
-      return 0;
-    }
-    return *std::prev(fsl->freePages.end());
-  }
+  virtual PageId GetPageId(size_t size_hint) = 0;
 
   /**
    * @brief Manage free space details of specified page.
    *
    * @param page Constant reference to a Page object.
    */
-  void Manage(const Page &page) override {
-    PageId page_id = page.GetId();
-    // Check if page has free space and update free space list accordingly. Note
-    // that since FSL is used to get pages with free space for INSERT page
-    // operation, free space for only INSERT is checked.
-    if (page.GetFreeSpaceSize(Operation::INSERT) > 0) {
-      fsl->freePages.insert(page_id);
-    } else {
-      fsl->freePages.erase(page_id);
-    }
-  }
+  virtual void Manage(const Page &page) = 0;
 };
 
 } // namespace persist
 
-#endif /* PERSIST_CORE_FSM_FSL_HPP */
+#endif /* PERSIST_CORE_FSM_BASE_HPP */

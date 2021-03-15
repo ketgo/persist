@@ -38,10 +38,10 @@
     - [DONE] implement very basic thread-safety by applying a recursive mutex to each method call
 
 3. [IN-PROGRESS] Create a FreeSpaceManager for efficient detection and handling of pages with free space
-    -[IN-PROGRESS] serialize/deserialize polymorphic pages
-    - refactor buffer manager to use polymorphic page
-    - refactor `getFree` method of buffer manager to take sizeHint parameter as an argument. This parameter provides a hint to the free space manager about the amount of free space requested. Note that this parameter is treated only as a hint as the FreeSpaceManager is free to return a page with less available free space.
-    - create an interface for FreeSpaceManager to allow for different FreeSpaceManager implementations
+    -[DONE] serialize/deserialize polymorphic pages
+    -[DONE] refactor buffer manager to use polymorphic page
+    -[DONE] refactor `getFree` method of buffer manager to take sizeHint parameter as an argument. This parameter provides a hint to the free space manager about the amount of free space requested. Note that this parameter is treated only as a hint with the FreeSpaceManager free to return a page with less available free space.
+    -[DONE] create an interface for FreeSpaceManager to allow for different FreeSpaceManager implementations
     - implement a basic FreeSpaceManager
     - refactor buffer manager to use FreeSpaceManager
     - remove the FSL and the read and write method of backend storage
