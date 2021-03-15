@@ -42,7 +42,7 @@ using ::testing::AtLeast;
 using ::testing::Return;
 
 /***********************************************
- * VLS Slotted Page Header Unit Tests
+ * Log Page Header Unit Tests
  **********************************************/
 
 class LogPageHeaderTestFixture : public ::testing::Test {

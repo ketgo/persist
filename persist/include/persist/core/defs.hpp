@@ -72,6 +72,12 @@
 // buffer can load in-memory.
 #define DEFAULT_LOG_BUFFER_SIZE 8
 
+// Identifers for different page types
+#define LOG_PAGE_TYPE_ID 1
+#define SLOTTED_PAGE_TYPE_ID 2
+#define FSL_PAGE_TYPE_ID 3
+
+
 namespace persist {
 
 /**

@@ -166,7 +166,7 @@ public:
    *
    * @returns The page type identifier
    */
-  PageTypeId GetTypeId() const override { return 1; }
+  PageTypeId GetTypeId() const override { return LOG_PAGE_TYPE_ID; }
 
   /**
    * Get page identifier.
@@ -289,7 +289,7 @@ public:
       output += slot.GetSize();
     }
     // Dump free space
-    std::memset((void *)output.start, 0, GetFreeSpaceSize(Operation::INSERT));
+    std::memset((void *)output.start, 0, output.size);
   }
 
 #ifdef __PERSIST_DEBUG__

@@ -31,11 +31,10 @@
 namespace persist {
 
 /**
- * @brief Free Space Manager
+ * @brief Free Space Manager Base Class
  *
- * @tparam BufferManagerType Type of buffer manager.
  */
-template <class BufferManagerType> class FreeSpaceManager {
+class FreeSpaceManager {
 public:
   /**
    * @brief Destroy the Free Space Manager object

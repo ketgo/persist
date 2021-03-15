@@ -26,37 +26,34 @@
 #define PERSIST_CORE_FSM_FSL_HPP
 
 #include <cstring>
+#include <memory>
 #include <set>
 
-#include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
-
 #include <persist/core/fsm/_fsl.hpp>
 #include <persist/core/fsm/base.hpp>
+#include <persist/core/storage/base.hpp>
 
 namespace persist {
 
 /**
- * @brief Free Space List
+ * @brief Free Space List Manager
  *
- * The class stores list of free pages.
+ * The class manages list of free pages.
  *
- * @tparam BufferManagerType Type of buffer manager.
  */
-template <class BufferManagerType>
-class FSList : public FreeSpaceManager<BufferManagerType> {
+class FSLManager : public FreeSpaceManager {
   PERSIST_PRIVATE
+  /**
+   * @brief Pointer to backend storage.
+   *
+   */
+  Storage *storage;
 
   /**
    * @brief Free space list object.
    */
   std::unique_ptr<FSL> fsl;
-
-  /**
-   * @brief Memory buffer.
-   *
-   */
-  BufferManagerType *buffer;
 
 public:
   /**
@@ -64,13 +61,13 @@ public:
    *
    * @param buffer
    */
-  FSList(BufferManagerType *buffer) : buffer(buffer) {}
+  explicit FSLManager(Storage *storage) : storage(storage) {}
 
   /**
    * @brief Start free space manager.
    *
    */
-  void Start() override { fsl = buffer->storage->Read(); }
+  void Start() override { fsl = storage->Read(); }
 
   /**
    * @brief Stop free space manager.
@@ -78,7 +75,7 @@ public:
    */
   void Stop() override {
     // Persist free space list
-    buffer->storage->Write(*fsl);
+    storage->Write(*fsl);
   }
 
   /**

@@ -55,8 +55,6 @@ namespace persist {
  *
  */
 class BufferManager : public PageObserver {
-  friend class FSList<BufferManager>;
-
   PERSIST_PRIVATE
   /**
    * @brief Recursive lock for thread safety
@@ -84,9 +82,9 @@ class BufferManager : public PageObserver {
     PageSlot() : page(nullptr), modified(false) {}
   };
 
-  Storage *storage; //<- opened backend storage
-  std::unique_ptr<FreeSpaceManager<BufferManager>> fsm; //<- free space manager
-  std::unique_ptr<Replacer> replacer;                   //<- page replacer
+  Storage *storage;                      //<- opened backend storage
+  std::unique_ptr<FreeSpaceManager> fsm; //<- free space manager
+  std::unique_ptr<Replacer> replacer;    //<- page replacer
 
   size_t max_size GUARDED_BY(lock); //<- maximum size of buffer
   typedef typename std::unordered_map<PageId, PageSlot> Buffer;
@@ -142,7 +140,7 @@ public:
                                "size can be 0 or greater than 2.");
     }
     replacer = persist::CreateReplacer(replacer_type);
-    fsm = persist::CreateFSM<BufferManager>(fsm_type, this);
+    fsm = persist::CreateFSM(fsm_type, storage);
   }
 
   /**

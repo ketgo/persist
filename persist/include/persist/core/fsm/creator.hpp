@@ -26,7 +26,6 @@
 #define PERSIST_CORE_FSM_CREATOR_HPP
 
 #include <persist/core/fsm/base.hpp>
-
 #include <persist/core/fsm/fsl.hpp>
 
 namespace persist {
@@ -43,12 +42,11 @@ enum class FSMType { FSL };
  * @param fsm_type Type of free space manager to create
  * @returns Unique pointer to created FreeSpaceManager object
  */
-template <class BufferManagerType>
-static std::unique_ptr<FreeSpaceManager<BufferManagerType>>
-CreateFSM(FSMType fsm_type, BufferManagerType *buffer) {
+static std::unique_ptr<FreeSpaceManager> CreateFSM(FSMType fsm_type,
+                                                   Storage *storage) {
   switch (fsm_type) {
   case FSMType::FSL:
-    return std::make_unique<FSList<BufferManagerType>>(buffer);
+    return std::make_unique<FSLManager>(storage);
     break;
   }
 }

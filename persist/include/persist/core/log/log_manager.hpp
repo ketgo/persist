@@ -84,10 +84,10 @@ public:
       // Start buffer manager
       buffer_manager.Start();
       // Load last page in buffer
-      PageId lastPageId = storage->GetPageCount();
+      PageId last_page_id = storage->GetPageCount();
       // Get last sequence number if last page ID is not 0
-      if (lastPageId) {
-        auto page = buffer_manager.Get<LogPage>(lastPageId);
+      if (last_page_id) {
+        auto page = buffer_manager.Get<LogPage>(last_page_id);
         seq_number = page->GetLastSeqNumber();
       }
       // Set state to started

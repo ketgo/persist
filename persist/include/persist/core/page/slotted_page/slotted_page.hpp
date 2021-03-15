@@ -300,7 +300,7 @@ public:
    *
    * @returns The page type identifier
    */
-  PageTypeId GetTypeId() const override { return 2; }
+  PageTypeId GetTypeId() const override { return SLOTTED_PAGE_TYPE_ID; }
 
   /**
    * Get page ID.
