@@ -23,7 +23,7 @@
  */
 
 /**
- * @brief PageSlot unit tests
+ * @brief SlottedPageSlot unit tests
  *
  */
 
@@ -36,53 +36,53 @@
 using namespace persist;
 
 /***********************************************
- * PageSlot Header Unit Tests
+ * SlottedPageSlot Header Unit Tests
  **********************************************/
 
-TEST(PageSlotLocationTest, PageSlotLocationNullTest) {
-  PageSlot::Location location;
-  ASSERT_TRUE(location.isNull());
+TEST(SlottedPageSlotLocationTest, SlottedPageSlotLocationNullTest) {
+  SlottedPageSlot::Location location;
+  ASSERT_TRUE(location.IsNull());
 }
 
-class PageSlotHeaderTestFixture : public ::testing::Test {
+class SlottedPageSlotHeaderTestFixture : public ::testing::Test {
 protected:
   ByteBuffer input;
   ByteBuffer extra;
-  const PageId nextPageId = 10, prevPageId = 1;
-  const PageSlotId nextSlotId = 100, prevSlotId = 10;
-  std::unique_ptr<PageSlot::Header> header;
+  const PageId next_page_id = 10, prev_page_id = 1;
+  const PageSlotId next_slot_id = 100, prev_slot_id = 10;
+  std::unique_ptr<SlottedPageSlot::Header> header;
 
   void SetUp() override {
-    header = std::make_unique<PageSlot::Header>();
-    header->nextLocation.pageId = nextPageId;
-    header->nextLocation.slotId = nextSlotId;
-    header->prevLocation.pageId = prevPageId;
-    header->prevLocation.slotId = prevSlotId;
+    header = std::make_unique<SlottedPageSlot::Header>();
+    header->next_location.page_id = next_page_id;
+    header->next_location.slot_id = next_slot_id;
+    header->prev_location.page_id = prev_page_id;
+    header->prev_location.slot_id = prev_slot_id;
 
-    input = {10, 0, 0, 0, 0,  0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
-             0,  0, 0, 0, 10, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    input = {10, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0,
+             1,  0, 0, 0, 0, 0, 0, 0, 10,  0, 0, 0, 0, 0, 0, 0};
     extra = {41, 0, 6, 0, 21, 48, 4};
   }
 };
 
-TEST_F(PageSlotHeaderTestFixture, TestLoad) {
-  PageSlot::Header _header;
+TEST_F(SlottedPageSlotHeaderTestFixture, TestLoad) {
+  SlottedPageSlot::Header _header;
   ByteBuffer _input;
   _input.insert(_input.end(), input.begin(), input.end());
   _input.insert(_input.end(), extra.begin(), extra.end());
-  _header.load(Span(_input));
+  _header.Load(_input);
 
-  ASSERT_EQ(_header.nextLocation.pageId, header->nextLocation.pageId);
-  ASSERT_EQ(_header.nextLocation.slotId, header->nextLocation.slotId);
-  ASSERT_EQ(_header.prevLocation.pageId, header->prevLocation.pageId);
-  ASSERT_EQ(_header.prevLocation.slotId, header->prevLocation.slotId);
+  ASSERT_EQ(_header.next_location.page_id, header->next_location.page_id);
+  ASSERT_EQ(_header.next_location.slot_id, header->next_location.slot_id);
+  ASSERT_EQ(_header.prev_location.page_id, header->prev_location.page_id);
+  ASSERT_EQ(_header.prev_location.slot_id, header->prev_location.slot_id);
 }
 
-TEST_F(PageSlotHeaderTestFixture, TestLoadError) {
+TEST_F(SlottedPageSlotHeaderTestFixture, TestLoadError) {
   try {
     ByteBuffer _input;
-    PageSlot::Header _header;
-    _header.load(Span(_input));
+    SlottedPageSlot::Header _header;
+    _header.Load(_input);
     FAIL() << "Expected PageSlotParseError Exception.";
   } catch (PageSlotParseError &err) {
     SUCCEED();
@@ -91,57 +91,56 @@ TEST_F(PageSlotHeaderTestFixture, TestLoadError) {
   }
 }
 
-TEST_F(PageSlotHeaderTestFixture, TestDump) {
-  ByteBuffer output(sizeof(PageSlot::Header));
-  header->dump(Span(output));
+TEST_F(SlottedPageSlotHeaderTestFixture, TestDump) {
+  ByteBuffer output(sizeof(SlottedPageSlot::Header));
+  header->Dump(output);
 
   ASSERT_EQ(input, output);
 }
 
-TEST_F(PageSlotHeaderTestFixture, TestSize) {
-  ASSERT_EQ(header->size(), sizeof(PageSlot::Header));
+TEST_F(SlottedPageSlotHeaderTestFixture, TestSize) {
+  ASSERT_EQ(header->GetSize(), sizeof(SlottedPageSlot::Header));
 }
 
 /***********************************************
- * PageSlot Unit Tests
+ * SlottedPageSlot Unit Tests
  **********************************************/
 
-class PageSlotTestFixture : public ::testing::Test {
+class SlottedPageSlotTestFixture : public ::testing::Test {
 protected:
   ByteBuffer input;
-  const PageId nextPageId = 10, prevPageId = 1;
-  const PageSlotId nextSlotId = 100, prevSlotId = 10;
+  const PageId next_page_id = 10, prev_page_id = 1;
+  const PageSlotId next_slot_id = 100, prev_slot_id = 10;
   const ByteBuffer data = "testing"_bb;
-  std::unique_ptr<PageSlot> block;
+  std::unique_ptr<SlottedPageSlot> slot;
 
   void SetUp() override {
-    PageSlot::Header header;
-    header.nextLocation.pageId = nextPageId;
-    header.nextLocation.slotId = nextSlotId;
-    header.prevLocation.pageId = prevPageId;
-    header.prevLocation.slotId = prevSlotId;
-    block = std::make_unique<PageSlot>(header);
-    block->data = data;
+    SlottedPageSlot::Header header;
+    header.next_location.page_id = next_page_id;
+    header.next_location.slot_id = next_slot_id;
+    header.prev_location.page_id = prev_page_id;
+    header.prev_location.slot_id = prev_slot_id;
+    slot = std::make_unique<SlottedPageSlot>(header);
+    slot->data = data;
 
-    input = {10,  0,  0,   0,   0,   0,   0,   0,   100, 0,   0,  0,
-             0,   0,  0,   0,   1,   0,   0,   0,   0,   0,   0,  0,
-             10,  0,  0,   0,   0,   0,   0,   0,   136, 86,  95, 3,
-             171, 70, 156, 140, 116, 101, 115, 116, 105, 110, 103};
+    input = {10, 0, 0, 0, 0, 0, 0, 0, 100, 0,   0,   0,   0,   0,   0,  0,
+             1,  0, 0, 0, 0, 0, 0, 0, 10,  0,   0,   0,   0,   0,   0,  0,
+             7,  0, 0, 0, 0, 0, 0, 0, 116, 101, 115, 116, 105, 110, 103};
   }
 };
 
-TEST_F(PageSlotTestFixture, TestLoad) {
-  PageSlot _block;
-  _block.load(Span(input));
+TEST_F(SlottedPageSlotTestFixture, TestLoad) {
+  SlottedPageSlot _slot;
+  _slot.Load(input);
 
-  ASSERT_EQ(_block.data, block->data);
+  ASSERT_EQ(_slot.data, slot->data);
 }
 
-TEST_F(PageSlotTestFixture, TestLoadParseError) {
+TEST_F(SlottedPageSlotTestFixture, TestLoadParseError) {
   try {
     ByteBuffer _input;
-    PageSlot _block;
-    _block.load(Span(_input));
+    SlottedPageSlot _slot;
+    _slot.Load(_input);
     FAIL() << "Expected PageSlotParseError Exception.";
   } catch (PageSlotParseError &err) {
     SUCCEED();
@@ -150,60 +149,46 @@ TEST_F(PageSlotTestFixture, TestLoadParseError) {
   }
 }
 
-TEST_F(PageSlotTestFixture, TestLoadCorruptError) {
-  try {
-    ByteBuffer _input = input;
-    _input.back() = 0;
-    PageSlot _block;
-    _block.load(Span(_input));
-    FAIL() << "Expected PageSlotCorruptError Exception.";
-  } catch (PageSlotCorruptError &err) {
-    SUCCEED();
-  } catch (...) {
-    FAIL() << "Expected PageSlotCorruptError Exception.";
-  }
-}
-
-TEST_F(PageSlotTestFixture, TestDump) {
-  ByteBuffer output(data.size() + sizeof(PageSlot::Header));
-
-  block->dump(Span(output));
+TEST_F(SlottedPageSlotTestFixture, TestDump) {
+  ByteBuffer output(slot->GetSize());
+  slot->Dump(output);
 
   ASSERT_EQ(input, output);
 }
 
-TEST_F(PageSlotTestFixture, TestMovePageSlot) {
-  PageSlot _block;
-  _block = std::move(*block);
+TEST_F(SlottedPageSlotTestFixture, TestMoveSlottedPageSlot) {
+  SlottedPageSlot _slot;
+  _slot = std::move(*slot);
 
-  ASSERT_EQ(block->data, ""_bb);
-  ASSERT_EQ(_block.data, data);
+  ASSERT_EQ(slot->data, ""_bb);
+  ASSERT_EQ(_slot.data, data);
 }
 
-TEST_F(PageSlotTestFixture, TestSize) {
-  ASSERT_EQ(block->size(), data.size() + sizeof(PageSlot::Header));
+TEST_F(SlottedPageSlotTestFixture, TestSize) {
+  ASSERT_EQ(slot->GetSize(), sizeof(SlottedPageSlot::Header) + sizeof(size_t) +
+                                 sizeof(Byte) * data.size());
 }
 
-TEST_F(PageSlotTestFixture, TestGetNextLocation) {
-  ASSERT_EQ(block->getNextLocation().pageId, nextPageId);
-  ASSERT_EQ(block->getNextLocation().slotId, nextSlotId);
+TEST_F(SlottedPageSlotTestFixture, TestGetNextLocation) {
+  ASSERT_EQ(slot->GetNextLocation().page_id, next_page_id);
+  ASSERT_EQ(slot->GetNextLocation().slot_id, next_slot_id);
 }
 
-TEST_F(PageSlotTestFixture, TestSetNextLocation) {
-  PageSlot::Location location(15, 5);
-  block->setNextLocation(location);
+TEST_F(SlottedPageSlotTestFixture, TestSetNextLocation) {
+  SlottedPageSlot::Location location(15, 5);
+  slot->SetNextLocation(location);
 
-  ASSERT_EQ(block->getNextLocation(), location);
+  ASSERT_EQ(slot->GetNextLocation(), location);
 }
 
-TEST_F(PageSlotTestFixture, TestGetPrevLocation) {
-  ASSERT_EQ(block->getPrevLocation().pageId, prevPageId);
-  ASSERT_EQ(block->getPrevLocation().slotId, prevSlotId);
+TEST_F(SlottedPageSlotTestFixture, TestGetPrevLocation) {
+  ASSERT_EQ(slot->GetPrevLocation().page_id, prev_page_id);
+  ASSERT_EQ(slot->GetPrevLocation().slot_id, prev_slot_id);
 }
 
-TEST_F(PageSlotTestFixture, TestSetPrevLocation) {
-  PageSlot::Location location(15, 5);
-  block->setPrevLocation(location);
+TEST_F(SlottedPageSlotTestFixture, TestSetPrevLocation) {
+  SlottedPageSlot::Location location(15, 5);
+  slot->SetPrevLocation(location);
 
-  ASSERT_EQ(block->getPrevLocation(), location);
+  ASSERT_EQ(slot->GetPrevLocation(), location);
 }

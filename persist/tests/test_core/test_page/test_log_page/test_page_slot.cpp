@@ -37,7 +37,7 @@ using namespace persist;
 
 TEST(LogPageSlotLocationTest, LogPageSlotLocationNullTest) {
   LogPageSlot::Location location;
-  ASSERT_TRUE(location.isNull());
+  ASSERT_TRUE(location.IsNull());
 }
 
 /***********************************************
@@ -48,17 +48,17 @@ class LogPageSlotHeaderTestFixture : public ::testing::Test {
 protected:
   ByteBuffer input;
   ByteBuffer extra;
-  const PageId nextPageId = 10;
-  const SeqNumber seqNumber = 0, nextSeqNumber = 100;
+  const PageId next_page_id = 10;
+  const SeqNumber seq_number = 0, next_seq_number = 100;
   std::unique_ptr<LogPageSlot::Header> header;
 
   void SetUp() override {
-    header = std::make_unique<LogPageSlot::Header>(seqNumber);
-    header->nextLocation.pageId = nextPageId;
-    header->nextLocation.seqNumber = nextSeqNumber;
+    header = std::make_unique<LogPageSlot::Header>(seq_number);
+    header->next_location.page_id = next_page_id;
+    header->next_location.seq_number = next_seq_number;
 
-    input = {0,   0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0,
-             100, 0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0};
+    input = {0, 0, 0, 0, 0,   0, 0, 0, 10, 0, 0, 0,
+             0, 0, 0, 0, 100, 0, 0, 0, 0,  0, 0, 0};
     extra = {41, 0, 6, 0, 21, 48, 4};
   }
 };
@@ -68,18 +68,18 @@ TEST_F(LogPageSlotHeaderTestFixture, TestLoad) {
   ByteBuffer _input;
   _input.insert(_input.end(), input.begin(), input.end());
   _input.insert(_input.end(), extra.begin(), extra.end());
-  _header.load(Span(_input));
+  _header.Load(_input);
 
-  ASSERT_EQ(_header.seqNumber, header->seqNumber);
-  ASSERT_EQ(_header.nextLocation.pageId, header->nextLocation.pageId);
-  ASSERT_EQ(_header.nextLocation.seqNumber, header->nextLocation.seqNumber);
+  ASSERT_EQ(_header.seq_number, header->seq_number);
+  ASSERT_EQ(_header.next_location.page_id, header->next_location.page_id);
+  ASSERT_EQ(_header.next_location.seq_number, header->next_location.seq_number);
 }
 
 TEST_F(LogPageSlotHeaderTestFixture, TestLoadError) {
   try {
     ByteBuffer _input;
     LogPageSlot::Header _header;
-    _header.load(Span(_input));
+    _header.Load(_input);
     FAIL() << "Expected PageSlotParseError Exception.";
   } catch (PageSlotParseError &err) {
     SUCCEED();
@@ -90,7 +90,7 @@ TEST_F(LogPageSlotHeaderTestFixture, TestLoadError) {
 
 TEST_F(LogPageSlotHeaderTestFixture, TestDump) {
   ByteBuffer output(sizeof(LogPageSlot::Header));
-  header->dump(Span(output));
+  header->Dump(output);
 
   ASSERT_EQ(input, output);
 }
@@ -102,25 +102,25 @@ TEST_F(LogPageSlotHeaderTestFixture, TestDump) {
 class LogPageSlotTestFixture : public ::testing::Test {
 protected:
   ByteBuffer input;
-  const PageId nextPageId = 10;
-  const SeqNumber seqNumber = 0, nextSeqNumber = 100;
+  const PageId next_page_id = 10;
+  const SeqNumber seq_number = 0, next_seq_number = 100;
   const ByteBuffer data = "testing"_bb;
   std::unique_ptr<LogPageSlot> slot;
 
   void SetUp() override {
-    LogPageSlot::Location location(nextPageId, nextSeqNumber);
-    slot = std::make_unique<LogPageSlot>(seqNumber, location);
+    LogPageSlot::Location location(next_page_id, next_seq_number);
+    slot = std::make_unique<LogPageSlot>(seq_number, location);
     slot->data = data;
 
-    input = {0,   0, 0, 0, 0, 0, 0, 0, 10,  0,   0,   0,   0,   0,   0,  0,
-             100, 0, 0, 0, 0, 0, 0, 0, 97,  60,  168, 198, 83,  130, 2,  0,
-             7,   0, 0, 0, 0, 0, 0, 0, 116, 101, 115, 116, 105, 110, 103};
+    input = {0, 0, 0, 0,   0, 0, 0,   0,   10,  0,   0,   0,   0,
+             0, 0, 0, 100, 0, 0, 0,   0,   0,   0,   0,   7,   0,
+             0, 0, 0, 0,   0, 0, 116, 101, 115, 116, 105, 110, 103};
   }
 };
 
 TEST_F(LogPageSlotTestFixture, TestLoad) {
   LogPageSlot _block;
-  _block.load(Span(input));
+  _block.Load(input);
 
   ASSERT_EQ(_block.data, slot->data);
 }
@@ -129,7 +129,7 @@ TEST_F(LogPageSlotTestFixture, TestLoadParseError) {
   try {
     ByteBuffer _input;
     LogPageSlot _block;
-    _block.load(Span(_input));
+    _block.Load(_input);
     FAIL() << "Expected PageSlotParseError Exception.";
   } catch (PageSlotParseError &err) {
     SUCCEED();
@@ -138,23 +138,9 @@ TEST_F(LogPageSlotTestFixture, TestLoadParseError) {
   }
 }
 
-TEST_F(LogPageSlotTestFixture, TestLoadCorruptError) {
-  try {
-    ByteBuffer _input = input;
-    _input[8] = 0;
-    LogPageSlot _block;
-    _block.load(Span(_input));
-    FAIL() << "Expected PageSlotCorruptError Exception.";
-  } catch (PageSlotCorruptError &err) {
-    SUCCEED();
-  } catch (...) {
-    FAIL() << "Expected PageSlotCorruptError Exception.";
-  }
-}
-
 TEST_F(LogPageSlotTestFixture, TestDump) {
   ByteBuffer output(data.size() + sizeof(size_t) + sizeof(LogPageSlot::Header));
-  slot->dump(Span(output));
+  slot->Dump(output);
 
   ASSERT_EQ(input, output);
 }
@@ -167,19 +153,19 @@ TEST_F(LogPageSlotTestFixture, TestMoveLogPageSlot) {
   ASSERT_EQ(_block.data, data);
 }
 
-TEST_F(LogPageSlotTestFixture, TestSize) {
-  ASSERT_EQ(slot->size(),
+TEST_F(LogPageSlotTestFixture, TestGetSize) {
+  ASSERT_EQ(slot->GetSize(),
             data.size() + sizeof(size_t) + sizeof(LogPageSlot::Header));
 }
 
 TEST_F(LogPageSlotTestFixture, TestGetNextLocation) {
-  ASSERT_EQ(slot->getNextLocation().pageId, nextPageId);
-  ASSERT_EQ(slot->getNextLocation().seqNumber, nextSeqNumber);
+  ASSERT_EQ(slot->GetNextLocation().page_id, next_page_id);
+  ASSERT_EQ(slot->GetNextLocation().seq_number, next_seq_number);
 }
 
 TEST_F(LogPageSlotTestFixture, TestSetNextLocation) {
   LogPageSlot::Location location(15, 5);
-  slot->setNextLocation(location);
+  slot->SetNextLocation(location);
 
-  ASSERT_EQ(slot->getNextLocation(), location);
+  ASSERT_EQ(slot->GetNextLocation(), location);
 }

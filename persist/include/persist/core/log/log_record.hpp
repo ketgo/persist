@@ -32,13 +32,15 @@
  *
  */
 
-#ifndef LOG_RECORD_HPP
-#define LOG_RECORD_HPP
+#ifndef PERSIST_CORE_LOG_RECORD_HPP
+#define PERSIST_CORE_LOG_RECORD_HPP
 
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
 #include <persist/core/page/log_page/page_slot.hpp>
 #include <persist/core/page/slotted_page/page_slot.hpp>
+
+#include <persist/utility/serializer.hpp>
 
 namespace persist {
 
@@ -65,58 +67,45 @@ public:
     /**
      * @brief Record sequence number
      */
-    SeqNumber seqNumber;
+    SeqNumber seq_number;
 
     /**
      * @brief Previous log record location. This is used to link log records in
      * chronological order.
      */
-    Location prevLogRecordLocation;
+    Location prev_log_record_location;
 
     /**
      * @brief Transaction ID
      */
-    TransactionId transactionId;
-
-    /**
-     * @brief Checksum to detect page corruption
-     */
-    Checksum checksum;
+    TransactionId transaction_id;
 
     /**
      * Constructors
      */
-    Header(SeqNumber seqNumber = 0, Location prevLogRecordLocation = {0, 0},
-           TransactionId transactionId = 0)
-        : seqNumber(seqNumber), prevLogRecordLocation(prevLogRecordLocation),
-          transactionId(transactionId), checksum(0) {}
+    Header(SeqNumber seq_number = 0, Location prev_log_record_location = {0, 0},
+           TransactionId transaction_id = 0)
+        : seq_number(seq_number),
+          prev_log_record_location(prev_log_record_location),
+          transaction_id(transaction_id) {}
 
     /**
      * @brief Get size of the log record header.
      */
-    uint64_t size() { return sizeof(Header); }
+    size_t GetSize() const { return sizeof(Header); }
 
     /**
      * Load record block header from byte string.
      *
      * @param input input buffer span to load
      */
-    void load(Span input) {
-      if (input.size < size()) {
+    void Load(Span input) {
+      if (input.size < GetSize()) {
         throw LogRecordParseError();
       }
-
       // Load bytes
-      Byte *pos = input.start;
-      std::memcpy((void *)&seqNumber, (const void *)pos, sizeof(SeqNumber));
-      pos += sizeof(SeqNumber);
-      std::memcpy((void *)&prevLogRecordLocation, (const void *)pos,
-                  sizeof(Location));
-      pos += sizeof(Location);
-      std::memcpy((void *)&transactionId, (const void *)pos,
-                  sizeof(TransactionId));
-      pos += sizeof(TransactionId);
-      std::memcpy((void *)&checksum, (const void *)pos, sizeof(Checksum));
+      persist::load(input, seq_number, prev_log_record_location,
+                    transaction_id);
     }
 
     /**
@@ -124,40 +113,31 @@ public:
      *
      * @param output output buffer span to dump
      */
-    void dump(Span output) {
-      if (output.size < size()) {
+    void Dump(Span output) {
+      if (output.size < GetSize()) {
         throw LogRecordParseError();
       }
-
       // Dump bytes
-      Byte *pos = output.start;
-      std::memcpy((void *)pos, (const void *)&seqNumber, sizeof(SeqNumber));
-      pos += sizeof(SeqNumber);
-      std::memcpy((void *)pos, (const void *)&prevLogRecordLocation,
-                  sizeof(Location));
-      pos += sizeof(Location);
-      std::memcpy((void *)pos, (const void *)&transactionId,
-                  sizeof(TransactionId));
-      pos += sizeof(TransactionId);
-      std::memcpy((void *)pos, (const void *)&checksum, sizeof(Checksum));
+      persist::dump(output, seq_number, prev_log_record_location,
+                    transaction_id);
     }
 
     /**
      * @brief Equality comparision operator.
      */
     bool operator==(const Header &other) const {
-      return seqNumber == other.seqNumber &&
-             prevLogRecordLocation == other.prevLogRecordLocation &&
-             transactionId == other.transactionId;
+      return seq_number == other.seq_number &&
+             prev_log_record_location == other.prev_log_record_location &&
+             transaction_id == other.transaction_id;
     }
 
     /**
      * @brief Non-equality comparision operator.
      */
     bool operator!=(const Header &other) const {
-      return seqNumber != other.seqNumber ||
-             prevLogRecordLocation != other.prevLogRecordLocation ||
-             transactionId != other.transactionId;
+      return seq_number != other.seq_number ||
+             prev_log_record_location != other.prev_log_record_location ||
+             transaction_id != other.transaction_id;
     }
 
 #ifdef __PERSIST_DEBUG__
@@ -166,9 +146,10 @@ public:
      */
     friend std::ostream &operator<<(std::ostream &os, const Header &header) {
       os << "---- Header ----\n";
-      os << "seqNumber: " << header.seqNumber << "\n";
-      os << "prevLogRecordLocation: " << header.prevLogRecordLocation << "\n";
-      os << "transactionId: " << header.transactionId << "\n";
+      os << "seq_number: " << header.seq_number << "\n";
+      os << "prev_log_record_location: " << header.prev_log_record_location
+         << "\n";
+      os << "transaction_id: " << header.transaction_id << "\n";
       os << "-----------------";
       return os;
     }
@@ -179,18 +160,18 @@ public:
    * description for each is as shown in the following comments.
    */
   enum class Type {
-    BEGIN,  //<- The log record represents begining of a transaction.
-    INSERT, //<- The log record represents insert operation as part of a
-            // transaction.
-    UPDATE, //<- The log record represents update operation as part of a
-            // transaction.
-    DELETE, //<- The log record represents remove operation as part of a
-            // transaction.
-    ABORT,  //<- The log record represents that a transaction has successfully
-            // aborted. This implies that the transaction is in `ABORTED` state.
-    COMMIT  //<- The log record represents a transaction has successfully
-            // comitted.
-            // This implies that the transaction is in `COMMITTED` state.
+    BEGIN = 0, //<- The log record represents begining of a transaction.
+    INSERT,    //<- The log record represents insert operation as part of a
+               // transaction.
+    UPDATE,    //<- The log record represents update operation as part of a
+               // transaction.
+    DELETE,    //<- The log record represents remove operation as part of a
+               // transaction.
+    ABORT, //<- The log record represents that a transaction has successfully
+           // aborted. This implies that the transaction is in `ABORTED` state.
+    COMMIT //<- The log record represents a transaction has successfully
+           // comitted.
+           // This implies that the transaction is in `COMMITTED` state.
   };
 
   PERSIST_PRIVATE
@@ -209,49 +190,18 @@ public:
   /**
    * @brief Record Block Location
    */
-  PageSlot::Location location;
+  SlottedPageSlot::Location location;
 
   /**
    * @brief Record Blocks
    */
-  PageSlot pageSlotA, pageSlotB;
-
-  /**
-   * @brief Computes checksum for record block.
-   */
-  Checksum _checksum() {
-
-    // Implemented hash function based on comment in
-    // https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
-
-    Checksum seed = pageSlotA.size() + pageSlotB.size();
-
-    seed = std::hash<SeqNumber>()(header.seqNumber) + 0x9e3779b9 + (seed << 6) +
-           (seed >> 2);
-    seed ^= std::hash<PageId>()(header.prevLogRecordLocation.pageId) +
-            0x9e3779b9 + (seed << 6) + (seed >> 2);
-    seed ^= std::hash<SeqNumber>()(header.prevLogRecordLocation.seqNumber) +
-            0x9e3779b9 + (seed << 6) + (seed >> 2);
-    seed ^= std::hash<TransactionId>()(header.transactionId) + 0x9e3779b9 +
-            (seed << 6) + (seed >> 2);
-    seed ^= std::hash<Type>()(type) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-    seed ^= std::hash<PageId>()(location.pageId) + 0x9e3779b9 + (seed << 6) +
-            (seed >> 2);
-    seed ^= std::hash<PageSlotId>()(location.slotId) + 0x9e3779b9 +
-            (seed << 6) + (seed >> 2);
-    seed ^= std::hash<size_t>()(pageSlotA.size()) + 0x9e3779b9 + (seed << 6) +
-            (seed >> 2);
-    seed ^= std::hash<size_t>()(pageSlotB.size()) + 0x9e3779b9 + (seed << 6) +
-            (seed >> 2);
-
-    return seed;
-  }
+  SlottedPageSlot page_slot_a, page_slot_b;
 
 public:
   /**
    * Default constructor
    */
-  LogRecord(){};
+  LogRecord() = default;
 
   /**
    * @brief Construct a new Log Record object
@@ -259,9 +209,9 @@ public:
    * This constructor is used to create BEGIN, COMMIT and ABORT type log
    * records.
    */
-  LogRecord(TransactionId transactionId,
-            Location prevLogRecordLocation = {0, 0}, Type type = Type::BEGIN)
-      : header(0, prevLogRecordLocation, transactionId), type(type) {}
+  LogRecord(TransactionId transaction_id,
+            Location prev_log_record_location = {0, 0}, Type type = Type::BEGIN)
+      : header(0, prev_log_record_location, transaction_id), type(type) {}
 
   /**
    * @brief Construct a new Log Record object
@@ -269,43 +219,45 @@ public:
    * This constructor is used to create INSERT and DELETE type log
    * records.
    */
-  LogRecord(TransactionId transactionId, Location prevLogRecordLocation,
-            Type type, PageSlot::Location location, PageSlot pageSlot)
-      : header(0, prevLogRecordLocation, transactionId), type(type),
-        location(location), pageSlotA(pageSlot) {}
+  LogRecord(TransactionId transaction_id, Location prev_log_record_location,
+            Type type, SlottedPageSlot::Location location,
+            SlottedPageSlot pageSlot)
+      : header(0, prev_log_record_location, transaction_id), type(type),
+        location(location), page_slot_a(pageSlot) {}
 
   /**
    * @brief Construct a new Log Record object
    *
    * This constructor is used to create UPDATE type log record.
    */
-  LogRecord(TransactionId transactionId, Location prevLogRecordLocation,
-            Type type, PageSlot::Location location, PageSlot oldPageSlot,
-            PageSlot newPageSlot)
-      : header(0, prevLogRecordLocation, transactionId), type(type),
-        location(location), pageSlotA(oldPageSlot), pageSlotB(newPageSlot) {}
+  LogRecord(TransactionId transaction_id, Location prev_log_record_location,
+            Type type, SlottedPageSlot::Location location,
+            SlottedPageSlot oldPageSlot, SlottedPageSlot newPageSlot)
+      : header(0, prev_log_record_location, transaction_id), type(type),
+        location(location), page_slot_a(oldPageSlot), page_slot_b(newPageSlot) {
+  }
 
   /**
    * @brief Get the sequence number of log record
    *
    * @returns log record sequence number
    */
-  const SeqNumber &getSeqNumber() const { return header.seqNumber; }
+  const SeqNumber &GetSeqNumber() const { return header.seq_number; }
 
   /**
    * @brief Set the sequence number of log record
    *
-   * @param seqNumber log record sequence number
+   * @param seq_number log record sequence number
    */
-  void setSeqNumber(SeqNumber seqNumber) { header.seqNumber = seqNumber; }
+  void SetSeqNumber(SeqNumber seq_number) { header.seq_number = seq_number; }
 
   /**
    * @brief Get the previous log record location
    *
    * @returns Consant reference to previous location
    */
-  const Location &getPrevLogRecordLocation() const {
-    return header.prevLogRecordLocation;
+  const Location &GetPrevLogRecordLocation() const {
+    return header.prev_log_record_location;
   }
 
   /**
@@ -313,21 +265,23 @@ public:
    *
    * @return Consant reference to previous sequence number
    */
-  const TransactionId &getTransactionId() const { return header.transactionId; }
+  const TransactionId &GetTransactionId() const {
+    return header.transaction_id;
+  }
 
   /**
    * @brief Get the log record type
    *
    * @returns Consant reference to type of log record
    */
-  const Type &getLogType() const { return type; }
+  const Type &GetLogType() const { return type; }
 
   /**
    * @brief Get the page slot location targeted by log record
    *
    * @returns Consant reference to page slot location targeted by log record
    */
-  const PageSlot::Location &getLocation() const { return location; }
+  const SlottedPageSlot::Location &GetLocation() const { return location; }
 
   // TODO: Add const qualifier for get page slot methods.
 
@@ -336,28 +290,26 @@ public:
    *
    * @return Consant reference to page slot
    */
-  PageSlot &getPageSlotA() { return pageSlotA; }
+  SlottedPageSlot &GetPageSlotA() { return page_slot_a; }
 
   /**
    * @brief Get the second PageSlot targeted by log record
    *
    * @return Consant reference to page slot
    */
-  PageSlot &getPageSlotB() { return pageSlotB; }
+  SlottedPageSlot &GetPageSlotB() { return page_slot_b; }
 
   /**
    * @brief Get size of log record.
    * - sizeof(header)
    * - sizeof(type)
    * - sizeof(location)
-   * - sizeof(pageSlotA.size())
-   * - pageSlotA.size()
-   * - sizeof(pageSlotB.size())
-   * - pageSlotB.size()
+   * - page_slot_a.GetSize()
+   * - page_slot_b.GetSize()
    */
-  uint64_t size() {
-    return header.size() + sizeof(type) + sizeof(location) +
-           2 * sizeof(uint64_t) + pageSlotA.size() + pageSlotB.size();
+  size_t GetSize() const {
+    return header.GetSize() + sizeof(type) + sizeof(location) +
+           page_slot_a.GetSize() + page_slot_b.GetSize();
   }
 
   /**
@@ -365,34 +317,19 @@ public:
    *
    * @param input input buffer span to load
    */
-  void load(Span input) {
-    if (input.size < size()) {
+  void Load(Span input) {
+    if (input.size < GetSize()) {
       throw LogRecordParseError();
     }
     // Load header
-    header.load(input);
-
+    header.Load(input);
+    input += header.GetSize();
     // Load bytes
-    Byte *pos = input.start + header.size();
-    std::memcpy((void *)&type, (const void *)pos, sizeof(Type));
-    pos += sizeof(Type);
-    std::memcpy((void *)&location, (const void *)pos,
-                sizeof(PageSlot::Location));
-    pos += sizeof(PageSlot::Location);
-    uint64_t pageSlotASize;
-    std::memcpy((void *)&pageSlotASize, (const void *)pos, sizeof(uint64_t));
-    pos += sizeof(uint64_t);
-    pageSlotA.load(Span(pos, pageSlotASize));
-    pos += pageSlotASize;
-    uint64_t pageSlotBSize;
-    std::memcpy((void *)&pageSlotBSize, (const void *)pos, sizeof(uint64_t));
-    pos += sizeof(uint64_t);
-    pageSlotB.load(Span(pos, pageSlotBSize));
-
-    // Check for corruption by matching checksum
-    if (_checksum() != header.checksum) {
-      throw LogRecordCorruptError();
-    }
+    persist::load(input, type, location);
+    page_slot_a.Load(input);
+    input += page_slot_a.GetSize();
+    page_slot_b.Load(input);
+    input += page_slot_b.GetSize();
   }
 
   /**
@@ -400,33 +337,19 @@ public:
    *
    * @param output output buffer span to dump
    */
-  void dump(Span output) {
-    if (output.size < size()) {
+  void Dump(Span output) {
+    if (output.size < GetSize()) {
       throw LogRecordParseError();
     }
-
-    // Compute and set checksum
-
-    header.checksum = _checksum();
     // Dump header
-    header.dump(output);
-
+    header.Dump(output);
+    output += header.GetSize();
     // Dump bytes
-    Byte *pos = output.start + header.size();
-    std::memcpy((void *)pos, (const void *)&type, sizeof(Type));
-    pos += sizeof(Type);
-    std::memcpy((void *)pos, (const void *)&location,
-                sizeof(PageSlot::Location));
-    pos += sizeof(PageSlot::Location);
-    uint64_t pageSlotASize = pageSlotA.size();
-    std::memcpy((void *)pos, (const void *)&pageSlotASize, sizeof(uint64_t));
-    pos += sizeof(uint64_t);
-    pageSlotA.dump(Span(pos, pageSlotASize));
-    pos += pageSlotASize;
-    uint64_t pageSlotBSize = pageSlotB.size();
-    std::memcpy((void *)pos, (const void *)&pageSlotBSize, sizeof(uint64_t));
-    pos += sizeof(uint64_t);
-    pageSlotB.dump(Span(pos, pageSlotBSize));
+    persist::dump(output, type, location);
+    page_slot_a.Dump(output);
+    output += page_slot_a.GetSize();
+    page_slot_b.Dump(output);
+    output += page_slot_b.GetSize();
   }
 
   /**
@@ -434,8 +357,8 @@ public:
    */
   bool operator==(const LogRecord &other) const {
     return header == other.header && type == other.type &&
-           location == other.location && pageSlotA == other.pageSlotA &&
-           pageSlotB == other.pageSlotB;
+           location == other.location && page_slot_a == other.page_slot_a &&
+           page_slot_b == other.page_slot_b;
   }
 
   /**
@@ -443,8 +366,8 @@ public:
    */
   bool operator!=(const LogRecord &other) const {
     return header != other.header || type != other.type ||
-           location != other.location || pageSlotA != other.pageSlotA ||
-           pageSlotB != other.pageSlotB;
+           location != other.location || page_slot_a != other.page_slot_a ||
+           page_slot_b != other.page_slot_b;
   }
 
 #ifdef __PERSIST_DEBUG__
@@ -452,11 +375,11 @@ public:
    * @brief Write log record to output stream
    */
   friend std::ostream &operator<<(std::ostream &os,
-                                  const LogRecord &logRecord) {
-    os << logRecord.header << "\nType: " << uint64_t(logRecord.type)
-       << "\nLocation: " << logRecord.location << "\nRecord A: \n"
-       << logRecord.pageSlotA << "\nRecord B: \n"
-       << logRecord.pageSlotB;
+                                  const LogRecord &log_record) {
+    os << log_record.header << "\nType: " << uint64_t(log_record.type)
+       << "\nLocation: " << log_record.location << "\nRecord A: \n"
+       << log_record.page_slot_a << "\nRecord B: \n"
+       << log_record.page_slot_b;
     return os;
   }
 #endif
@@ -464,4 +387,4 @@ public:
 
 } // namespace persist
 
-#endif /* LOG_RECORD_HPP */
+#endif /* PERSIST_CORE_LOG_RECORD_HPP */

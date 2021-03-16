@@ -1,5 +1,5 @@
 /**
- * test_factory.cpp - Persist
+ * page_observer.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,22 +22,29 @@
  * SOFTWARE.
  */
 
+#ifndef PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP
+#define PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP
+
+#include <gmock/gmock.h>
+
+#include <persist/core/page/base.hpp>
+
+using ::testing::_;
+using ::testing::Invoke;
+
+namespace persist {
+namespace test {
+
 /**
- * @brief Replacer factory class test.
+ * @brief Page Observer Mock
+ *
  */
+class MockPageObserver : public PageObserver {
+public:
+  MOCK_METHOD(void, HandleModifiedPage, (PageId pageId), (override));
+};
 
-#include <gtest/gtest.h>
+} // namespace test
+} // namespace persist
 
-#include <memory>
-#include <typeinfo>
-
-#include <persist/core/buffer/replacer/factory.hpp>
-
-using namespace persist;
-
-TEST(ReplacerFactoryTest, TestCreateLRUReplacer) {
-  std::unique_ptr<Replacer> replacer = createReplacer(ReplacerType::LRU);
-  Replacer *ptr = replacer.get();
-  std::string className = typeid(*ptr).name();
-  ASSERT_TRUE(className.find("LRUReplacer") != std::string::npos);
-}
+#endif /* PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP */

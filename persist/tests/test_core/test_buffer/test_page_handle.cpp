@@ -32,6 +32,7 @@
 
 #include <persist/core/buffer/page_handle.hpp>
 #include <persist/core/buffer/replacer/lru_replacer.hpp>
+#include <persist/core/page/creator.hpp>
 
 #include "persist/test/simple_page.hpp"
 
@@ -40,21 +41,21 @@ using namespace persist::test;
 
 class PageHandleTestFixture : public ::testing::Test {
 protected:
-  const PageId pageId_1 = 1, pageId_2 = 2;
-  const uint64_t pageSize = DEFAULT_PAGE_SIZE;
+  const PageId page_id_1 = 1, page_id_2 = 2;
+  const uint64_t page_size = DEFAULT_PAGE_SIZE;
   std::unique_ptr<SimplePage> page_1, page_2;
   std::unique_ptr<LRUReplacer> replacer;
   typedef PageHandle<SimplePage> PageHandle;
 
   void SetUp() override {
     // setting up pages
-    page_1 = std::make_unique<SimplePage>(pageId_1, pageSize);
-    page_2 = std::make_unique<SimplePage>(pageId_2, pageSize);
+    page_1 = persist::CreatePage<SimplePage>(page_id_1, page_size);
+    page_2 = persist::CreatePage<SimplePage>(page_id_2, page_size);
 
     // setting up replacer
     replacer = std::make_unique<LRUReplacer>();
-    replacer->track(pageId_1);
-    replacer->track(pageId_2);
+    replacer->Track(page_id_1);
+    replacer->Track(page_id_2);
   }
 
   void TearDown() override {}
@@ -62,8 +63,8 @@ protected:
   /**
    * @brief Helper function to get page handle
    */
-  PageHandle getPageHandle(PageId pageId) {
-    if (pageId == pageId_1) {
+  PageHandle GetPageHandle(PageId page_id) {
+    if (page_id == page_id_1) {
       return PageHandle(page_1.get(), replacer.get());
     }
     return PageHandle(page_2.get(), replacer.get());
@@ -71,45 +72,45 @@ protected:
 };
 
 TEST_F(PageHandleTestFixture, TestLifeCycle) {
-  ASSERT_TRUE(!replacer->isPinned(pageId_1));
+  ASSERT_TRUE(!replacer->IsPinned(page_id_1));
 
   {
-    PageHandle pageHandle = getPageHandle(pageId_1);
-    ASSERT_TRUE(replacer->isPinned(pageId_1));
-    ASSERT_EQ(pageHandle->getId(), pageId_1);
+    PageHandle pageHandle = GetPageHandle(page_id_1);
+    ASSERT_TRUE(replacer->IsPinned(page_id_1));
+    ASSERT_EQ(pageHandle->GetId(), page_id_1);
   }
 
-  ASSERT_TRUE(!replacer->isPinned(pageId_1));
+  ASSERT_TRUE(!replacer->IsPinned(page_id_1));
 }
 
 TEST_F(PageHandleTestFixture, TestMoveConstructor) {
-  ASSERT_TRUE(!replacer->isPinned(pageId_1));
+  ASSERT_TRUE(!replacer->IsPinned(page_id_1));
 
   {
-    PageHandle pageHandle(std::move(getPageHandle(pageId_1)));
-    ASSERT_TRUE(replacer->isPinned(pageId_1));
-    ASSERT_EQ(pageHandle->getId(), pageId_1);
+    PageHandle pageHandle(std::move(GetPageHandle(page_id_1)));
+    ASSERT_TRUE(replacer->IsPinned(page_id_1));
+    ASSERT_EQ(pageHandle->GetId(), page_id_1);
   }
 
-  ASSERT_TRUE(!replacer->isPinned(pageId_1));
+  ASSERT_TRUE(!replacer->IsPinned(page_id_1));
 }
 
 TEST_F(PageHandleTestFixture, TestMoveAssignment) {
-  ASSERT_TRUE(!replacer->isPinned(pageId_1));
-  ASSERT_TRUE(!replacer->isPinned(pageId_2));
+  ASSERT_TRUE(!replacer->IsPinned(page_id_1));
+  ASSERT_TRUE(!replacer->IsPinned(page_id_2));
 
   {
-    PageHandle pageHandle = getPageHandle(pageId_1);
-    ASSERT_TRUE(replacer->isPinned(pageId_1));
-    ASSERT_EQ(pageHandle->getId(), pageId_1);
+    PageHandle pageHandle = GetPageHandle(page_id_1);
+    ASSERT_TRUE(replacer->IsPinned(page_id_1));
+    ASSERT_EQ(pageHandle->GetId(), page_id_1);
 
     // Move assignment
-    pageHandle = std::move(getPageHandle(pageId_2));
-    ASSERT_TRUE(!replacer->isPinned(pageId_1));
-    ASSERT_TRUE(replacer->isPinned(pageId_2));
-    ASSERT_EQ(pageHandle->getId(), pageId_2);
+    pageHandle = std::move(GetPageHandle(page_id_2));
+    ASSERT_TRUE(!replacer->IsPinned(page_id_1));
+    ASSERT_TRUE(replacer->IsPinned(page_id_2));
+    ASSERT_EQ(pageHandle->GetId(), page_id_2);
   }
 
-  ASSERT_TRUE(!replacer->isPinned(pageId_1));
-  ASSERT_TRUE(!replacer->isPinned(pageId_2));
+  ASSERT_TRUE(!replacer->IsPinned(page_id_1));
+  ASSERT_TRUE(!replacer->IsPinned(page_id_2));
 }

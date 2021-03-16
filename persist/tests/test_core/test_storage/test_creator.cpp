@@ -1,5 +1,5 @@
 /**
- * test_base.cpp - Persist
+ * test_creator.cpp - Persist
  *
  * Copyright 2020 Ketan Goyal
  *
@@ -23,7 +23,7 @@
  */
 
 /**
- * @brief Backend Storage base class test.
+ * @brief Backend storage creator test.
  */
 
 #include <gtest/gtest.h>
@@ -31,9 +31,8 @@
 #include <memory>
 #include <typeinfo>
 
-#include <persist/core/defs.hpp>
 #include <persist/core/storage/base.hpp>
-#include <persist/core/storage/factory.hpp>
+#include <persist/core/storage/creator.hpp>
 
 #include "persist/test/simple_page.hpp"
 
@@ -41,19 +40,16 @@ using namespace persist;
 using namespace persist::test;
 
 TEST(StorageFactoryTest, TestCreateMemoryStorage) {
-  std::unique_ptr<Storage<SimplePage>> storage =
-      createStorage<SimplePage>("memory://");
-  Storage<SimplePage> *ptr = storage.get();
+  std::unique_ptr<Storage> storage = CreateStorage("memory://");
+  Storage *ptr = storage.get();
   std::string className = typeid(*ptr).name();
   ASSERT_TRUE(className.find("MemoryStorage") != std::string::npos);
 }
 
 TEST(StorageFactoryTest, TestCreateFileStorage) {
-  std::unique_ptr<Storage<SimplePage>> storage =
-      createStorage<SimplePage>("file://storage.db");
-  Storage<SimplePage> *ptr = storage.get();
+  std::unique_ptr<Storage> storage = CreateStorage("file://storage.db");
+  Storage *ptr = storage.get();
   std::string className = typeid(*ptr).name();
   ASSERT_TRUE(className.find("FileStorage") != std::string::npos);
-  ASSERT_EQ(static_cast<FileStorage<SimplePage> *>(ptr)->getPath(),
-            "storage.db");
+  ASSERT_EQ(static_cast<FileStorage *>(ptr)->GetPath(), "storage.db");
 }

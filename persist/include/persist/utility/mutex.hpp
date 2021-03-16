@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef UTILITY_MUTEX_HPP
-#define UTILITY_MUTEX_HPP
+#ifndef PERSIST_UTILITY_MUTEX_HPP
+#define PERSIST_UTILITY_MUTEX_HPP
 
 #include <mutex>
 #include <shared_mutex>
@@ -210,4 +210,4 @@ public:
 
 } // namespace persist
 
-#endif /* UTILITY_MUTEX_HPP */
+#endif /* PERSIST_UTILITY_MUTEX_HPP */

@@ -1,5 +1,5 @@
 /**
- * replacer/factory.hpp - Persist
+ * test_checksum.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,34 +22,19 @@
  * SOFTWARE.
  */
 
-#ifndef REPLACER_FACTORY_HPP
-#define REPLACER_FACTORY_HPP
-
-#include <persist/core/buffer/replacer/base.hpp>
-#include <persist/core/buffer/replacer/lru_replacer.hpp>
-
-namespace persist {
-
 /**
- * @brief Enumerated list of replacer types
+ * @brief Uint Test Serializer
  *
  */
-enum class ReplacerType { LRU };
 
-/**
- * @brief Factory method to create replacer of given type.
- *
- * @param replacerType type of replacer to create
- * @returns unique pointer to created replacer object
- */
-static std::unique_ptr<Replacer> createReplacer(ReplacerType replacerType) {
-  switch (replacerType) {
-  case ReplacerType::LRU:
-    return std::make_unique<LRUReplacer>();
-    break;
-  }
+#include <gtest/gtest.h>
+
+#include <persist/utility/checksum.hpp>
+
+using namespace persist;
+
+TEST(ChecksumTestFixture, TestChecksumAlder32) {
+  ByteBuffer input = "testing_checksum"_bb;
+  Checksum value = checksum(input);
+  ASSERT_EQ(value, 956630705);
 }
-
-} // namespace persist
-
-#endif /* REPLACER_FACTORY_HPP */
