@@ -24,7 +24,14 @@
 
 #include <gtest/gtest.h>
 
+#include "common.hpp"
+
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
+
+  // Setting up testing environment
+  ::testing::AddGlobalTestEnvironment(
+      new Environment); // / gtest takes ownership of the pointer
+
   return RUN_ALL_TESTS();
 }

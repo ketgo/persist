@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef TRANSACTION_HPP
-#define TRANSACTION_HPP
+#ifndef PERSIST_CORE_TRANSACTION_HPP
+#define PERSIST_CORE_TRANSACTION_HPP
 
 #include <set>
 
@@ -69,7 +69,7 @@ public:
   /**
    * @brief Pointer to log manager.
    */
-  LogManager *logManager;
+  LogManager *log_manager;
 
   /**
    * @brief Transaction ID
@@ -90,64 +90,68 @@ public:
    * @brief Location of the latest log record in the transaction. This is used
    * to link the the next log record.
    */
-  LogRecord::Location logLocation;
+  LogRecord::Location log_location;
 
 public:
   /**
    * Construct a new Transaction object
    *
-   * @param logManager pointer to log manager
+   * @param log_manager pointer to log manager
    * @param id Transaction ID
    * @param state transaction state
    */
-  Transaction(LogManager *logManager, uint64_t id, State state = State::ACTIVE)
-      : logManager(logManager), id(id), state(state), logLocation(0, 0) {}
+  Transaction(LogManager *log_manager, TransactionId id,
+              State state = State::ACTIVE)
+      : log_manager(log_manager), id(id), state(state), log_location(0, 0) {}
 
   /**
    * @brief Log INSERT operation.
    *
    * @param location location where record is inserted
-   * @param pageSlot page slot inserted
+   * @param page_slot page slot inserted
    */
-  void logInsertOp(SlottedPageSlot::Location &location, SlottedPageSlot &pageSlot) {
+  void LogInsertOp(SlottedPageSlot::Location &location,
+                   SlottedPageSlot &page_slot) {
     // Stage Page ID
-    staged.insert(location.pageId);
+    staged.insert(location.page_id);
     // Log record for insert operation
-    LogRecord logRecord(id, logLocation, LogRecord::Type::INSERT, location,
-                        pageSlot);
-    logLocation = logManager->add(logRecord);
+    LogRecord log_record(id, log_location, LogRecord::Type::INSERT, location,
+                         page_slot);
+    log_location = log_manager->Add(log_record);
   }
 
   /**
    * @brief Log UPDATE operation.
    *
    * @param location location where record is located
-   * @param oldPageSlot old page slot
-   * @param newPageSlot new page slot
+   * @param old_page_slot old page slot
+   * @param new_page_slot new page slot
    */
-  void logUpdateOp(SlottedPageSlot::Location &location, SlottedPageSlot &oldPageSlot,
-                   SlottedPageSlot &newPageSlot) {
+  void LogUpdateOp(SlottedPageSlot::Location &location,
+                   SlottedPageSlot &old_page_slot,
+                   SlottedPageSlot &new_page_slot) {
     // Stage Page ID
-    staged.insert(location.pageId);
+    staged.insert(location.page_id);
     // Log record for update operation
-    LogRecord logRecord(id, logLocation, LogRecord::Type::UPDATE, location,
-                        oldPageSlot, newPageSlot);
-    logLocation = logManager->add(logRecord);
+    LogRecord log_record(id, log_location, LogRecord::Type::UPDATE, location,
+                         old_page_slot, new_page_slot);
+    log_location = log_manager->Add(log_record);
   }
 
   /**
    * @brief Log DELETE operation.
    *
    * @param location location where record is located
-   * @param pageSlot page slot deleted
+   * @param page_slot page slot deleted
    */
-  void logDeleteOp(SlottedPageSlot::Location &location, SlottedPageSlot &pageSlot) {
+  void LogDeleteOp(SlottedPageSlot::Location &location,
+                   SlottedPageSlot &page_slot) {
     // Stage Page ID
-    staged.insert(location.pageId);
+    staged.insert(location.page_id);
     // Log record for delete operation
-    LogRecord logRecord(id, logLocation, LogRecord::Type::DELETE, location,
-                        pageSlot);
-    logLocation = logManager->add(logRecord);
+    LogRecord log_record(id, log_location, LogRecord::Type::DELETE, location,
+                         page_slot);
+    log_location = log_manager->Add(log_record);
   }
 
   /**
@@ -155,42 +159,42 @@ public:
    *
    * @returns constant reference to set of staged page IDs
    */
-  const std::set<PageId> &getStaged() const { return staged; }
+  const std::set<PageId> &GetStaged() const { return staged; }
 
   /**
    * @brief Get the transaction ID
    *
    * @returns transaction unique identifier
    */
-  TransactionId getId() const { return id; }
+  TransactionId GetId() const { return id; }
 
   /**
    * Get the state of transaction.
    *
    * @returns transaction state
    */
-  const State getState() const { return state; }
+  const State GetState() const { return state; }
 
   /**
    * Set the state of transaction.
    *
    * @param state transaction state to set
    */
-  void setState(State state) { this->state = state; }
+  void SetState(State state) { this->state = state; }
 
   /**
    * @brief Get the location of the lastest log record in the transaction.
    *
    * @returns sequence number of the lastest log record in the transaction
    */
-  const LogRecord::Location getLogLocation() const { return logLocation; }
+  const LogRecord::Location GetLogLocation() const { return log_location; }
 
   /**
    * @brief Set the location of the lastest log record in the transaction.
    *
    * @param location location of the lastest log record in the transaction
    */
-  void setLogLocation(LogRecord::Location location) { logLocation = location; }
+  void SetLogLocation(LogRecord::Location location) { log_location = location; }
 
   /**
    * @brief Equality comparision operator.

@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef UTILITY_CHECKSUM_HPP
-#define UTILITY_CHECKSUM_HPP
+#ifndef PERSIST_UTILITY_CHECKSUM_HPP
+#define PERSIST_UTILITY_CHECKSUM_HPP
 
 #include <persist/core/defs.hpp>
 
@@ -72,4 +72,4 @@ template <typename H = Alder32Hash> Checksum checksum(Span input) {
 
 } // namespace persist
 
-#endif /* UTILITY_CHECKSUM_HPP */
+#endif /* PERSIST_UTILITY_CHECKSUM_HPP */

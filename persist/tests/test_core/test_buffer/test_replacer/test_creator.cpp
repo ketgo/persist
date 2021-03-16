@@ -1,5 +1,5 @@
 /**
- * test_uid.cpp - Persist
+ * test_factory.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -23,22 +23,21 @@
  */
 
 /**
- * @brief Uint Test UID genrator
- *
+ * @brief Replacer creator test.
  */
 
 #include <gtest/gtest.h>
 
 #include <memory>
-#include <thread>
+#include <typeinfo>
 
-#include <persist/utility/uid.hpp>
+#include <persist/core/buffer/replacer/creator.hpp>
 
 using namespace persist;
 
-TEST(UtilityUIDTest, TestUID) {
-  auto uid_1 = uid();
-  auto uid_2 = uid();
-
-  ASSERT_NE(uid_1, uid_2);
+TEST(ReplacerCreatorTest, TestCreateLRUReplacer) {
+  std::unique_ptr<Replacer> replacer = CreateReplacer(ReplacerType::LRU);
+  Replacer *ptr = replacer.get();
+  std::string class_name = typeid(*ptr).name();
+  ASSERT_TRUE(class_name.find("LRUReplacer") != std::string::npos);
 }

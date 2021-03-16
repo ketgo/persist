@@ -1,5 +1,5 @@
 /**
- * test_uid.cpp - Persist
+ * test_creator.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -23,22 +23,28 @@
  */
 
 /**
- * @brief Uint Test UID genrator
+ * @brief Test page creator.
  *
  */
 
 #include <gtest/gtest.h>
 
 #include <memory>
-#include <thread>
 
-#include <persist/utility/uid.hpp>
+#include <persist/core/page/creator.hpp>
+
+#include "persist/test/simple_page.hpp"
 
 using namespace persist;
+using namespace persist::test;
 
-TEST(UtilityUIDTest, TestUID) {
-  auto uid_1 = uid();
-  auto uid_2 = uid();
-
-  ASSERT_NE(uid_1, uid_2);
+TEST(PageCreatorTestFixture, PageSizeError) {
+  try {
+    auto page = CreatePage<SimplePage>(1, 64);
+    FAIL() << "Expected PageSizeError Exception.";
+  } catch (PageSizeError &err) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected PageSizeError Exception.";
+  }
 }

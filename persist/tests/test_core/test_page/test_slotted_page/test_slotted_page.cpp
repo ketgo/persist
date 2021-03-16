@@ -1,5 +1,5 @@
 /**
- * test_vls_slotted_page.cpp - Persist
+ * test_slotted_page.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -38,9 +38,9 @@
 #define PERSIST_INTRUSIVE_TESTING
 
 #include <persist/core/page/slotted_page/slotted_page.hpp>
-#include <persist/core/storage/factory.hpp>
+#include <persist/core/storage/creator.hpp>
 
-#include "persist/test/mocks.hpp"
+#include "persist/test/mocks/page_observer.hpp"
 
 using namespace persist;
 using namespace persist::test;
@@ -56,30 +56,29 @@ class SlottedPageHeaderTestFixture : public ::testing::Test {
 protected:
   ByteBuffer input;
   ByteBuffer extra;
-  const PageId pageId = 12;
-  const PageId nextPageId = 15;
-  const PageId prevPageId = 1;
+  const PageId page_id = 12;
+  const PageId next_page_id = 15;
+  const PageId prev_page_id = 1;
   std::unique_ptr<SlottedPage::Header> header;
 
   void SetUp() override {
-    header = std::make_unique<SlottedPage::Header>(pageId);
+    header = std::make_unique<SlottedPage::Header>(page_id);
     // setup valid header
-    header->nextPageId = nextPageId;
-    header->prevPageId = prevPageId;
+    header->next_page_id = next_page_id;
+    header->prev_page_id = prev_page_id;
     header->slots[1] =
-        SlottedPage::Header::HeaderSlot({1, DEFAULT_PAGE_SIZE - 10, 10});
+        SlottedPage::Header::SlotSpan({DEFAULT_PAGE_SIZE - 10, 10});
     header->slots[2] =
-        SlottedPage::Header::HeaderSlot({2, DEFAULT_PAGE_SIZE - 15, 5});
+        SlottedPage::Header::SlotSpan({DEFAULT_PAGE_SIZE - 15, 5});
     header->slots[3] =
-        SlottedPage::Header::HeaderSlot({3, DEFAULT_PAGE_SIZE - 18, 3});
+        SlottedPage::Header::SlotSpan({DEFAULT_PAGE_SIZE - 18, 3});
 
-    input = {12,  0, 0, 0, 0, 0, 0, 0, 15,  0,   0,   0,  0,  0,   0,  0,
-             1,   0, 0, 0, 0, 0, 0, 0, 3,   0,   0,   0,  0,  0,   0,  0,
-             1,   0, 0, 0, 0, 0, 0, 0, 246, 3,   0,   0,  0,  0,   0,  0,
-             10,  0, 0, 0, 0, 0, 0, 0, 2,   0,   0,   0,  0,  0,   0,  0,
-             241, 3, 0, 0, 0, 0, 0, 0, 5,   0,   0,   0,  0,  0,   0,  0,
-             3,   0, 0, 0, 0, 0, 0, 0, 238, 3,   0,   0,  0,  0,   0,  0,
-             3,   0, 0, 0, 0, 0, 0, 0, 142, 141, 188, 43, 11, 216, 12, 107};
+    input = {12, 0, 0, 0, 0,   0, 0, 0, 15, 0, 0,   0, 0,  0, 0, 0, 1,   0,
+             0,  0, 0, 0, 0,   0, 3, 0, 0,  0, 0,   0, 0,  0, 1, 0, 0,   0,
+             0,  0, 0, 0, 246, 3, 0, 0, 0,  0, 0,   0, 10, 0, 0, 0, 0,   0,
+             0,  0, 2, 0, 0,   0, 0, 0, 0,  0, 241, 3, 0,  0, 0, 0, 0,   0,
+             5,  0, 0, 0, 0,   0, 0, 0, 3,  0, 0,   0, 0,  0, 0, 0, 238, 3,
+             0,  0, 0, 0, 0,   0, 3, 0, 0,  0, 0,   0, 0,  0};
     extra = {42, 0, 0, 0, 21, 48, 4};
   }
 };
@@ -89,14 +88,14 @@ TEST_F(SlottedPageHeaderTestFixture, TestLoad) {
   ByteBuffer _input;
   _input.insert(_input.end(), input.begin(), input.end());
   _input.insert(_input.end(), extra.begin(), extra.end());
-  _header.load(Span(_input));
+  _header.Load(_input);
 
-  ASSERT_EQ(_header.pageId, header->pageId);
+  ASSERT_EQ(_header.page_id, header->page_id);
   ASSERT_EQ(_header.slots.size(), header->slots.size());
-  SlottedPage::Header::HeaderSlotMap::iterator _it = _header.slots.begin();
-  SlottedPage::Header::HeaderSlotMap::iterator it = header->slots.begin();
+  SlottedPage::Header::SlotSpanMap::iterator _it = _header.slots.begin();
+  SlottedPage::Header::SlotSpanMap::iterator it = header->slots.begin();
   while (_it != _header.slots.end() && it != header->slots.end()) {
-    ASSERT_EQ(_it->second.id, it->second.id);
+    ASSERT_EQ(_it->first, it->first);
     ASSERT_EQ(_it->second.offset, it->second.offset);
     ASSERT_EQ(_it->second.size, it->second.size);
     ++_it;
@@ -108,7 +107,7 @@ TEST_F(SlottedPageHeaderTestFixture, TestLoadError) {
   try {
     ByteBuffer _input;
     SlottedPage::Header _header;
-    _header.load(Span(_input));
+    _header.Load(_input);
     FAIL() << "Expected PageParseError Exception.";
   } catch (PageParseError &err) {
     SUCCEED();
@@ -117,279 +116,229 @@ TEST_F(SlottedPageHeaderTestFixture, TestLoadError) {
   }
 }
 
-TEST_F(SlottedPageHeaderTestFixture, TestLoadCorruptErrorInvalidChecksum) {
-  try {
-    ByteBuffer _input = input;
-    _input.back() = 0;
-    SlottedPage::Header _header;
-    _header.load(Span(_input));
-    FAIL() << "Expected PageCorruptError Exception.";
-  } catch (PageCorruptError &err) {
-    SUCCEED();
-  } catch (...) {
-    FAIL() << "Expected PageCorruptError Exception.";
-  }
-}
-
-TEST_F(SlottedPageHeaderTestFixture, TestLoadCorruptErrorInvalidSlotsCount) {
-  try {
-    ByteBuffer _input = input;
-    _input[24] = 9; //<- sets the slot count located at 24th byte to 9
-    SlottedPage::Header _header;
-    _header.load(Span(_input));
-    FAIL() << "Expected PageCorruptError Exception.";
-  } catch (PageCorruptError &err) {
-    SUCCEED();
-  } catch (...) {
-    FAIL() << "Expected PageCorruptError Exception.";
-  }
-}
-
 TEST_F(SlottedPageHeaderTestFixture, TestDump) {
-  ByteBuffer output(header->size());
-  header->dump(Span(output));
+  ByteBuffer output(header->GetSize());
+  header->Dump(output);
 
   ASSERT_EQ(input, output);
 }
 
 TEST_F(SlottedPageHeaderTestFixture, TestSize) {
-  ASSERT_EQ(header->size(), input.size());
+  ASSERT_EQ(header->GetSize(), input.size());
 }
 
 TEST_F(SlottedPageHeaderTestFixture, TestCreateSlot) {
-  uint64_t size = 100;
-  uint64_t tail = header->tail();
-  PageSlotId slotId = header->createSlot(size);
-  ASSERT_EQ(header->tail(), tail - size);
-  ASSERT_EQ(slotId, 4);
-  ASSERT_EQ(header->slots.rbegin()->second.id, slotId);
+  size_t size = 100;
+  size_t tail = header->GetTail();
+  PageSlotId slot_id = header->CreateSlot(size);
+  ASSERT_EQ(header->GetTail(), tail - size);
+  ASSERT_EQ(slot_id, 4);
+  ASSERT_EQ(header->slots.rbegin()->first, slot_id);
   ASSERT_EQ(header->slots.rbegin()->second.offset, DEFAULT_PAGE_SIZE - 118);
   ASSERT_EQ(header->slots.rbegin()->second.size, size);
 }
 
 TEST_F(SlottedPageHeaderTestFixture, TestUpdateSlot) {
-  uint64_t oldSize = header->slots.at(2).size;
-  uint64_t newSize = 100;
-  uint64_t tail = header->tail();
+  size_t old_size = header->slots.at(2).size;
+  size_t new_size = 100;
+  size_t tail = header->GetTail();
 
-  header->updateSlot(2, newSize);
+  header->UpdateSlot(2, new_size);
 
   // Test update in tail
-  ASSERT_EQ(header->tail(), tail + (oldSize - newSize));
+  ASSERT_EQ(header->GetTail(), tail + (old_size - new_size));
 
   // Test no change in first slot
-  ASSERT_EQ(header->slots.at(1).id, 1);
   ASSERT_EQ(header->slots.at(1).offset, DEFAULT_PAGE_SIZE - 10);
   ASSERT_EQ(header->slots.at(1).size, 10);
 
   // Test change in 2nd slot
-  ASSERT_EQ(header->slots.at(2).id, 2);
   ASSERT_EQ(header->slots.at(2).offset, DEFAULT_PAGE_SIZE - 110);
-  ASSERT_EQ(header->slots.at(2).size, newSize);
+  ASSERT_EQ(header->slots.at(2).size, new_size);
 
   // Test change in 3rd slot
-  ASSERT_EQ(header->slots.at(3).id, 3);
   ASSERT_EQ(header->slots.at(3).offset, DEFAULT_PAGE_SIZE - 113);
   ASSERT_EQ(header->slots.at(3).size, 3);
 }
 
 TEST_F(SlottedPageHeaderTestFixture, TestFreeSlot) {
-  uint64_t tail = header->tail();
-  SlottedPage::Header::HeaderSlotMap::iterator it = header->slots.begin();
+  uint64_t tail = header->GetTail();
+  SlottedPage::Header::SlotSpanMap::iterator it = header->slots.begin();
   ++it;
-  uint64_t entrySize = it->second.size;
+  size_t entry_size = it->second.size;
 
-  header->freeSlot(it->second.id);
-  ASSERT_EQ(header->tail(), tail + entrySize);
+  header->FreeSlot(it->first);
+  ASSERT_EQ(header->GetTail(), tail + entry_size);
 }
 
 /***********************************************
  * Slotted Page Unit Tests
  ***********************************************/
 
-TEST(SlottedPageTest, PageSizeError) {
-  try {
-    SlottedPage page(1, 64);
-    FAIL() << "Expected PageSizeError Exception.";
-  } catch (PageSizeError &err) {
-    SUCCEED();
-  } catch (...) {
-    FAIL() << "Expected PageSizeError Exception.";
-  }
-}
-
 class SlottedPageTestFixture : public ::testing::Test {
 protected:
   ByteBuffer input;
-  const PageId pageId = 12;
-  const PageId nextPageId = 15;
-  const PageId prevPageId = 1;
-  const uint64_t pageSize = DEFAULT_PAGE_SIZE;
+  const PageId page_id = 12;
+  const PageId next_page_id = 15;
+  const PageId prev_page_id = 1;
+  const uint64_t page_size = DEFAULT_PAGE_SIZE;
+  const size_t single_slot_span_size =
+      sizeof(SlottedPage::Header::SlotSpan) + sizeof(PageSlotId);
   std::unique_ptr<SlottedPage> page;
-  PageSlotId slotId_1, slotId_2;
-  std::unique_ptr<SlottedPageSlot> pageSlot_1, pageSlot_2;
-  const ByteBuffer pageSlotData_1 = "testing_1"_bb,
-                   pageSlotData_2 = "testing_2"_bb;
-  std::unique_ptr<Storage<LogPage>> storage;
+  PageSlotId slot_id_1, slot_id_2;
+  std::unique_ptr<SlottedPageSlot> page_slot_1, page_slot_2;
+  const ByteBuffer page_slot_date_1 = "testing_1"_bb,
+                   page_slot_date_2 = "testing_2"_bb;
+  std::unique_ptr<Storage> storage;
   // TODO: Use Mock LogManager
-  std::unique_ptr<LogManager> logManager;
+  std::unique_ptr<LogManager> log_manager;
   MockPageObserver observer;
 
   void SetUp() override {
     // Setup log manager
-    storage = createStorage<LogPage>("file://test_vls_storage_log");
-    logManager = std::make_unique<LogManager>(storage.get(), 2);
-    logManager->start();
+    storage = persist::CreateStorage("file://test_slotted_page_log");
+    log_manager = std::make_unique<LogManager>(storage.get(), 2);
+    log_manager->Start();
 
     // Setup valid page
-    page = std::make_unique<SlottedPage>(pageId, pageSize);
-    page->setNextPageId(nextPageId);
-    page->setPrevPageId(prevPageId);
+    page = std::make_unique<SlottedPage>(page_id, page_size);
+    page->SetNextPageId(next_page_id);
+    page->SetPrevPageId(prev_page_id);
     // Add record blocks
-    Transaction txn(logManager.get(), 0);
-    pageSlot_1 = std::make_unique<SlottedPageSlot>();
-    pageSlot_1->data = pageSlotData_1;
-    slotId_1 = page->insertPageSlot(*pageSlot_1, txn).first;
-    pageSlot_2 = std::make_unique<SlottedPageSlot>();
-    pageSlot_2->data = pageSlotData_2;
-    slotId_2 = page->insertPageSlot(*pageSlot_2, txn).first;
+    Transaction txn(log_manager.get(), 0);
+    page_slot_1 = std::make_unique<SlottedPageSlot>();
+    page_slot_1->data = page_slot_date_1;
+    slot_id_1 = page->InsertPageSlot(*page_slot_1, txn).first;
+    page_slot_2 = std::make_unique<SlottedPageSlot>();
+    page_slot_2->data = page_slot_date_2;
+    slot_id_2 = page->InsertPageSlot(*page_slot_2, txn).first;
 
     input = {
-        12,  0,   0,   0,   0,   0,   0,   0,   15,  0,   0,   0,   0,   0,
-        0,   0,   1,   0,   0,   0,   0,   0,   0,   0,   2,   0,   0,   0,
-        0,   0,   0,   0,   1,   0,   0,   0,   0,   0,   0,   0,   207, 3,
-        0,   0,   0,   0,   0,   0,   49,  0,   0,   0,   0,   0,   0,   0,
-        2,   0,   0,   0,   0,   0,   0,   0,   158, 3,   0,   0,   0,   0,
-        0,   0,   49,  0,   0,   0,   0,   0,   0,   0,   143, 202, 183, 195,
-        60,  97,  29,  198, 0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   31,  137, 223, 200, 40,  173, 239, 136,
-        116, 101, 115, 116, 105, 110, 103, 95,  50,  0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   16,
-        137, 223, 200, 40,  173, 239, 136, 116, 101, 115, 116, 105, 110, 103,
-        95,  49};
+        12,  0, 0, 0, 0, 0, 0,   0,   15,  0,   0,   0,   0,   0,   0,  0,
+        1,   0, 0, 0, 0, 0, 0,   0,   2,   0,   0,   0,   0,   0,   0,  0,
+        1,   0, 0, 0, 0, 0, 0,   0,   207, 3,   0,   0,   0,   0,   0,  0,
+        49,  0, 0, 0, 0, 0, 0,   0,   2,   0,   0,   0,   0,   0,   0,  0,
+        158, 3, 0, 0, 0, 0, 0,   0,   49,  0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   9,  0,
+        0,   0, 0, 0, 0, 0, 116, 101, 115, 116, 105, 110, 103, 95,  50, 0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  0,
+        0,   0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,  9,
+        0,   0, 0, 0, 0, 0, 0,   116, 101, 115, 116, 105, 110, 103, 95, 49};
   }
 
   void TearDown() override {
-    storage->remove();
-    logManager->stop();
+    storage->Remove();
+    log_manager->Stop();
   }
 };
 
-TEST_F(SlottedPageTestFixture, TestGetId) { ASSERT_EQ(page->getId(), pageId); }
+TEST_F(SlottedPageTestFixture, TestGetId) { ASSERT_EQ(page->GetId(), page_id); }
 
 TEST_F(SlottedPageTestFixture, TestGetNextBlockId) {
-  ASSERT_EQ(page->getNextPageId(), nextPageId);
+  ASSERT_EQ(page->GetNextPageId(), next_page_id);
 }
 
 TEST_F(SlottedPageTestFixture, TestSetNextBlockId) {
   PageId blockId = 99;
-  page->registerObserver(&observer);
-  EXPECT_CALL(observer, handleModifiedPage(page->getId())).Times(AtLeast(1));
-  page->setNextPageId(blockId);
-  ASSERT_EQ(page->getNextPageId(), blockId);
+  page->RegisterObserver(&observer);
+  EXPECT_CALL(observer, HandleModifiedPage(page->GetId())).Times(AtLeast(1));
+  page->SetNextPageId(blockId);
+  ASSERT_EQ(page->GetNextPageId(), blockId);
 }
 
 TEST_F(SlottedPageTestFixture, TestGetPrevBlockId) {
-  ASSERT_EQ(page->getPrevPageId(), prevPageId);
+  ASSERT_EQ(page->GetPrevPageId(), prev_page_id);
 }
 
 TEST_F(SlottedPageTestFixture, TestSetPrevBlockId) {
   PageId blockId = 99;
-  page->registerObserver(&observer);
-  EXPECT_CALL(observer, handleModifiedPage(page->getId())).Times(AtLeast(1));
-  page->setPrevPageId(blockId);
-  ASSERT_EQ(page->getPrevPageId(), blockId);
+  page->RegisterObserver(&observer);
+  EXPECT_CALL(observer, HandleModifiedPage(page->GetId())).Times(AtLeast(1));
+  page->SetPrevPageId(blockId);
+  ASSERT_EQ(page->GetPrevPageId(), blockId);
 }
 
 TEST_F(SlottedPageTestFixture, TestFreeSpace) {
-  SlottedPage::Header header(pageId, pageSize);
-  header.nextPageId = nextPageId;
-  header.prevPageId = prevPageId;
-  SlottedPage _page(pageId, pageSize);
-  _page.setNextPageId(nextPageId);
-  _page.setPrevPageId(prevPageId);
+  SlottedPage::Header header(page_id, page_size);
+  header.next_page_id = next_page_id;
+  header.prev_page_id = prev_page_id;
+  SlottedPage _page(page_id, page_size);
+  _page.SetNextPageId(next_page_id);
+  _page.SetPrevPageId(prev_page_id);
 
-  ASSERT_EQ(_page.freeSpace(SlottedPage::Operation::UPDATE),
-            pageSize - header.size());
-  ASSERT_EQ(_page.freeSpace(SlottedPage::Operation::INSERT),
-            pageSize - header.size() - sizeof(SlottedPage::Header::HeaderSlot));
+  ASSERT_EQ(_page.GetFreeSpaceSize(Operation::UPDATE),
+            page_size - header.GetSize());
+  ASSERT_EQ(_page.GetFreeSpaceSize(Operation::INSERT),
+            page_size - header.GetSize() - single_slot_span_size);
 }
 
 TEST_F(SlottedPageTestFixture, TestGetPageSlot) {
-  Transaction txn(logManager.get(), 0);
-  SlottedPageSlot _pageSlot = page->getPageSlot(slotId_1, txn);
+  Transaction txn(log_manager.get(), 0);
+  SlottedPageSlot _page_slot = page->GetPageSlot(slot_id_1, txn);
 
-  ASSERT_EQ(_pageSlot.data, pageSlotData_1);
-  ASSERT_TRUE(_pageSlot.getNextLocation().isNull());
-  ASSERT_TRUE(_pageSlot.getPrevLocation().isNull());
+  ASSERT_EQ(_page_slot.data, page_slot_date_1);
+  ASSERT_TRUE(_page_slot.GetNextLocation().IsNull());
+  ASSERT_TRUE(_page_slot.GetPrevLocation().IsNull());
 }
 
 TEST_F(SlottedPageTestFixture, TestGetPageSlotError) {
   try {
-    Transaction txn(logManager.get(), 0);
-    SlottedPageSlot _pageSlot = page->getPageSlot(10, txn);
+    Transaction txn(log_manager.get(), 0);
+    SlottedPageSlot _page_slot = page->GetPageSlot(10, txn);
     FAIL() << "Expected PageSlotNotFoundError Exception.";
   } catch (PageSlotNotFoundError &err) {
     SUCCEED();
@@ -399,84 +348,88 @@ TEST_F(SlottedPageTestFixture, TestGetPageSlotError) {
 }
 
 TEST_F(SlottedPageTestFixture, TestAddPageSlot) {
-  SlottedPageSlot pageSlot;
-  pageSlot.data = "testing_3"_bb;
+  SlottedPageSlot page_slot;
+  page_slot.data = "testing_3"_bb;
 
   // Current free space in block
-  page->registerObserver(&observer);
-  EXPECT_CALL(observer, handleModifiedPage(page->getId())).Times(AtLeast(1));
-  uint64_t oldFreeSpace = page->freeSpace(SlottedPage::Operation::INSERT);
-  Transaction txn(logManager.get(), 0);
-  PageSlotId slotId = page->insertPageSlot(pageSlot, txn).first;
+  page->RegisterObserver(&observer);
+  EXPECT_CALL(observer, HandleModifiedPage(page->GetId())).Times(AtLeast(1));
+  uint64_t old_free_space = page->GetFreeSpaceSize(Operation::INSERT);
+  Transaction txn(log_manager.get(), 0);
+  PageSlotId slot_id = page->InsertPageSlot(page_slot, txn).first;
 
-  auto logRecord = logManager->get(txn.logLocation);
-  ASSERT_EQ(logRecord->header.transactionId, txn.getId());
-  ASSERT_EQ(logRecord->header.seqNumber, txn.logLocation.seqNumber);
-  ASSERT_EQ(logRecord->header.prevLogRecordLocation.seqNumber, 0);
-  ASSERT_EQ(logRecord->type, LogRecord::Type::INSERT);
-  ASSERT_EQ(logRecord->location, SlottedPageSlot::Location(page->getId(), slotId));
-  ASSERT_EQ(logRecord->pageSlotA, pageSlot);
-  ASSERT_EQ(logRecord->pageSlotB, SlottedPageSlot());
+  auto log_record = log_manager->Get(txn.log_location);
+  ASSERT_EQ(log_record->header.transaction_id, txn.GetId());
+  ASSERT_EQ(log_record->header.seq_number, txn.log_location.seq_number);
+  ASSERT_EQ(log_record->header.prev_log_record_location.seq_number, 0);
+  ASSERT_EQ(log_record->type, LogRecord::Type::INSERT);
+  ASSERT_EQ(log_record->location,
+            SlottedPageSlot::Location(page->GetId(), slot_id));
+  ASSERT_EQ(log_record->page_slot_a, page_slot);
+  ASSERT_EQ(log_record->page_slot_b, SlottedPageSlot());
 
-  uint64_t newFreeSize = page->header.tail() - page->header.size();
-  ASSERT_EQ(oldFreeSpace - newFreeSize, pageSlot.size());
-  ASSERT_EQ(page->getPageSlot(slotId, txn), pageSlot);
+  uint64_t new_free_size = page->header.GetTail() - page->header.GetSize();
+  ASSERT_EQ(old_free_space - new_free_size, page_slot.GetSize());
+  ASSERT_EQ(page->GetPageSlot(slot_id, txn), page_slot);
 }
 
 TEST_F(SlottedPageTestFixture, TestUpdatePageSlot) {
-  SlottedPageSlot pageSlot;
-  pageSlot.data = "testing_1-update"_bb;
-  SlottedPageSlot pageSlotCopy = pageSlot;
+  SlottedPageSlot page_slot;
+  page_slot.data = "testing_1-update"_bb;
+  SlottedPageSlot page_slot_copy = page_slot;
 
   // Current free space in block
-  page->registerObserver(&observer);
-  EXPECT_CALL(observer, handleModifiedPage(page->getId())).Times(AtLeast(1));
-  uint64_t oldFreeSpace = page->freeSpace(SlottedPage::Operation::UPDATE);
-  Transaction txn(logManager.get(), 0);
-  page->updatePageSlot(slotId_1, pageSlot, txn);
+  page->RegisterObserver(&observer);
+  EXPECT_CALL(observer, HandleModifiedPage(page->GetId())).Times(AtLeast(1));
+  uint64_t old_free_space = page->GetFreeSpaceSize(Operation::UPDATE);
+  Transaction txn(log_manager.get(), 0);
+  page->UpdatePageSlot(slot_id_1, page_slot, txn);
 
-  auto logRecord = logManager->get(txn.logLocation);
-  ASSERT_EQ(logRecord->header.transactionId, txn.getId());
-  ASSERT_EQ(logRecord->header.seqNumber, txn.logLocation.seqNumber);
-  ASSERT_EQ(logRecord->header.prevLogRecordLocation.seqNumber, 0);
-  ASSERT_EQ(logRecord->type, LogRecord::Type::UPDATE);
-  ASSERT_EQ(logRecord->location, SlottedPageSlot::Location(page->getId(), slotId_1));
-  ASSERT_EQ(logRecord->pageSlotA, *pageSlot_1);
-  ASSERT_EQ(logRecord->pageSlotB, pageSlotCopy);
+  auto log_record = log_manager->Get(txn.log_location);
+  ASSERT_EQ(log_record->header.transaction_id, txn.GetId());
+  ASSERT_EQ(log_record->header.seq_number, txn.log_location.seq_number);
+  ASSERT_EQ(log_record->header.prev_log_record_location.seq_number, 0);
+  ASSERT_EQ(log_record->type, LogRecord::Type::UPDATE);
+  ASSERT_EQ(log_record->location,
+            SlottedPageSlot::Location(page->GetId(), slot_id_1));
+  ASSERT_EQ(log_record->page_slot_a, *page_slot_1);
+  ASSERT_EQ(log_record->page_slot_b, page_slot_copy);
 
-  uint64_t newFreeSize = page->header.tail() - page->header.size();
-  SlottedPageSlot pageSlot_;
-  pageSlot_.data = "testing_1-update"_bb;
-  ASSERT_EQ(oldFreeSpace - newFreeSize, pageSlot_.size() - pageSlot_1->size());
-  ASSERT_EQ(page->getPageSlot(slotId_1, txn), pageSlotCopy);
+  uint64_t new_free_size = page->header.GetTail() - page->header.GetSize();
+  SlottedPageSlot page_slot_;
+  page_slot_.data = "testing_1-update"_bb;
+  ASSERT_EQ(old_free_space - new_free_size,
+            page_slot_.GetSize() - page_slot_1->GetSize());
+  ASSERT_EQ(page->GetPageSlot(slot_id_1, txn), page_slot_copy);
 }
 
 TEST_F(SlottedPageTestFixture, TestRemovePageSlot) {
-  page->registerObserver(&observer);
-  EXPECT_CALL(observer, handleModifiedPage(page->getId())).Times(AtLeast(1));
-  uint64_t oldFreeSpace = page->freeSpace(SlottedPage::Operation::UPDATE);
-  Transaction txn(logManager.get(), 0);
-  page->removePageSlot(slotId_2, txn);
+  page->RegisterObserver(&observer);
+  EXPECT_CALL(observer, HandleModifiedPage(page->GetId())).Times(AtLeast(1));
+  uint64_t old_free_space = page->GetFreeSpaceSize(Operation::UPDATE);
+  Transaction txn(log_manager.get(), 0);
+  page->RemovePageSlot(slot_id_2, txn);
 
-  auto logRecord = logManager->get(txn.logLocation);
-  ASSERT_EQ(logRecord->header.transactionId, txn.getId());
-  ASSERT_EQ(logRecord->header.seqNumber, txn.logLocation.seqNumber);
-  ASSERT_EQ(logRecord->header.prevLogRecordLocation.seqNumber, 0);
-  ASSERT_EQ(logRecord->type, LogRecord::Type::DELETE);
-  ASSERT_EQ(logRecord->location, SlottedPageSlot::Location(page->getId(), slotId_2));
-  ASSERT_EQ(logRecord->pageSlotA, *pageSlot_2);
-  ASSERT_EQ(logRecord->pageSlotB, SlottedPageSlot());
+  auto log_record = log_manager->Get(txn.log_location);
+  ASSERT_EQ(log_record->header.transaction_id, txn.GetId());
+  ASSERT_EQ(log_record->header.seq_number, txn.log_location.seq_number);
+  ASSERT_EQ(log_record->header.prev_log_record_location.seq_number, 0);
+  ASSERT_EQ(log_record->type, LogRecord::Type::DELETE);
+  ASSERT_EQ(log_record->location,
+            SlottedPageSlot::Location(page->GetId(), slot_id_2));
+  ASSERT_EQ(log_record->page_slot_a, *page_slot_2);
+  ASSERT_EQ(log_record->page_slot_b, SlottedPageSlot());
 
-  uint64_t newFreeSize = page->header.tail() - page->header.size();
-  ASSERT_THROW(page->getPageSlot(slotId_2, txn), PageSlotNotFoundError);
-  ASSERT_EQ(newFreeSize - oldFreeSpace,
-            pageSlot_2->size() + sizeof(SlottedPage::Header::HeaderSlot));
+  uint64_t new_free_size = page->header.GetTail() - page->header.GetSize();
+  ASSERT_THROW(page->GetPageSlot(slot_id_2, txn), PageSlotNotFoundError);
+  ASSERT_EQ(new_free_size - old_free_space,
+            page_slot_2->GetSize() + single_slot_span_size);
 }
 
 TEST_F(SlottedPageTestFixture, TestRemovePageSlotError) {
   try {
-    Transaction txn(logManager.get(), 0);
-    page->removePageSlot(20, txn);
+    Transaction txn(log_manager.get(), 0);
+    page->RemovePageSlot(20, txn);
     FAIL() << "Expected PageSlotNotFoundError Exception.";
   } catch (PageSlotNotFoundError &err) {
     SUCCEED();
@@ -487,39 +440,39 @@ TEST_F(SlottedPageTestFixture, TestRemovePageSlotError) {
 
 TEST_F(SlottedPageTestFixture, TestLoad) {
   SlottedPage _page;
-  _page.load(Span(input));
+  _page.Load(input);
 
-  ASSERT_EQ(_page.getId(), page->getId());
+  ASSERT_EQ(_page.GetId(), page->GetId());
 
-  Transaction txn(logManager.get(), 0);
+  Transaction txn(log_manager.get(), 0);
 
-  SlottedPageSlot _pageSlot_1 = _page.getPageSlot(slotId_1, txn);
-  ASSERT_EQ(_pageSlot_1.data, pageSlotData_1);
-  ASSERT_TRUE(_pageSlot_1.getNextLocation().isNull());
-  ASSERT_TRUE(_pageSlot_1.getPrevLocation().isNull());
+  SlottedPageSlot _page_slot_1 = _page.GetPageSlot(slot_id_1, txn);
+  ASSERT_EQ(_page_slot_1.data, page_slot_date_1);
+  ASSERT_TRUE(_page_slot_1.GetNextLocation().IsNull());
+  ASSERT_TRUE(_page_slot_1.GetPrevLocation().IsNull());
 
-  SlottedPageSlot _pageSlot_2 = _page.getPageSlot(slotId_2, txn);
-  ASSERT_EQ(_pageSlot_2.data, pageSlotData_2);
-  ASSERT_TRUE(_pageSlot_2.getNextLocation().isNull());
-  ASSERT_TRUE(_pageSlot_2.getPrevLocation().isNull());
+  SlottedPageSlot _page_slot_2 = _page.GetPageSlot(slot_id_2, txn);
+  ASSERT_EQ(_page_slot_2.data, page_slot_date_2);
+  ASSERT_TRUE(_page_slot_2.GetNextLocation().IsNull());
+  ASSERT_TRUE(_page_slot_2.GetPrevLocation().IsNull());
 }
 
 TEST_F(SlottedPageTestFixture, TestLoadError) {
   try {
-    ByteBuffer _input(pageSize);
+    ByteBuffer _input;
     SlottedPage _page;
-    _page.load(Span(_input));
-    FAIL() << "Expected PageCorruptError Exception.";
-  } catch (PageCorruptError &err) {
+    _page.Load(_input);
+    FAIL() << "Expected PageParseError Exception.";
+  } catch (PageParseError &err) {
     SUCCEED();
   } catch (...) {
-    FAIL() << "Expected PageCorruptError Exception.";
+    FAIL() << "Expected PageParseError Exception.";
   }
 }
 
 TEST_F(SlottedPageTestFixture, TestDump) {
-  ByteBuffer output(pageSize);
-  page->dump(Span(output));
+  ByteBuffer output(page_size);
+  page->Dump(output);
 
   ASSERT_EQ(input, output);
 }

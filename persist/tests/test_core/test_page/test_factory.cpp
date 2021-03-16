@@ -31,29 +31,18 @@
 
 #include <memory>
 
-/**
- * Enabled intrusive testing
- */
-#define PERSIST_INTRUSIVE_TESTING
-
 #include <persist/core/page/factory.hpp>
 
-#include "persist/test/simple_page.hpp"
+#include "persist/test/mocks/page.hpp"
 
 using namespace persist;
 using namespace persist::test;
 
-TEST(PageFactoryTestFixture, TestGet) {
-  auto page = PageFactory::getPage(1);
+TEST(PageFactoryTestFixture, TestRegisterGet) {
+  PageFactory::RegisterPage<FakePage>();
+  auto page = PageFactory::GetPage(FakePage().GetTypeId());
   auto *ptr = page.get();
   std::string className = typeid(*ptr).name();
-  ASSERT_TRUE(className.find("LogPage") != std::string::npos);
-}
-
-TEST(PageFactoryTestFixture, TestRegister) {
-  PageFactory::registerPage<SimplePage>();
-  auto page = PageFactory::getPage(SimplePage().getTypeId());
-  auto *ptr = page.get();
-  std::string className = typeid(*ptr).name();
-  ASSERT_TRUE(className.find("SimplePage") != std::string::npos);
+  ASSERT_TRUE(className.find("FakePage") != std::string::npos);
+  PageFactory::UnRegisterPage<FakePage>();
 }

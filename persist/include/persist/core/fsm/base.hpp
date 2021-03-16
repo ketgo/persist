@@ -1,5 +1,5 @@
 /**
- * utility/uuid.hpp - Persist
+ * fsm/base.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,29 +22,56 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_UTILITY_UID_HPP
-#define PERSIST_UTILITY_UID_HPP
+#ifndef PERSIST_CORE_FSM_BASE_HPP
+#define PERSIST_CORE_FSM_BASE_HPP
 
-#include <fstream>
-#include <limits>
-#include <random>
+#include <persist/core/defs.hpp>
+#include <persist/core/page/base.hpp>
 
 namespace persist {
 
 /**
- * @brief Generate 64 bit UID
+ * @brief Free Space Manager Base Class
  *
- * @returns 64 bit unique identifier.
  */
-static uint64_t uid() {
-  std::random_device rd;
-  std::mt19937_64 e2(rd());
-  std::uniform_int_distribution<uint64_t> dist(
-      0, std::numeric_limits<uint64_t>::max());
+class FreeSpaceManager {
+public:
+  /**
+   * @brief Destroy the Free Space Manager object
+   *
+   */
+  virtual ~FreeSpaceManager() = default;
 
-  return dist(e2);
-}
+  /**
+   * @brief Start free space manager.
+   *
+   */
+  virtual void Start() = 0;
+
+  /**
+   * @brief Stop free space manager.
+   *
+   */
+  virtual void Stop() = 0;
+
+  /**
+   * @brief Get ID of page with free space of specified size. Note that the size
+   * is treated only as a hint and the manager is free to ignore it. In case no
+   * page with free space found then '0' is returned.
+   *
+   * @param size_hint Desired free space size.
+   * @returns Page identifer if a page with free space found else '0'.
+   */
+  virtual PageId GetPageId(size_t size_hint) = 0;
+
+  /**
+   * @brief Manage free space details of specified page.
+   *
+   * @param page Constant reference to a Page object.
+   */
+  virtual void Manage(const Page &page) = 0;
+};
 
 } // namespace persist
 
-#endif /* PERSIST_UTILITY_UID_HPP */
+#endif /* PERSIST_CORE_FSM_BASE_HPP */

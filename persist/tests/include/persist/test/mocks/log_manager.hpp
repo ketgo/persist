@@ -1,5 +1,5 @@
 /**
- * mocks.hpp - Persist
+ * log_manager.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,28 +22,18 @@
  * SOFTWARE.
  */
 
-#ifndef TEST_MOCKS_HPP
-#define TEST_MOCKS_HPP
+#ifndef PERSIST_TEST_MOCKS_LOG_MANAGER_HPP
+#define PERSIST_TEST_MOCKS_LOG_MANAGER_HPP
 
 #include <gmock/gmock.h>
 
 #include <persist/core/log/log_manager.hpp>
-#include <persist/core/page/base.hpp>
 
 using ::testing::_;
 using ::testing::Invoke;
 
 namespace persist {
 namespace test {
-
-/**
- * @brief Page Observer Mock
- *
- */
-class MockPageObserver : public PageObserver {
-public:
-  MOCK_METHOD(void, handleModifiedPage, (PageId pageId), (override));
-};
 
 /**
  * @brief Fake Log Manager
@@ -53,13 +43,13 @@ class FakeLogManager : public LogManager {
 public:
   FakeLogManager() : LogManager(nullptr) {}
 
-  void start() {}
-  void stop() {}
-  LogRecord::Location add(LogRecord &) { return LogRecord::Location(1, 1); }
-  std::unique_ptr<LogRecord> get(LogRecord::Location) {
+  void Start() {}
+  void Stop() {}
+  LogRecord::Location Add(LogRecord &) { return LogRecord::Location(1, 1); }
+  std::unique_ptr<LogRecord> Get(LogRecord::Location) {
     return std::make_unique<LogRecord>();
   }
-  void flush() {}
+  void Flush() {}
 };
 
 /**
@@ -70,24 +60,24 @@ class MockLogManager : public LogManager {
 public:
   MockLogManager() : LogManager(nullptr) {}
 
-  MOCK_METHOD(void, start, (), ());
-  MOCK_METHOD(void, stop, (), ());
-  MOCK_METHOD(LogRecord::Location, add, (LogRecord &), ());
-  MOCK_METHOD(std::unique_ptr<LogRecord>, get, (LogRecord::Location), ());
-  MOCK_METHOD(void, flush, (), ());
+  MOCK_METHOD(void, Start, (), ());
+  MOCK_METHOD(void, Stop, (), ());
+  MOCK_METHOD(LogRecord::Location, Add, (LogRecord &), ());
+  MOCK_METHOD(std::unique_ptr<LogRecord>, Get, (LogRecord::Location), ());
+  MOCK_METHOD(void, Flush, (), ());
 
-  void useFake() {
-    ON_CALL(*this, start())
-        .WillByDefault(Invoke(&fake, &FakeLogManager::start));
+  void UseFake() {
+    ON_CALL(*this, Start())
+        .WillByDefault(Invoke(&fake, &FakeLogManager::Start));
 
-    ON_CALL(*this, stop()).WillByDefault(Invoke(&fake, &FakeLogManager::stop));
+    ON_CALL(*this, Stop()).WillByDefault(Invoke(&fake, &FakeLogManager::Stop));
 
-    ON_CALL(*this, add(_)).WillByDefault(Invoke(&fake, &FakeLogManager::add));
+    ON_CALL(*this, Add(_)).WillByDefault(Invoke(&fake, &FakeLogManager::Add));
 
-    ON_CALL(*this, get(_)).WillByDefault(Invoke(&fake, &FakeLogManager::get));
+    ON_CALL(*this, Get(_)).WillByDefault(Invoke(&fake, &FakeLogManager::Get));
 
-    ON_CALL(*this, flush())
-        .WillByDefault(Invoke(&fake, &FakeLogManager::flush));
+    ON_CALL(*this, Flush())
+        .WillByDefault(Invoke(&fake, &FakeLogManager::Flush));
   }
 
 private:
@@ -97,4 +87,4 @@ private:
 } // namespace test
 } // namespace persist
 
-#endif /* TEST_MOCKS_HPP */
+#endif /* PERSIST_TEST_MOCKS_LOG_MANAGER_HPP */

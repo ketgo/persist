@@ -22,11 +22,13 @@
  * SOFTWARE.
  */
 
-#ifndef PAGE_TYPE_HEADER_HPP
-#define PAGE_TYPE_HEADER_HPP
+#ifndef PERSIST_CORE_PAGE_TYPE_HEADER_HPP
+#define PERSIST_CORE_PAGE_TYPE_HEADER_HPP
 
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
+
+#include <persist/utility/serializer.hpp>
 
 namespace persist {
 
@@ -44,7 +46,7 @@ class PageTypeHeader {
    * @brief The type identifer of the page.
    *
    */
-  PageTypeId typeId;
+  PageTypeId type_id;
 
   /**
    * @brief Header checksum
@@ -52,64 +54,48 @@ class PageTypeHeader {
    */
   Checksum checksum;
 
-  Checksum _checksum() const {
-    // Implemented hash function based on comment in
-    // https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
-
-    Checksum seed = size();
-    seed ^= std::hash<PageTypeId>()(typeId) + 0x9e3779b9 + (seed << 6) +
-            (seed >> 2);
-    return seed;
-  }
-
 public:
   /**
    * @brief Construct a new Page Type Header object
    *
+   * @param type_id Page type identifier
+   * @param checksum page checksum value
    */
-  PageTypeHeader() = default;
-
-  /**
-   * @brief Construct a new Page Type Header object
-   *
-   * @param typeId Constant reference to page type identifier
-   */
-  explicit PageTypeHeader(const PageTypeId &typeId) : typeId(typeId) {}
+  PageTypeHeader(PageTypeId type_id = 0, Checksum checksum = 0)
+      : type_id(type_id), checksum(checksum) {}
 
   /**
    * @brief The method returns size in bytes of the type header.
    *
    * @returns Header size in bytes.
    */
-  static size_t size() { return sizeof(PageTypeHeader); }
+  static size_t GetSize() { return sizeof(PageTypeHeader); }
 
   /**
    * @brief Get the page type identifer
    *
    * @returns Constant reference to page type identifier
    */
-  const PageTypeId &getTypeId() const { return typeId; }
+  const PageTypeId &GetTypeId() const { return type_id; }
+
+  /**
+   * @brief Get the page type identifer
+   *
+   * @returns Constant reference to page type identifier
+   */
+  const Checksum &GetChecksum() const { return checksum; }
 
   /**
    * Load header from byte string.
    *
    * @param input input buffer span to load
    */
-  void load(Span input) {
-    if (input.size < size()) {
+  void Load(Span input) {
+    if (input.size < GetSize()) {
       throw PageParseError();
     }
 
-    // Load bytes
-    Byte *pos = input.start;
-    std::memcpy((void *)&typeId, (const void *)pos, sizeof(PageTypeId));
-    pos += sizeof(PageId);
-    std::memcpy((void *)&checksum, (const void *)pos, sizeof(Checksum));
-
-    // Check for corruption by matching checksum
-    if (_checksum() != checksum) {
-      throw PageCorruptError();
-    }
+    load(input, type_id, checksum);
   }
 
   /**
@@ -117,22 +103,15 @@ public:
    *
    * @param output output buffer span to dump
    */
-  void dump(Span output) {
-    if (output.size < size()) {
+  void Dump(Span output) {
+    if (output.size < GetSize()) {
       throw PageParseError();
     }
 
-    // Compute and set checksum
-    checksum = _checksum();
-
-    // Dump bytes
-    Byte *pos = output.start;
-    std::memcpy((void *)pos, (const void *)&typeId, sizeof(PageTypeId));
-    pos += sizeof(PageId);
-    std::memcpy((void *)pos, (const void *)&checksum, sizeof(Checksum));
+    dump(output, type_id, checksum);
   }
 };
 
 } // namespace persist
 
-#endif /* PAGE_TYPE_HEADER_HPP */
+#endif /* PERSIST_CORE_PAGE_TYPE_HEADER_HPP */

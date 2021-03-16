@@ -1,5 +1,5 @@
 /**
- * test_replacer_ts.hpp - Persist
+ * replacer/creator.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,45 +22,34 @@
  * SOFTWARE.
  */
 
-/**
- * @brief Replacer thread safety test header. The interface provided in this
- * file can be used to test thread safety of custom Replacer implementations.
- *
- */
+#ifndef PERSIST_CORE_BUFFER_REPLACER_CREATOR_HPP
+#define PERSIST_CORE_BUFFER_REPLACER_CREATOR_HPP
 
-#ifndef TEST_REPLACER_TS_HPP
-#define TEST_REPLACER_TS_HPP
-
-#include <gtest/gtest.h>
+#include <persist/core/buffer/replacer/base.hpp>
+#include <persist/core/buffer/replacer/lru_replacer.hpp>
 
 namespace persist {
-namespace test {
 
 /**
- * @brief Replacer thread safety test fixture.
+ * @brief Enumerated list of replacer types
  *
- * @tparam ReplacerType type of replacer
  */
-template <class ReplacerType>
-class ReplacerThreadSafetyTestFixture : public testing::Test {};
-
-TYPED_TEST_SUITE_P(ReplacerThreadSafetyTestFixture);
+enum class ReplacerType { LRU };
 
 /**
- * @brief Test concurrent call to `getVictum` and `unPin` methods.
+ * @brief Factory method to create replacer of given type.
  *
+ * @param replacer_type type of replacer to create
+ * @returns unique pointer to created replacer object
  */
-TYPED_TEST_P(ReplacerThreadSafetyTestFixture, TestGetVictumUnPin) {
-  // Inside a test, refer to TypeParam to get the type parameter.
-  TypeParam replace;
+static std::unique_ptr<Replacer> CreateReplacer(ReplacerType replacer_type) {
+  switch (replacer_type) {
+  case ReplacerType::LRU:
+    return std::make_unique<LRUReplacer>();
+    break;
+  }
 }
-
-// Registering all tests
-REGISTER_TYPED_TEST_SUITE_P(ReplacerThreadSafetyTestFixture,
-                            TestGetVictumUnPin);
-
-} // namespace test
 
 } // namespace persist
 
-#endif /* TEST_REPLACER_TS_HPP */
+#endif /* PERSIST_CORE_BUFFER_REPLACER_CREATOR_HPP */

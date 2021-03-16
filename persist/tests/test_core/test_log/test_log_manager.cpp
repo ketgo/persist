@@ -1,5 +1,5 @@
 /**
- * recovery/test_log_manager.cpp - Persist
+ * log/test_log_manager.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -31,117 +31,121 @@
 #include <memory>
 
 /**
- * Enabled intrusive testing
+ * @brief Enable debug mode if not already enabled
+ *
  */
-#define PERSIST_INTRUSIVE_TESTING
+#ifndef __PERSIST_DEBUG__
+#define __PERSIST_DEBUG__
+#endif
 
 #include <persist/core/log/log_manager.hpp>
-#include <persist/core/storage/factory.hpp>
+#include <persist/core/storage/creator.hpp>
+#include <persist/core/page/creator.hpp>
 
 using namespace persist;
 
 class LogManagerTestFixture : public ::testing::Test {
 protected:
-  const TransactionId txnId = 10;
-  const PageId pageId = 1;
-  const SeqNumber seqNumber = 1;
-  const LogRecord::Location location = {pageId, seqNumber};
-  const uint64_t maxSize = 2;
+  const TransactionId txn_id = 10;
+  const PageId page_id = 1;
+  const SeqNumber seq_number = 1;
+  const LogRecord::Location location = {page_id, seq_number};
+  const uint64_t max_size = 2;
   const std::string path = "test_log_manager";
   std::unique_ptr<LogPage> page;
-  std::unique_ptr<LogRecord> logRecord;
+  std::unique_ptr<LogRecord> log_record;
   std::unique_ptr<FSL> fsl;
-  std::unique_ptr<LogManager> logManager;
-  std::unique_ptr<Storage<LogPage>> storage;
+  std::unique_ptr<LogManager> log_manager;
+  std::unique_ptr<Storage> storage;
 
   void SetUp() override {
     // Setting log record
-    logRecord =
-        std::make_unique<LogRecord>(txnId); //<- Transaction BEGIN log record
-    logRecord->setSeqNumber(seqNumber);
+    log_record =
+        std::make_unique<LogRecord>(txn_id); //<- Transaction BEGIN log record
+    log_record->SetSeqNumber(seq_number);
 
     // Setting up page
-    page = std::make_unique<LogPage>(pageId);
-    LogPageSlot slot(seqNumber);
-    slot.data.resize(logRecord->size());
-    logRecord->dump(slot.data);
-    page->insertPageSlot(slot);
-    page->setLastSeqNumber(seqNumber);
+    page = persist::CreatePage<LogPage>(page_id, DEFAULT_LOG_PAGE_SIZE);
+    LogPageSlot slot(seq_number);
+    slot.data.resize(log_record->GetSize());
+    log_record->Dump(slot.data);
+    page->InsertPageSlot(slot);
+    page->SetLastSeqNumber(seq_number);
 
     // setting up free space list
     fsl = std::make_unique<FSL>();
-    fsl->freePages = {pageId};
+    fsl->freePages = {page_id};
 
     // setting up storage
-    storage = createStorage<LogPage>("file://" + path);
-    insert();
+    storage = persist::CreateStorage("file://" + path);
+    Insert();
 
     // Setup log manager
-    logManager = std::make_unique<LogManager>(storage.get(), maxSize);
-    logManager->start();
-
-    auto _page = storage->read(pageId);
+    log_manager = std::make_unique<LogManager>(storage.get(), max_size);
+    log_manager->Start();
   }
 
   void TearDown() override {
-    storage->remove();
-    logManager->stop();
+    storage->Remove();
+    log_manager->Stop();
   }
 
 private:
   /**
    * @brief Insert test data
    */
-  void insert() {
-    storage->open();
-    storage->write(*page);
-    storage->write(*fsl);
-    storage->close();
+  void Insert() {
+    storage->Open();
+    storage->Write(*page);
+    storage->Write(*fsl);
+    storage->Close();
   }
 };
 
-TEST_F(LogManagerTestFixture, TestOpen) { ASSERT_EQ(logManager->seqNumber, 1); }
+TEST_F(LogManagerTestFixture, TestOpen) {
+  ASSERT_EQ(log_manager->GetSeqNumber(), 1);
+}
 
 TEST_F(LogManagerTestFixture, TestGet) {
-  auto _logRecord = logManager->get(location);
+  auto _log_record = log_manager->Get(location);
 
-  ASSERT_EQ(*_logRecord, *logRecord);
+  ASSERT_EQ(*_log_record, *log_record);
 }
 
 TEST_F(LogManagerTestFixture, TestAdd) {
   // Creating log record which should span multiple page slots
-  SlottedPageSlot pageSlotA, pageSlotB;
-  pageSlotA.data = ByteBuffer(storage->getPageSize(), 'A');
-  pageSlotB.data = ByteBuffer(storage->getPageSize(), 'B');
-  SlottedPageSlot::Location slotLocation = {10, 1};
-  LogRecord::Location prevLogRecordLocation = {0, 0};
-  LogRecord logRecord(11, prevLogRecordLocation, LogRecord::Type::UPDATE,
-                      slotLocation, pageSlotA, pageSlotB);
-  logRecord.setSeqNumber(2);
+  SlottedPageSlot page_slot_a, page_slot_b;
+  page_slot_a.data = ByteBuffer(storage->GetPageSize(), 'A');
+  page_slot_b.data = ByteBuffer(storage->GetPageSize(), 'B');
+  SlottedPageSlot::Location slot_location = {10, 1};
+  LogRecord::Location prev_log_record_location = {0, 0};
+  LogRecord log_record(11, prev_log_record_location, LogRecord::Type::UPDATE,
+                       slot_location, page_slot_a, page_slot_b);
+  log_record.SetSeqNumber(2);
 
-  LogRecord::Location location = logManager->add(logRecord);
-  auto _logRecord = logManager->get(location);
+  LogRecord::Location location = log_manager->Add(log_record);
+  auto _log_record = log_manager->Get(location);
 
-  ASSERT_EQ(*_logRecord, logRecord);
+  ASSERT_EQ(*_log_record, log_record);
 }
 
 TEST_F(LogManagerTestFixture, TestFlush) {
   // Creating log record which should span multiple page slots
-  SlottedPageSlot pageSlotA, pageSlotB;
-  pageSlotA.data = ByteBuffer(storage->getPageSize(), 'A');
-  pageSlotB.data = ByteBuffer(storage->getPageSize(), 'B');
-  SlottedPageSlot::Location slotLocation = {10, 1};
-  LogRecord::Location prevLogRecordLocation = {0, 0};
-  LogRecord logRecord(11, prevLogRecordLocation, LogRecord::Type::UPDATE,
-                      slotLocation, pageSlotA, pageSlotB);
-  logRecord.setSeqNumber(2);
+  SlottedPageSlot page_slot_a, page_slot_b;
+  page_slot_a.data = ByteBuffer(storage->GetPageSize(), 'A');
+  page_slot_b.data = ByteBuffer(storage->GetPageSize(), 'B');
+  SlottedPageSlot::Location slot_location = {10, 1};
+  LogRecord::Location prev_log_record_location = {0, 0};
+  LogRecord log_record(11, prev_log_record_location, LogRecord::Type::UPDATE,
+                       slot_location, page_slot_a, page_slot_b);
+  log_record.SetSeqNumber(2);
 
-  LogRecord::Location location = logManager->add(logRecord);
-  logManager->flush();
+  LogRecord::Location location = log_manager->Add(log_record);
+  log_manager->Flush();
 
   // Create storage to test page flush
-  auto _storage = createStorage<LogPage>("file://" + path);
-  _storage->open();
-  ASSERT_TRUE(_storage->getPageCount() > 1);
-  _storage->close();
+  auto _storage = CreateStorage("file://" + path);
+  _storage->Open();
+  ASSERT_TRUE(_storage->GetPageCount() > 1);
+  _storage->Close();
 }

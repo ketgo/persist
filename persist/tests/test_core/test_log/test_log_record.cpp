@@ -1,7 +1,7 @@
 /**
  * test_log_record.cpp - Persist
  *
- * Copyright 2020 Ketan Goyal
+ * Copyright 2021 Ketan Goyal
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,62 +30,53 @@
 
 #include <memory>
 
-/**
- * Enabled intrusive testing
- */
-#define PERSIST_INTRUSIVE_TESTING
-
 #include <persist/core/log/log_record.hpp>
 
 using namespace persist;
 
 class LogRecordTestFixture : public ::testing::Test {
 protected:
-  SlottedPageSlot pageSlotA, pageSlotB;
-  const TransactionId txnId = 432;
+  SlottedPageSlot page_slot_a, page_slot_b;
+  const TransactionId txn_id = 432;
   const SlottedPageSlot::Location location = {10, 1};
-  const SeqNumber seqNumber = 5;
-  const LogRecord::Location prevLogRecordLocation = {1, 3};
-  std::unique_ptr<LogRecord> logRecord;
+  const SeqNumber seq_number = 5;
+  const LogRecord::Location prev_log_record_location = {1, 3};
+  std::unique_ptr<LogRecord> log_record;
   ByteBuffer input;
 
   void SetUp() override {
-    pageSlotA.data = "testing-A"_bb;
-    pageSlotB.data = "testing-B"_bb;
-    logRecord = std::make_unique<LogRecord>(txnId, prevLogRecordLocation,
-                                            LogRecord::Type::UPDATE, location,
-                                            pageSlotA, pageSlotB);
-    logRecord->header.seqNumber = seqNumber;
+    page_slot_a.data = "testing-A"_bb;
+    page_slot_b.data = "testing-B"_bb;
+    log_record = std::make_unique<LogRecord>(txn_id, prev_log_record_location,
+                                             LogRecord::Type::UPDATE, location,
+                                             page_slot_a, page_slot_b);
+    log_record->SetSeqNumber(seq_number);
 
-    input = {5,   0,   0,   0,   0,   0,   0,   0,   1,   0,   0,   0,   0,
-             0,   0,   0,   3,   0,   0,   0,   0,   0,   0,   0,   176, 1,
-             0,   0,   0,   0,   0,   0,   238, 51,  31,  30,  100, 49,  129,
-             95,  2,   0,   0,   0,   10,  0,   0,   0,   0,   0,   0,   0,
-             1,   0,   0,   0,   0,   0,   0,   0,   49,  0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   0,   0,   0,   195, 164, 223, 200,
-             40,  173, 239, 136, 116, 101, 115, 116, 105, 110, 103, 45,  65,
-             49,  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-             0,   194, 164, 223, 200, 40,  173, 239, 136, 116, 101, 115, 116,
-             105, 110, 103, 45,  66};
+    input = {5,   0,   0,   0,   0,  0, 0, 0, 1,   0, 0, 0, 0,   0,   0,   0,
+             3,   0,   0,   0,   0,  0, 0, 0, 176, 1, 0, 0, 0,   0,   0,   0,
+             2,   0,   0,   0,   10, 0, 0, 0, 0,   0, 0, 0, 1,   0,   0,   0,
+             0,   0,   0,   0,   0,  0, 0, 0, 0,   0, 0, 0, 0,   0,   0,   0,
+             0,   0,   0,   0,   0,  0, 0, 0, 0,   0, 0, 0, 0,   0,   0,   0,
+             0,   0,   0,   0,   9,  0, 0, 0, 0,   0, 0, 0, 116, 101, 115, 116,
+             105, 110, 103, 45,  65, 0, 0, 0, 0,   0, 0, 0, 0,   0,   0,   0,
+             0,   0,   0,   0,   0,  0, 0, 0, 0,   0, 0, 0, 0,   0,   0,   0,
+             0,   0,   0,   0,   0,  9, 0, 0, 0,   0, 0, 0, 0,   116, 101, 115,
+             116, 105, 110, 103, 45, 66};
   }
 };
 
 TEST_F(LogRecordTestFixture, TestLoad) {
-  LogRecord _logRecord;
-  _logRecord.load(Span(input));
+  LogRecord _log_record;
+  _log_record.Load(input);
 
-  ASSERT_EQ(_logRecord, *logRecord);
+  ASSERT_EQ(_log_record, *log_record);
 }
 
 TEST_F(LogRecordTestFixture, TestLoadParseError) {
   try {
     ByteBuffer _input;
-    LogRecord _logRecord;
-    _logRecord.load(Span(_input));
+    LogRecord _log_record;
+    _log_record.Load(_input);
     FAIL() << "Expected LogRecordParseError Exception.";
   } catch (LogRecordParseError &err) {
     SUCCEED();
@@ -94,24 +85,9 @@ TEST_F(LogRecordTestFixture, TestLoadParseError) {
   }
 }
 
-TEST_F(LogRecordTestFixture, TestLoadCorruptError) {
-  try {
-    ByteBuffer _input = input;
-    _input.front() = 0;
-    LogRecord _logRecord;
-    _logRecord.load(Span(_input));
-    FAIL() << "Expected LogRecordCorruptError Exception.";
-  } catch (LogRecordCorruptError &err) {
-    SUCCEED();
-  } catch (...) {
-    FAIL() << "Expected LogRecordCorruptError Exception.";
-  }
-}
-
 TEST_F(LogRecordTestFixture, TestDump) {
-  ByteBuffer output(logRecord->size());
-
-  logRecord->dump(Span(output));
+  ByteBuffer output(log_record->GetSize());
+  log_record->Dump(output);
 
   ASSERT_EQ(input, output);
 }

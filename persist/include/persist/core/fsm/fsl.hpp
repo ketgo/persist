@@ -22,150 +22,95 @@
  * SOFTWARE.
  */
 
-#ifndef FSL_HPP
-#define FSL_HPP
+#ifndef PERSIST_CORE_FSM_FSL_HPP
+#define PERSIST_CORE_FSM_FSL_HPP
 
 #include <cstring>
+#include <memory>
 #include <set>
 
-#include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
+#include <persist/core/fsm/_fsl.hpp>
+#include <persist/core/fsm/base.hpp>
+#include <persist/core/storage/base.hpp>
 
 namespace persist {
 
 /**
- * @brief Free Space List
+ * @brief Free Space List Manager
  *
- * The class stores list of free pages.
+ * The class manages list of free pages.
+ *
  */
-class FSL {
+class FSLManager : public FreeSpaceManager {
   PERSIST_PRIVATE
   /**
-   * @brief Computes checksum for free space list.
+   * @brief Pointer to backend storage.
+   *
    */
-  Checksum _checksum() {
-    // Implemented hash function based on comment in
-    // https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
-
-    Checksum seed = size();
-
-    seed ^= std::hash<size_t>()(freePages.size()) + 0x9e3779b9 + (seed << 6) +
-            (seed >> 2);
-    for (PageId pageId : freePages) {
-      seed ^=
-          std::hash<PageId>()(pageId) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-    }
-
-    return seed;
-  }
+  Storage *storage;
 
   /**
-   * @brief Checksum to detect metadata corruption
+   * @brief Free space list object.
    */
-  Checksum checksum;
-
-  /**
-   * @brief Total size in bytes of fixed length data members of the metadata.
-   * The value includes:
-   * - sizeof(freePages.size())
-   * - sizeof(Checksome)
-   */
-  static const size_t fixedSize = sizeof(size_t) + sizeof(Checksum);
+  std::unique_ptr<FSL> fsl;
 
 public:
   /**
-   * @brief List of free pages in the storage. These are pages containing free
-   * space.
-   */
-  std::set<PageId> freePages;
-
-  /**
-   * Storage size of metadata. The size comprises of:
-   * - sizeof(pageSize)
-   * - sizeof(numPages)
-   * - sizeof(freePages.size())
-   * - freePages.size() * sizeof(PageId)
-   * - sizeof(Checksome)
-   */
-  uint64_t size() { return fixedSize + sizeof(PageId) * freePages.size(); }
-
-  /**
-   * Load object from byte string
+   * @brief Construct a new FSL object
    *
-   * @param input input buffer span to load
+   * @param buffer
    */
-  void load(Span input) {
-    if (input.size < fixedSize) {
-      throw FSLParseError();
-    }
-
-    // Load bytes
-    Byte *pos = input.start;
-    size_t freePagesCount;
-    std::memcpy((void *)&freePagesCount, (const void *)pos, sizeof(uint64_t));
-    pos += sizeof(size_t);
-    // Check if free pages count value is valid
-    int64_t maxFreePagesCount = (input.size - fixedSize) / sizeof(PageId);
-    if (freePagesCount > maxFreePagesCount) {
-      throw FSLCorruptError();
-    }
-    freePages.clear(); //<- clears free pages ID in case they are loaded
-    while (freePagesCount > 0) {
-      PageId pageId;
-      std::memcpy((void *)&pageId, (const void *)pos, sizeof(PageId));
-      freePages.insert(pageId);
-      pos += sizeof(PageId);
-      --freePagesCount;
-    }
-    std::memcpy((void *)&checksum, (const void *)pos, sizeof(Checksum));
-
-    // Check for corruption by matching checksum
-    if (_checksum() != checksum) {
-      throw FSLCorruptError();
-    }
-  }
+  explicit FSLManager(Storage *storage) : storage(storage) {}
 
   /**
-   * Dump object as byte string
+   * @brief Start free space manager.
    *
-   * @param output output buffer span to dump
    */
-  void dump(Span output) {
-    if (output.size < size()) {
-      throw FSLParseError();
-    }
+  void Start() override { fsl = storage->Read(); }
 
-    // Compute and set checksum
-    checksum = _checksum();
-
-    // Dump bytes
-    Byte *pos = output.start;
-    size_t freePagesCount = freePages.size();
-    std::memcpy((void *)pos, (const void *)&freePagesCount, sizeof(size_t));
-    pos += sizeof(size_t);
-    for (PageId pageId : freePages) {
-      std::memcpy((void *)pos, (const void *)&pageId, sizeof(PageId));
-      pos += sizeof(PageId);
-    }
-    std::memcpy((void *)pos, (const void *)&checksum, sizeof(Checksum));
-  }
-
-#ifdef __PERSIST_DEBUG__
   /**
-   * @brief Write FSM to output stream
+   * @brief Stop free space manager.
+   *
    */
-  friend std::ostream &operator<<(std::ostream &os, const FSL &fsm) {
-    os << "--------- Free Space Map ---------\n";
-    os << "Free Pages: \n";
-    for (auto pageId : fsm.freePages) {
-      os << "\tid: " << pageId << "\n";
-    }
-    os << "----------------------------";
-    return os;
+  void Stop() override {
+    // Persist free space list
+    storage->Write(*fsl);
   }
-#endif
+
+  /**
+   * @brief Get ID of page with free space. The size hint is ignored and the
+   * last recorded page ID in the free list is returned. If the free list is
+   * empty then '0' is returned.
+   *
+   * @param size_hint Desired free space size.
+   * @returns Page identifer if a page with free space found else '0'.
+   */
+  PageId GetPageId(size_t size_hint) override {
+    if (fsl->freePages.empty()) {
+      return 0;
+    }
+    return *std::prev(fsl->freePages.end());
+  }
+
+  /**
+   * @brief Manage free space details of specified page.
+   *
+   * @param page Constant reference to a Page object.
+   */
+  void Manage(const Page &page) override {
+    PageId page_id = page.GetId();
+    // Check if page has free space and update free space list accordingly. Note
+    // that since FSL is used to get pages with free space for INSERT page
+    // operation, free space for only INSERT is checked.
+    if (page.GetFreeSpaceSize(Operation::INSERT) > 0) {
+      fsl->freePages.insert(page_id);
+    } else {
+      fsl->freePages.erase(page_id);
+    }
+  }
 };
 
 } // namespace persist
 
-#endif /* FSL_HPP */
+#endif /* PERSIST_CORE_FSM_FSL_HPP */

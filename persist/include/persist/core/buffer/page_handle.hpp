@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef PAGE_HANDLE_HPP
-#define PAGE_HANDLE_HPP
+#ifndef PERSIST_CORE_BUFFER_PAGE_HANDLE_HPP
+#define PERSIST_CORE_BUFFER_PAGE_HANDLE_HPP
 
 #include <persist/core/buffer/replacer/base.hpp>
 #include <persist/core/page/base.hpp>
@@ -67,14 +67,14 @@ template <class PageType> class PageHandle {
    * @brief Flag to indicate handle has ownership
    *
    */
-  bool isOwner;
+  bool is_owner;
 
   /**
    * @brief Unset access ownserhip of the page.
    *
    */
-  void unset() {
-    isOwner = false;
+  void Unset() {
+    is_owner = false;
     page = nullptr;
     replacer = nullptr;
   }
@@ -83,19 +83,19 @@ template <class PageType> class PageHandle {
    * @brief Acquire access ownership of page.
    *
    */
-  void acquire() {
+  void Acquire() {
     // Pin page
-    replacer->pin(page->getId());
+    replacer->Pin(page->GetId());
   }
 
   /**
    * @brief Release access ownership of page.
    *
    */
-  void release() {
-    if (isOwner) {
+  void Release() {
+    if (is_owner) {
       // Unpin page
-      replacer->unpin(page->getId());
+      replacer->Unpin(page->GetId());
     }
   }
 
@@ -105,18 +105,18 @@ public:
    *
    */
   PageHandle(PageType *page, Replacer *replacer)
-      : page(page), replacer(replacer), isOwner(true) {
+      : page(page), replacer(replacer), is_owner(true) {
     // Acquire access ownership of page
-    acquire();
+    Acquire();
   }
 
   /**
    * @brief Move constructor for page handle
    */
   PageHandle(PageHandle &&other)
-      : page(other.page), replacer(other.replacer), isOwner(other.isOwner) {
+      : page(other.page), replacer(other.replacer), is_owner(other.is_owner) {
     // Unset ownership of the moved object
-    other.unset();
+    other.Unset();
   }
 
   /**
@@ -127,15 +127,15 @@ public:
     // Check for moving same object
     if (this != &other) {
       // Release access ownership of the current page.
-      release();
+      Release();
 
       // Copy members of moved object
       page = other.page;
       replacer = other.replacer;
-      isOwner = other.isOwner;
+      is_owner = other.is_owner;
 
       // Unset access ownership of the moved object
-      other.unset();
+      other.Unset();
     }
 
     return *this;
@@ -151,10 +151,10 @@ public:
    */
   ~PageHandle() {
     // Release access ownership of page
-    release();
+    Release();
   }
 };
 
 } // namespace persist
 
-#endif /* PAGE_HANDLE_HPP */
+#endif /* PERSIST_CORE_BUFFER_PAGE_HANDLE_HPP */

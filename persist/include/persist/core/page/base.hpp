@@ -1,5 +1,5 @@
 /**
- * page/base.hpp - Persist
+ * base.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef PAGE_BASE_HPP
-#define PAGE_BASE_HPP
+#ifndef PERSIST_CORE_PAGE_BASE_HPP
+#define PERSIST_CORE_PAGE_BASE_HPP
 
 #include <list>
 
@@ -41,9 +41,9 @@ public:
   /**
    * @brief Handle page modification.
    *
-   * @param pageId ID of the page modified
+   * @param page_id ID of the page modified
    */
-  virtual void handleModifiedPage(PageId pageId) = 0;
+  virtual void HandleModifiedPage(PageId page_id) = 0;
 };
 
 /**
@@ -51,6 +51,7 @@ public:
  *
  * A Page is a logical chunk of space on a backend storage. The base class
  * exposes interface common to all types of pages.
+ *
  */
 class Page {
   PERSIST_PROTECTED
@@ -62,31 +63,25 @@ class Page {
   /**
    * @brief Notify all registered observers of page modification.
    */
-  void notifyObservers() {
+  void NotifyObservers() {
     for (auto observer : observers) {
-      observer->handleModifiedPage(getId());
+      observer->HandleModifiedPage(GetId());
     }
   }
 
 public:
   /**
-   * @brief Enumerated list of operation that can be performed on page data.
+   * @brief Destroy the Page Base object
    *
    */
-  enum class Operation { INSERT, UPDATE, DELETE };
-
-  /**
-   * @brief Destroy the Page object
-   *
-   */
-  virtual ~Page() {}
+  virtual ~Page() = default;
 
   /**
    * @brief Register page modification observer
    *
    * @param observer pointer to page modication observer
    */
-  void registerObserver(PageObserver *observer) {
+  void RegisterObserver(PageObserver *observer) {
     observers.insert(observers.end(), observer);
   }
 
@@ -101,39 +96,38 @@ public:
    *
    * @returns The page type identifier
    */
-  virtual PageTypeId getTypeId() const = 0;
+  virtual PageTypeId GetTypeId() const = 0;
 
   /**
-   * Get page ID.
+   * Get page identifier.
    *
-   * @returns page identifier
+   * @returns Page identifier
    */
-  virtual const PageId &getId() const = 0;
+  virtual const PageId &GetId() const = 0;
 
   /**
-   * Get free space in bytes available in the page.
+   * @brief Get the storage free space size in the page for specified operation.
    *
-   * @param operation The type of page operation for which free space is
-   * requested.
-   * @returns free space available in page
+   * @param operation Operaion to be performed
+   * @returns Free space in bytes
    */
-  virtual uint64_t freeSpace(Operation operation) = 0;
+  virtual size_t GetFreeSpaceSize(Operation operation) const = 0;
 
   /**
-   * Load Block object from byte string.
+   * Load page object from byte string.
    *
    * @param input input buffer span to load
    */
-  virtual void load(Span input) = 0;
+  virtual void Load(Span input) = 0;
 
   /**
-   * Dump Block object as byte string.
+   * Dump page object as byte string.
    *
    * @param output output buffer span to dump
    */
-  virtual void dump(Span output) = 0;
+  virtual void Dump(Span output) = 0;
 };
 
 } // namespace persist
 
-#endif /* PAGE_BASE_HPP */
+#endif /* PERSIST_CORE_PAGE_BASE_HPP */

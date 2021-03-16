@@ -1,5 +1,5 @@
 /**
- * test_uid.cpp - Persist
+ * fsm/creator.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,23 +22,35 @@
  * SOFTWARE.
  */
 
+#ifndef PERSIST_CORE_FSM_CREATOR_HPP
+#define PERSIST_CORE_FSM_CREATOR_HPP
+
+#include <persist/core/fsm/base.hpp>
+#include <persist/core/fsm/fsl.hpp>
+
+namespace persist {
+
 /**
- * @brief Uint Test UID genrator
+ * @brief Enumerated list of free space manager types
  *
  */
+enum class FSMType { FSL };
 
-#include <gtest/gtest.h>
-
-#include <memory>
-#include <thread>
-
-#include <persist/utility/uid.hpp>
-
-using namespace persist;
-
-TEST(UtilityUIDTest, TestUID) {
-  auto uid_1 = uid();
-  auto uid_2 = uid();
-
-  ASSERT_NE(uid_1, uid_2);
+/**
+ * @brief Factory method to create free space manager of given type.
+ *
+ * @param fsm_type Type of free space manager to create
+ * @returns Unique pointer to created FreeSpaceManager object
+ */
+static std::unique_ptr<FreeSpaceManager> CreateFSM(FSMType fsm_type,
+                                                   Storage *storage) {
+  switch (fsm_type) {
+  case FSMType::FSL:
+    return std::make_unique<FSLManager>(storage);
+    break;
+  }
 }
+
+} // namespace persist
+
+#endif /* PERSIST_CORE_FSM_CREATOR_HPP */
