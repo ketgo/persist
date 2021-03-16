@@ -26,13 +26,16 @@
  * The header file contains all the exceptions used in the package
  */
 
-#ifndef EXCEPTIONS_HPP
-#define EXCEPTIONS_HPP
+#ifndef PERSIST_CORE_EXCEPTIONS_HPP
+#define PERSIST_CORE_EXCEPTIONS_HPP
 
 #include <exception>
 #include <string>
 
 #include <persist/core/defs.hpp>
+
+// TODO: Too many exception classes in one file. Move them into seprate files
+// according to the associated componenets.
 
 namespace persist {
 
@@ -259,10 +262,48 @@ private:
   std::string msg;
 
 public:
-  PageSlotNotFoundError(persist::PageId pageId, persist::PageSlotId slotId)
-      : msg(std::string("Page slot '") + std::to_string(slotId) +
-            std::string("' in page with ID '") + std::to_string(pageId) +
+  PageSlotNotFoundError(PageId page_id, PageSlotId slot_id)
+      : msg(std::string("Page slot '") + std::to_string(slot_id) +
+            std::string("' in page with ID '") + std::to_string(page_id) +
             std::string("' not found.")) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
+ * Page Type Exists Error
+ *
+ * This error is thrown if page type already exists in the page factory.
+ */
+class PageTypeExistsError : public PersistException {
+private:
+  std::string msg;
+
+public:
+  PageTypeExistsError(PageTypeId &page_type_id)
+      : msg(std::string("Page type with PageTypeID '") +
+            std::to_string(page_type_id) +
+            std::string("' already exists. Please use another ID value to "
+                        "register with the PageFactory.")) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
+ * Page Type Not Found Error
+ *
+ * This error is thrown if page type is not found in page factory.
+ */
+class PageTypeNotFoundError : public NotFoundException {
+private:
+  std::string msg;
+
+public:
+  PageTypeNotFoundError(PageTypeId &page_type_id)
+      : msg(std::string("Page type with PageTypeID '") +
+            std::to_string(page_type_id) +
+            std::string("' not found. Please make sure the page is registered "
+                        "with PageFactory.")) {}
 
   const char *what() const throw() { return msg.c_str(); }
 };
@@ -309,8 +350,8 @@ private:
   std::string msg;
 
 public:
-  PageNotFoundError(persist::PageId &pageId)
-      : msg(std::string("Page with ID '") + std::to_string(pageId) +
+  PageNotFoundError(PageId &page_id)
+      : msg(std::string("Page with ID '") + std::to_string(page_id) +
             std::string("' not found.")) {}
 
   const char *what() const throw() { return msg.c_str(); }
@@ -326,7 +367,7 @@ private:
   std::string msg;
 
 public:
-  PageSizeError(uint64_t &pageSize)
+  PageSizeError(size_t &pageSize)
       : msg(std::string("Page size '") + std::to_string(pageSize) +
             std::string("' less then minimum required size of '") +
             std::to_string(MINIMUM_PAGE_SIZE) + std::string("'.")) {}
@@ -404,4 +445,4 @@ public:
 
 } // namespace persist
 
-#endif /* EXCEPTIONS_HPP */
+#endif /* PERSIST_CORE_EXCEPTIONS_HPP */

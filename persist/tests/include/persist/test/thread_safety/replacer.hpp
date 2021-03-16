@@ -1,7 +1,7 @@
 /**
- * test_base.cpp - Persist
+ * thread_safety/replacer.hpp - Persist
  *
- * Copyright 2020 Ketan Goyal
+ * Copyright 2021 Ketan Goyal
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,35 +23,43 @@
  */
 
 /**
- * @brief Backend Storage base class test.
+ * @brief Replacer thread safety test header. The interface provided in this
+ * file can be used to test thread safety of custom Replacer implementations.
+ *
  */
+
+#ifndef PERSIST_TEST_THREADSAFETY_REPLACER_TS_HPP
+#define PERSIST_TEST_THREADSAFETY_REPLACER_TS_HPP
 
 #include <gtest/gtest.h>
 
-#include <memory>
-#include <typeinfo>
+namespace persist {
+namespace test {
 
-#include <persist/core/defs.hpp>
-#include <persist/core/page/simple_page.hpp>
-#include <persist/core/storage/base.hpp>
-#include <persist/core/storage/factory.hpp>
+/**
+ * @brief Replacer thread safety test fixture.
+ *
+ * @tparam ReplacerType type of replacer
+ */
+template <class ReplacerType>
+class ReplacerThreadSafetyTestFixture : public testing::Test {};
 
-using namespace persist;
+TYPED_TEST_SUITE_P(ReplacerThreadSafetyTestFixture);
 
-TEST(StorageFactoryTest, TestCreateMemoryStorage) {
-  std::unique_ptr<Storage<SimplePage>> storage =
-      createStorage<SimplePage>("memory://");
-  Storage<SimplePage> *ptr = storage.get();
-  std::string className = typeid(*ptr).name();
-  ASSERT_TRUE(className.find("MemoryStorage") != std::string::npos);
+/**
+ * @brief Test concurrent call to `GetVictum` and `UnPin` methods.
+ *
+ */
+TYPED_TEST_P(ReplacerThreadSafetyTestFixture, TestGetVictumUnPin) {
+  // Inside a test, refer to TypeParam to get the type parameter.
+  TypeParam replace;
 }
 
-TEST(StorageFactoryTest, TestCreateFileStorage) {
-  std::unique_ptr<Storage<SimplePage>> storage =
-      createStorage<SimplePage>("file://storage.db");
-  Storage<SimplePage> *ptr = storage.get();
-  std::string className = typeid(*ptr).name();
-  ASSERT_TRUE(className.find("FileStorage") != std::string::npos);
-  ASSERT_EQ(static_cast<FileStorage<SimplePage> *>(ptr)->getPath(),
-            "storage.db");
-}
+// Registering all tests
+REGISTER_TYPED_TEST_SUITE_P(ReplacerThreadSafetyTestFixture,
+                            TestGetVictumUnPin);
+
+} // namespace test
+} // namespace persist
+
+#endif /* PERSIST_TEST_THREADSAFETY_REPLACER_TS_HPP */

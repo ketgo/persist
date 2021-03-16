@@ -44,21 +44,23 @@
 
 #include <persist/core/buffer/buffer_manager.hpp>
 #include <persist/core/buffer/replacer/lru_replacer.hpp>
-#include <persist/core/page/simple_page.hpp>
-#include <persist/core/storage/factory.hpp>
+#include <persist/core/page/creator.hpp>
+#include <persist/core/storage/creator.hpp>
+
+#include "persist/test/simple_page.hpp"
 
 using namespace persist;
+using namespace persist::test;
 
 class BufferManagerThreadSafetyTestFixture : public ::testing::Test {
 protected:
-  const uint64_t pageSize = DEFAULT_PAGE_SIZE;
-  const uint64_t maxSize = 2;
+  const uint64_t page_size = DEFAULT_PAGE_SIZE;
+  const uint64_t max_size = 2;
   const std::string path = "test_buffer_manager_ts";
   std::unique_ptr<SimplePage> page_1, page_2, page_3;
   std::unique_ptr<FSL> fsl;
-  typedef BufferManager<SimplePage> BufferManager;
-  std::unique_ptr<BufferManager> bufferManager;
-  std::unique_ptr<Storage<SimplePage>> storage;
+  std::unique_ptr<BufferManager> buffer_manager;
+  std::unique_ptr<Storage> storage;
 
   // TSTest runner
   tstest::Runner runner;
@@ -66,32 +68,31 @@ protected:
   tstest::Assertor assertor;
 
   void SetUp() override {
+    // Setting up pages
     ByteBuffer buffer;
-
-    // setting up pages
-    page_1 = std::make_unique<SimplePage>(1, pageSize);
-    page_1->setRecord("test_page_1"_bb);
-    page_2 = std::make_unique<SimplePage>(2, pageSize);
-    page_2->setRecord("test_page_2"_bb);
-    page_3 = std::make_unique<SimplePage>(3, pageSize);
-    page_3->setRecord("test_page_3"_bb);
+    page_1 = persist::CreatePage<SimplePage>(1, page_size);
+    page_1->SetRecord("test_page_1"_bb);
+    page_2 = persist::CreatePage<SimplePage>(2, page_size);
+    page_2->SetRecord("test_page_2"_bb);
+    page_3 = persist::CreatePage<SimplePage>(3, page_size);
+    page_3->SetRecord("test_page_3"_bb);
 
     // setting up free space list
     fsl = std::make_unique<FSL>();
     fsl->freePages = {1, 2, 3};
 
     // setting up storage
-    storage = createStorage<SimplePage>("file://" + path);
+    storage = persist::CreateStorage("file://" + path);
     insert();
 
-    bufferManager = std::make_unique<BufferManager>(storage.get(), maxSize,
-                                                    ReplacerType::LRU);
-    bufferManager->start();
+    buffer_manager = std::make_unique<BufferManager>(storage.get(), max_size,
+                                                     ReplacerType::LRU);
+    buffer_manager->Start();
   }
 
   void TearDown() override {
-    storage->remove();
-    bufferManager->stop();
+    storage->Remove();
+    buffer_manager->Stop();
   }
 
 private:
@@ -99,12 +100,12 @@ private:
    * @brief Insert test data
    */
   void insert() {
-    storage->open();
-    storage->write(*page_1);
-    storage->write(*page_2);
-    storage->write(*page_3);
-    storage->write(*fsl);
-    storage->close();
+    storage->Open();
+    storage->Write(*page_1);
+    storage->Write(*page_2);
+    storage->Write(*page_3);
+    storage->Write(*fsl);
+    storage->Close();
   }
 };
 
@@ -119,28 +120,29 @@ private:
  */
 TEST_F(BufferManagerThreadSafetyTestFixture, TestEmptyBufferGetIGetI) {
   // Assert buffer is empty
-  ASSERT_TRUE(bufferManager->isEmpty());
+  ASSERT_TRUE(buffer_manager->IsEmpty());
 
   THREAD(runner, "thread-a") {
-    auto page = bufferManager->get(1);
+    auto page = buffer_manager->Get<SimplePage>(1);
 
-    ASSERT_EQ(page->getId(), page_1->getId());
-    ASSERT_EQ(page->getRecord(), page_1->getRecord());
+    ASSERT_EQ(page->GetId(), page_1->GetId());
+    ASSERT_EQ(page->GetRecord(), page_1->GetRecord());
   };
 
   THREAD(runner, "thread-b") {
-    auto page = bufferManager->get(1);
+    auto page = buffer_manager->Get<SimplePage>(1);
 
-    ASSERT_EQ(page->getId(), page_1->getId());
-    ASSERT_EQ(page->getRecord(), page_1->getRecord());
+    ASSERT_EQ(page->GetId(), page_1->GetId());
+    ASSERT_EQ(page->GetRecord(), page_1->GetRecord());
   };
 
   runner.Run();
 
   // Assert first page is loaded and did not get corrupt due to any data race
-  ASSERT_TRUE(bufferManager->isPageLoaded(1));
-  ASSERT_EQ(bufferManager->get(1)->getId(), page_1->getId());
-  ASSERT_EQ(bufferManager->get(1)->getRecord(), page_1->getRecord());
+  ASSERT_TRUE(buffer_manager->IsPageLoaded(1));
+  ASSERT_EQ(buffer_manager->Get<SimplePage>(1)->GetId(), page_1->GetId());
+  ASSERT_EQ(buffer_manager->Get<SimplePage>(1)->GetRecord(),
+            page_1->GetRecord());
 }
 
 /**
@@ -152,40 +154,41 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestEmptyBufferGetIGetI) {
  * to be done loading and then return the page handle.
  *
  * The replacement of page involves finding a victim page from FSM, then
- * flushing and removing it from the internal buffer. Thus it should be done in
+ * Flushing and removing it from the internal buffer. Thus it should be done in
  * a way that avoids data race in the FSM, the backend storage, and the internal
  * buffer.
  *
  */
 TEST_F(BufferManagerThreadSafetyTestFixture, TestFullBufferGetIGetI) {
   // Filling up buffer
-  bufferManager->get(2);
-  bufferManager->get(3);
-  ASSERT_TRUE(bufferManager->isFull());
+  buffer_manager->Get<SimplePage>(2);
+  buffer_manager->Get<SimplePage>(3);
+  ASSERT_TRUE(buffer_manager->IsFull());
 
   THREAD(runner, "thread-a") {
-    auto page = bufferManager->get(1);
+    auto page = buffer_manager->Get<SimplePage>(1);
 
-    ASSERT_EQ(page->getId(), page_1->getId());
-    ASSERT_EQ(page->getRecord(), page_1->getRecord());
+    ASSERT_EQ(page->GetId(), page_1->GetId());
+    ASSERT_EQ(page->GetRecord(), page_1->GetRecord());
   };
 
   THREAD(runner, "thread-b") {
-    auto page = bufferManager->get(1);
+    auto page = buffer_manager->Get<SimplePage>(1);
 
-    ASSERT_EQ(page->getId(), page_1->getId());
-    ASSERT_EQ(page->getRecord(), page_1->getRecord());
+    ASSERT_EQ(page->GetId(), page_1->GetId());
+    ASSERT_EQ(page->GetRecord(), page_1->GetRecord());
   };
 
   runner.Run();
 
   // Assert the page is loaded and did not get corrupt due to any data race
-  ASSERT_TRUE(bufferManager->isPageLoaded(1));
-  ASSERT_EQ(bufferManager->get(1)->getId(), page_1->getId());
-  ASSERT_EQ(bufferManager->get(1)->getRecord(), page_1->getRecord());
+  ASSERT_TRUE(buffer_manager->IsPageLoaded(1));
+  ASSERT_EQ(buffer_manager->Get<SimplePage>(1)->GetId(), page_1->GetId());
+  ASSERT_EQ(buffer_manager->Get<SimplePage>(1)->GetRecord(),
+            page_1->GetRecord());
 
   // Assert only one victim page got replaced
-  ASSERT_TRUE(bufferManager->isFull());
+  ASSERT_TRUE(buffer_manager->IsFull());
 }
 
 /**
@@ -199,32 +202,34 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestFullBufferGetIGetI) {
  */
 TEST_F(BufferManagerThreadSafetyTestFixture, TestEmptyBufferGetIGetJ) {
   // Assert buffer is empty
-  ASSERT_TRUE(bufferManager->isEmpty());
+  ASSERT_TRUE(buffer_manager->IsEmpty());
 
   THREAD(runner, "thread-a") {
-    auto page = bufferManager->get(1);
+    auto page = buffer_manager->Get<SimplePage>(1);
 
-    ASSERT_EQ(page->getId(), page_1->getId());
-    ASSERT_EQ(page->getRecord(), page_1->getRecord());
+    ASSERT_EQ(page->GetId(), page_1->GetId());
+    ASSERT_EQ(page->GetRecord(), page_1->GetRecord());
   };
 
   THREAD(runner, "thread-b") {
-    auto page = bufferManager->get(2);
+    auto page = buffer_manager->Get<SimplePage>(2);
 
-    ASSERT_EQ(page->getId(), page_2->getId());
-    ASSERT_EQ(page->getRecord(), page_2->getRecord());
+    ASSERT_EQ(page->GetId(), page_2->GetId());
+    ASSERT_EQ(page->GetRecord(), page_2->GetRecord());
   };
 
   runner.Run();
 
   // Assert first page is loaded and did not get corrupt due to any data race
-  ASSERT_TRUE(bufferManager->isPageLoaded(1));
-  ASSERT_EQ(bufferManager->get(1)->getId(), page_1->getId());
-  ASSERT_EQ(bufferManager->get(1)->getRecord(), page_1->getRecord());
+  ASSERT_TRUE(buffer_manager->IsPageLoaded(1));
+  ASSERT_EQ(buffer_manager->Get<SimplePage>(1)->GetId(), page_1->GetId());
+  ASSERT_EQ(buffer_manager->Get<SimplePage>(1)->GetRecord(),
+            page_1->GetRecord());
   // Assert second page is loaded and did not get corrupt due to any data race
-  ASSERT_TRUE(bufferManager->isPageLoaded(2));
-  ASSERT_EQ(bufferManager->get(2)->getId(), page_2->getId());
-  ASSERT_EQ(bufferManager->get(2)->getRecord(), page_2->getRecord());
+  ASSERT_TRUE(buffer_manager->IsPageLoaded(2));
+  ASSERT_EQ(buffer_manager->Get<SimplePage>(2)->GetId(), page_2->GetId());
+  ASSERT_EQ(buffer_manager->Get<SimplePage>(2)->GetRecord(),
+            page_2->GetRecord());
 }
 
 /**
@@ -233,61 +238,63 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestEmptyBufferGetIGetJ) {
  *
  * Both threads should load the pages with replacement from the backend storage.
  * The replacement of page involves finding a victim page from FSM, then
- * flushing and removing it from the internal buffer. Thus it should be done in
+ * Flushing and removing it from the internal buffer. Thus it should be done in
  * a way that avoids a data race in the internal buffer, FSM and the backend
  * storage.
  *
  */
 TEST_F(BufferManagerThreadSafetyTestFixture, TestFullBufferGetIGetJ) {
   // Filling up buffer
-  bufferManager->get(2);
-  bufferManager->get(3);
-  ASSERT_TRUE(bufferManager->isFull());
+  buffer_manager->Get<SimplePage>(2);
+  buffer_manager->Get<SimplePage>(3);
+  ASSERT_TRUE(buffer_manager->IsFull());
 
   THREAD(runner, "thread-a") {
-    auto page = bufferManager->get(1);
+    auto page = buffer_manager->Get<SimplePage>(1);
 
-    ASSERT_EQ(page->getId(), page_1->getId());
-    ASSERT_EQ(page->getRecord(), page_1->getRecord());
+    ASSERT_EQ(page->GetId(), page_1->GetId());
+    ASSERT_EQ(page->GetRecord(), page_1->GetRecord());
   };
 
   THREAD(runner, "thread-b") {
-    auto page = bufferManager->get(2);
+    auto page = buffer_manager->Get<SimplePage>(2);
 
-    ASSERT_EQ(page->getId(), page_2->getId());
-    ASSERT_EQ(page->getRecord(), page_2->getRecord());
+    ASSERT_EQ(page->GetId(), page_2->GetId());
+    ASSERT_EQ(page->GetRecord(), page_2->GetRecord());
   };
 
   runner.Run();
 
   // Assert first page is loaded and did not get corrupt due to any data race
-  ASSERT_TRUE(bufferManager->isPageLoaded(1));
-  ASSERT_EQ(bufferManager->get(1)->getId(), page_1->getId());
-  ASSERT_EQ(bufferManager->get(1)->getRecord(), page_1->getRecord());
+  ASSERT_TRUE(buffer_manager->IsPageLoaded(1));
+  ASSERT_EQ(buffer_manager->Get<SimplePage>(1)->GetId(), page_1->GetId());
+  ASSERT_EQ(buffer_manager->Get<SimplePage>(1)->GetRecord(),
+            page_1->GetRecord());
   // Assert second page is loaded and did not get corrupt due to any data race
-  ASSERT_TRUE(bufferManager->isPageLoaded(2));
-  ASSERT_EQ(bufferManager->get(2)->getId(), page_2->getId());
-  ASSERT_EQ(bufferManager->get(2)->getRecord(), page_2->getRecord());
+  ASSERT_TRUE(buffer_manager->IsPageLoaded(2));
+  ASSERT_EQ(buffer_manager->Get<SimplePage>(2)->GetId(), page_2->GetId());
+  ASSERT_EQ(buffer_manager->Get<SimplePage>(2)->GetRecord(),
+            page_2->GetRecord());
 }
 
 /**
- * @brief Test concurrent call to `get` and `flush` methods for same page when
+ * @brief Test concurrent call to `get` and `Flush` methods for same page when
  * the internal buffer is empty.
  *
- * While one thread calls the `get` method, the other calls `flush`. Since the
- * `get` call pins the page, the flush call should have no effect.
+ * While one thread calls the `get` method, the other calls `Flush`. Since the
+ * `get` call pins the page, the Flush call should have no effect.
  *
  */
 TEST_F(BufferManagerThreadSafetyTestFixture, TestEmptyBufferGetIFlushI) {
   // Assert buffer is empty
-  ASSERT_TRUE(bufferManager->isEmpty());
+  ASSERT_TRUE(buffer_manager->IsEmpty());
 
   THREAD(runner, "thread-a") {
-    OPERATION("GetPage", auto page = bufferManager->get(1));
-    OPERATION("SetRecord", page->setRecord("update_testing_1"_bb));
+    OPERATION("GetPage", auto page = buffer_manager->Get<SimplePage>(1));
+    OPERATION("SetRecord", page->SetRecord("update_testing_1"_bb));
   };
 
-  THREAD(runner, "thread-b") { OPERATION("Flush", bufferManager->flush(1)); };
+  THREAD(runner, "thread-b") { OPERATION("Flush", buffer_manager->Flush(1)); };
 
   // Sequence of events which do not persist any changes to page
   assertor.InsertMany(
@@ -306,10 +313,11 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestEmptyBufferGetIFlushI) {
         {"thread-a", "SetRecord", tstest::Event::Type::BEGIN},
         {"thread-a", "SetRecord", tstest::Event::Type::END}}},
       [&]() {
-        // Assert flush did not write changes to backend storage
-        auto page = storage->read(1);
-        ASSERT_EQ(page->getId(), page_1->getId());
-        ASSERT_EQ(page->getRecord(), page_1->getRecord());
+        // Assert Flush did not write changes to backend storage
+        auto page = storage->Read(1);
+        ASSERT_EQ(page->GetId(), page_1->GetId());
+        ASSERT_EQ(static_cast<SimplePage *>(page.get())->GetRecord(),
+                  page_1->GetRecord());
       });
 
   // Sequence of events which persist changes to page
@@ -325,49 +333,51 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestEmptyBufferGetIFlushI) {
           // Sequence 2
       },
       [&]() {
-        // Assert flush wrote changes to backend storage
-        auto page = storage->read(1);
-        ASSERT_EQ(page->getId(), page_1->getId());
-        ASSERT_EQ(page->getRecord(), "update_testing_1"_bb);
+        // Assert Flush wrote changes to backend storage
+        auto page = storage->Read(1);
+        ASSERT_EQ(page->GetId(), page_1->GetId());
+        ASSERT_EQ(static_cast<SimplePage *>(page.get())->GetRecord(),
+                  "update_testing_1"_bb);
       });
 
   runner.Run();
 
   // Assert first page is loaded and did not get corrupt due to any data race
-  ASSERT_TRUE(bufferManager->isPageLoaded(1));
-  ASSERT_EQ(bufferManager->get(1)->getId(), 1);
-  ASSERT_EQ(bufferManager->get(1)->getRecord(), "update_testing_1"_bb);
+  ASSERT_TRUE(buffer_manager->IsPageLoaded(1));
+  ASSERT_EQ(buffer_manager->Get<SimplePage>(1)->GetId(), 1);
+  ASSERT_EQ(buffer_manager->Get<SimplePage>(1)->GetRecord(),
+            "update_testing_1"_bb);
 
   // Assert the observed sequence of events
   assertor.Assert(runner.GetEventLog());
 }
 
 /**
- * @brief Test concurrent call to `get` and `flush` methods for same page when
+ * @brief Test concurrent call to `get` and `Flush` methods for same page when
  * the internal buffer is full.
  *
  * While one thread calls the `get` method, loading a page by replacement from
- * backend storage, the other calls `flush`. Since the `get` call pins the page,
- * the flush call should have no effect.
+ * backend storage, the other calls `Flush`. Since the `get` call pins the page,
+ * the Flush call should have no effect.
  *
  * The replacement of page involves finding a victim page from FSM, then
- * flushing and removing it from the internal buffer. Thus it should be done in
+ * Flushing and removing it from the internal buffer. Thus it should be done in
  * a way that avoids a data race in the internal buffer, FSM and the backend
  * storage.
  *
  */
 TEST_F(BufferManagerThreadSafetyTestFixture, TestFullBufferGetIFlushI) {
   // Filling up buffer
-  bufferManager->get(2);
-  bufferManager->get(3);
-  ASSERT_TRUE(bufferManager->isFull());
+  buffer_manager->Get<SimplePage>(2);
+  buffer_manager->Get<SimplePage>(3);
+  ASSERT_TRUE(buffer_manager->IsFull());
 
   THREAD(runner, "thread-a") {
-    OPERATION("GetPage", auto page = bufferManager->get(1));
-    OPERATION("SetRecord", page->setRecord("update_testing_1"_bb));
+    OPERATION("GetPage", auto page = buffer_manager->Get<SimplePage>(1));
+    OPERATION("SetRecord", page->SetRecord("update_testing_1"_bb));
   };
 
-  THREAD(runner, "thread-b") { OPERATION("Flush", bufferManager->flush(1)); };
+  THREAD(runner, "thread-b") { OPERATION("Flush", buffer_manager->Flush(1)); };
 
   // Sequence of events which do not persist any changes to page
   assertor.InsertMany(
@@ -386,10 +396,11 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestFullBufferGetIFlushI) {
         {"thread-a", "SetRecord", tstest::Event::Type::BEGIN},
         {"thread-a", "SetRecord", tstest::Event::Type::END}}},
       [&]() {
-        // Assert flush did not write changes to backend storage
-        auto page = storage->read(1);
-        ASSERT_EQ(page->getId(), page_1->getId());
-        ASSERT_EQ(page->getRecord(), page_1->getRecord());
+        // Assert Flush did not write changes to backend storage
+        auto page = storage->Read(1);
+        ASSERT_EQ(page->GetId(), page_1->GetId());
+        ASSERT_EQ(static_cast<SimplePage *>(page.get())->GetRecord(),
+                  page_1->GetRecord());
       });
 
   // Sequence of events which persist changes to page
@@ -405,19 +416,100 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestFullBufferGetIFlushI) {
           // Sequence 2
       },
       [&]() {
-        // Assert flush wrote changes to backend storage
-        auto page = storage->read(1);
-        ASSERT_EQ(page->getId(), page_1->getId());
-        ASSERT_EQ(page->getRecord(), "update_testing_1"_bb);
+        // Assert Flush wrote changes to backend storage
+        auto page = storage->Read(1);
+        ASSERT_EQ(page->GetId(), page_1->GetId());
+        ASSERT_EQ(static_cast<SimplePage *>(page.get())->GetRecord(),
+                  "update_testing_1"_bb);
       });
 
   runner.Run();
 
   // Assert first page is loaded and did not get corrupt due to any data race
-  ASSERT_TRUE(bufferManager->isPageLoaded(1));
-  ASSERT_EQ(bufferManager->get(1)->getId(), 1);
-  ASSERT_EQ(bufferManager->get(1)->getRecord(), "update_testing_1"_bb);
+  ASSERT_TRUE(buffer_manager->IsPageLoaded(1));
+  ASSERT_EQ(buffer_manager->Get<SimplePage>(1)->GetId(), 1);
+  ASSERT_EQ(buffer_manager->Get<SimplePage>(1)->GetRecord(),
+            "update_testing_1"_bb);
 
   // Assert the observed sequence of events
   assertor.Assert(runner.GetEventLog());
+}
+
+/**
+ * @brief Test concurrent call to `get` and `Flush` methods for different pages
+ * when the internal buffer is empty.
+ *
+ * While one thread calls the `get` method on one page, the other calls `Flush`
+ * on a different page. The operations should be done is such a way to avoid
+ * data race in internal buffer.
+ *
+ */
+TEST_F(BufferManagerThreadSafetyTestFixture, TestEmptyBufferGetIFlushJ) {
+  // Assert buffer is empty
+  ASSERT_TRUE(buffer_manager->IsEmpty());
+
+  THREAD(runner, "thread-a") {
+    OPERATION("GetPage", auto page = buffer_manager->Get<SimplePage>(1));
+    OPERATION("SetRecord", page->SetRecord("update_testing_1"_bb));
+  };
+
+  THREAD(runner, "thread-b") { OPERATION("Flush", buffer_manager->Flush(2)); };
+
+  runner.Run();
+
+  // Assert Flush did not write changes to backend storage
+  auto page = storage->Read(2);
+  ASSERT_EQ(page->GetId(), page_2->GetId());
+  ASSERT_EQ(static_cast<SimplePage *>(page.get())->GetRecord(),
+            page_2->GetRecord());
+
+  // Assert first page is loaded and did not get corrupt due to any data race
+  ASSERT_TRUE(buffer_manager->IsPageLoaded(1));
+  ASSERT_EQ(buffer_manager->Get<SimplePage>(1)->GetId(), 1);
+  ASSERT_EQ(buffer_manager->Get<SimplePage>(1)->GetRecord(),
+            "update_testing_1"_bb);
+}
+
+/**
+ * @brief Test concurrent call to `get` and `Flush` methods for different pages
+ * when the internal buffer is full.
+ *
+ * While one thread calls the `get` method, loading a page by replacement from
+ * backend storage, the other calls `Flush` on an already loaded page. Since the
+ * two methods act on different pages, the only syncronization needed is to
+ * avoid data race in internal buffer.
+ *
+ * The replacement of page involves finding a victim page from FSM, then
+ * Flushing and removing it from the internal buffer. Thus it should be done in
+ * a way that avoids a data race in the internal buffer, FSM and the backend
+ * storage.
+ *
+ */
+TEST_F(BufferManagerThreadSafetyTestFixture, TestFullBufferGetIFlushJ) {
+  // Filling up buffer
+  buffer_manager->Get<SimplePage>(2);
+  buffer_manager->Get<SimplePage>(3)->SetRecord(
+      "update_testing_3"_bb); // Adding record in page 3
+  ASSERT_TRUE(buffer_manager->IsFull());
+
+  THREAD(runner, "thread-a") {
+    OPERATION("GetPage", auto page = buffer_manager->Get<SimplePage>(1));
+    OPERATION("SetRecord", page->SetRecord("update_testing_1"_bb));
+  };
+
+  THREAD(runner, "thread-b") { OPERATION("Flush", buffer_manager->Flush(3)); };
+
+  runner.Run();
+
+  // Assert Flush wrote changes to backend storage
+  auto page = storage->Read(3);
+  ASSERT_EQ(page->GetId(), page_3->GetId());
+  ASSERT_EQ(static_cast<SimplePage *>(page.get())->GetRecord(),
+            "update_testing_3"_bb);
+
+  // Assert first page is loaded and did not get corrupt due to any data race
+  ASSERT_TRUE(buffer_manager->IsPageLoaded(1));
+  ASSERT_EQ(buffer_manager->Get<SimplePage>(1)->GetId(), 1);
+  ASSERT_EQ(buffer_manager->Get<SimplePage>(1)->GetRecord(),
+            "update_testing_1"_bb);
 }

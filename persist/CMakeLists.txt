@@ -15,6 +15,13 @@ include(tools)
 # Require C++14
 cxx_14()
 
+# Cpp checks for code quality
+cppcheck(
+    --enable=warning,performance,portability,missingInclude
+  --template="[{severity}][{id}] {message} {callstack} \(On {file}:{line}\)"
+  --suppress=missingIncludeSystem --quiet --verbose --force
+)
+
 # Set project lib name
 set(LIB ${PROJECT_NAME}_lib)
 # Set test binary name
@@ -29,12 +36,6 @@ file(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.[hc]pp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.[hc]
 )
-
-# Cpp checks for code quality
-cppcheck(
-  --enable=warning,performance,portability,missingInclude
-  --template="[{severity}][{id}] {message} {callstack} \(On {file}:{line}\)"
-  --suppress=missingIncludeSystem --quiet --verbose --force)
 
 # If source files found then make static lib else create header-only interface lib
 if(${SOURCES})

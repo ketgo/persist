@@ -39,8 +39,8 @@
  * when compiling with gcc.
  */
 
-#ifndef UTILITY_ANNOTATIONS_HPP
-#define UTILITY_ANNOTATIONS_HPP
+#ifndef PERSIST_UTILITY_ANNOTATIONS_HPP
+#define PERSIST_UTILITY_ANNOTATIONS_HPP
 
 #if defined(__clang__)
 #define THREAD_ANNOTATION_ATTRIBUTE__(x) __attribute__((x))
@@ -317,7 +317,7 @@
  * but the compiler cannot confirm that.
  *
  */
-#define TS_UNCHECKED_READ(x) thread_safety_analysis::ts_unchecked_read(x)
+#define TS_UNCHECKED_READ(x) thread_safety_analysis::TSUncheckedRead(x)
 
 namespace thread_safety_analysis {
 
@@ -326,7 +326,7 @@ namespace thread_safety_analysis {
  * const reference.
  */
 template <typename T>
-inline const T &ts_unchecked_read(const T &v) NO_THREAD_SAFETY_ANALYSIS {
+inline const T &TSUncheckedRead(const T &v) NO_THREAD_SAFETY_ANALYSIS {
   return v;
 }
 
@@ -335,10 +335,10 @@ inline const T &ts_unchecked_read(const T &v) NO_THREAD_SAFETY_ANALYSIS {
  * reference.
  */
 template <typename T>
-inline T &ts_unchecked_read(T &v) NO_THREAD_SAFETY_ANALYSIS {
+inline T &TSUncheckedRead(T &v) NO_THREAD_SAFETY_ANALYSIS {
   return v;
 }
 
 } // namespace thread_safety_analysis
 
-#endif /* UTILITY_ANNOTATIONS_HPP */
+#endif /* PERSIST_UTILITY_ANNOTATIONS_HPP */

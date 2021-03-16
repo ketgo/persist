@@ -37,3 +37,6 @@
 # Built Binaries
 bin/*
 build/*
+
+# Temparary
+tmp/*

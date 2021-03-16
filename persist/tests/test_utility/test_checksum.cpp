@@ -1,5 +1,5 @@
 /**
- * test_replacer_ts.hpp - Persist
+ * test_checksum.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -23,37 +23,18 @@
  */
 
 /**
- * @brief Replacer thread safety test header. The interface provided in this
- * file can be used to test thread safety of custom Replacer implementations.
+ * @brief Uint Test Serializer
  *
  */
-
-#ifndef TEST_REPLACER_TS_HPP
-#define TEST_REPLACER_TS_HPP
 
 #include <gtest/gtest.h>
 
-/**
- * @brief Replacer thread safety test fixture.
- *
- * @tparam ReplacerType type of replacer
- */
-template <class ReplacerType>
-class ReplacerThreadSafetyTestFixture : public testing::Test {};
+#include <persist/utility/checksum.hpp>
 
-TYPED_TEST_SUITE_P(ReplacerThreadSafetyTestFixture);
+using namespace persist;
 
-/**
- * @brief Test concurrent call to `getVictum` and `unPin` methods.
- *
- */
-TYPED_TEST_P(ReplacerThreadSafetyTestFixture, TestGetVictumUnPin) {
-  // Inside a test, refer to TypeParam to get the type parameter.
-  TypeParam replace;
+TEST(ChecksumTestFixture, TestChecksumAlder32) {
+  ByteBuffer input = "testing_checksum"_bb;
+  Checksum value = checksum(input);
+  ASSERT_EQ(value, 956630705);
 }
-
-// Registering all tests
-REGISTER_TYPED_TEST_SUITE_P(ReplacerThreadSafetyTestFixture,
-                            TestGetVictumUnPin);
-
-#endif /* TEST_REPLACER_TS_HPP */

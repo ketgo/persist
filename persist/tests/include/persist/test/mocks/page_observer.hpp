@@ -1,5 +1,5 @@
 /**
- * test_lru_replacer_ts.cpp - Persist
+ * page_observer.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,21 +22,29 @@
  * SOFTWARE.
  */
 
+#ifndef PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP
+#define PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP
+
+#include <gmock/gmock.h>
+
+#include <persist/core/page/base.hpp>
+
+using ::testing::_;
+using ::testing::Invoke;
+
+namespace persist {
+namespace test {
+
 /**
- * @brief LRU Replacer thread safety tests
+ * @brief Page Observer Mock
  *
  */
+class MockPageObserver : public PageObserver {
+public:
+  MOCK_METHOD(void, HandleModifiedPage, (PageId pageId), (override));
+};
 
-/**
- * Enabled intrusive testing
- */
-#define PERSIST_INTRUSIVE_TESTING
+} // namespace test
+} // namespace persist
 
-#include <persist/core/buffer/replacer/lru_replacer.hpp>
-
-#include "test_core/test_replacer_ts.hpp"
-
-using namespace persist;
-
-INSTANTIATE_TYPED_TEST_SUITE_P(LRU, ReplacerThreadSafetyTestFixture,
-                               LRUReplacer);
+#endif /* PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP */

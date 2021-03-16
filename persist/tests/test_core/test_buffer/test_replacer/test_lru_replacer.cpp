@@ -37,11 +37,14 @@
 
 #include <persist/core/buffer/replacer/lru_replacer.hpp>
 
+#include "persist/test/thread_safety/replacer.hpp"
+
 using namespace persist;
+using namespace persist::test;
 
 class LRUReplacerTestFixture : public ::testing::Test {
 protected:
-  const PageId pageId = 1;
+  const PageId page_id = 1;
   std::unique_ptr<LRUReplacer> replacer;
 
   void SetUp() override {
@@ -49,8 +52,8 @@ protected:
 
     LRUReplacer::LockGuard guard(replacer->lock);
 
-    replacer->cache.push_front({pageId, 0});
-    replacer->position[pageId] = replacer->cache.begin();
+    replacer->cache.push_front({page_id, 0});
+    replacer->position[page_id] = replacer->cache.begin();
   }
 };
 
@@ -60,7 +63,7 @@ TEST_F(LRUReplacerTestFixture, TestTrack) {
   ASSERT_EQ(replacer->cache.size(), 1);
   ASSERT_EQ(replacer->position.size(), 1);
 
-  replacer->track(2);
+  replacer->Track(2);
 
   ASSERT_EQ(replacer->cache.size(), 2);
   ASSERT_EQ(replacer->position.size(), 2);
@@ -72,7 +75,7 @@ TEST_F(LRUReplacerTestFixture, TestForget) {
   ASSERT_EQ(replacer->cache.size(), 1);
   ASSERT_EQ(replacer->position.size(), 1);
 
-  replacer->forget(pageId);
+  replacer->Forget(page_id);
 
   ASSERT_EQ(replacer->cache.size(), 0);
   ASSERT_EQ(replacer->position.size(), 0);
@@ -81,56 +84,63 @@ TEST_F(LRUReplacerTestFixture, TestForget) {
 TEST_F(LRUReplacerTestFixture, TestPin) {
   LRUReplacer::LockGuard guard(replacer->lock);
 
-  replacer->track(2);
+  replacer->Track(2);
 
-  ASSERT_EQ(replacer->position[2]->pinCount, 0);
-  replacer->pin(2);
-  ASSERT_EQ(replacer->position[2]->pinCount, 1);
-  replacer->pin(2);
-  ASSERT_EQ(replacer->position[2]->pinCount, 2);
+  ASSERT_EQ(replacer->position[2]->pin_count, 0);
+  replacer->Pin(2);
+  ASSERT_EQ(replacer->position[2]->pin_count, 1);
+  replacer->Pin(2);
+  ASSERT_EQ(replacer->position[2]->pin_count, 2);
 }
 
 TEST_F(LRUReplacerTestFixture, TestIsPinned) {
   LRUReplacer::LockGuard guard(replacer->lock);
 
-  replacer->track(2);
+  replacer->Track(2);
 
-  ASSERT_EQ(replacer->position[2]->pinCount, 0);
-  replacer->pin(2);
-  ASSERT_EQ(replacer->position[2]->pinCount, 1);
-  ASSERT_TRUE(replacer->isPinned(2));
-  replacer->unpin(2);
-  ASSERT_TRUE(!replacer->isPinned(2));
+  ASSERT_EQ(replacer->position[2]->pin_count, 0);
+  replacer->Pin(2);
+  ASSERT_EQ(replacer->position[2]->pin_count, 1);
+  ASSERT_TRUE(replacer->IsPinned(2));
+  replacer->Unpin(2);
+  ASSERT_TRUE(!replacer->IsPinned(2));
 }
 
 TEST_F(LRUReplacerTestFixture, TestUnPin) {
   LRUReplacer::LockGuard guard(replacer->lock);
 
-  replacer->track(2);
-  replacer->pin(2);
-  replacer->pin(2);
+  replacer->Track(2);
+  replacer->Pin(2);
+  replacer->Pin(2);
 
-  ASSERT_EQ(replacer->position[2]->pinCount, 2);
-  replacer->unpin(2);
-  ASSERT_EQ(replacer->position[2]->pinCount, 1);
-  replacer->unpin(2);
-  ASSERT_EQ(replacer->position[2]->pinCount, 0);
+  ASSERT_EQ(replacer->position[2]->pin_count, 2);
+  replacer->Unpin(2);
+  ASSERT_EQ(replacer->position[2]->pin_count, 1);
+  replacer->Unpin(2);
+  ASSERT_EQ(replacer->position[2]->pin_count, 0);
 }
 
 TEST_F(LRUReplacerTestFixture, TestGetVictum) {
   LRUReplacer::LockGuard guard(replacer->lock);
 
-  ASSERT_EQ(replacer->getVictumId(), 1);
+  ASSERT_EQ(replacer->GetVictumId(), 1);
 
-  replacer->track(2);
-  replacer->track(3);
+  replacer->Track(2);
+  replacer->Track(3);
 
-  replacer->pin(1);
-  replacer->pin(2);
-  replacer->unpin(2);
-  replacer->pin(3);
-  replacer->unpin(3);
+  replacer->Pin(1);
+  replacer->Pin(2);
+  replacer->Unpin(2);
+  replacer->Pin(3);
+  replacer->Unpin(3);
 
   // Page ID 1 is pinned so the next LRU un-pinned ID should be returned, i.e. 2
-  ASSERT_EQ(replacer->getVictumId(), 2);
+  ASSERT_EQ(replacer->GetVictumId(), 2);
 }
+
+/**
+ * @brief LRU Replacer thread safety tests.
+ *
+ */
+INSTANTIATE_TYPED_TEST_SUITE_P(LRU, ReplacerThreadSafetyTestFixture,
+                               LRUReplacer);

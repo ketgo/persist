@@ -46,13 +46,13 @@
 
         - Keep it in-memory always and never persist. The drawback of this approach is after a system failure or a restart, we will lose track of all the pages with free space. This implies that any following insert operations will use new pages. We can partially resolve this problem by updating the FSM on every `getPage` method call. In this way when a page with free space is accessed, the FSM will get notified and start tracking that page.
 
-        - Persist FSM when the destructor of the buffer manager is called. In this approach the FSM will be updated only when a persistent collection is closed. This ensures the FSM is up to date after a graceful restart of the system. On such grantee is there on system failures.
+        - Persist FSM when the destructor of the buffer manager is called. In this approach the FSM will be updated only when a persistent collection is closed. This ensures the FSM is up to date after a graceful restart of the system. No such grantee is there on system failures.
 
-        - [v0.1]Persist FSM on every flush call, i.e. when writing any modified page to storage. This method results in poor performance due to high frequency of IO.
+        - Persist FSM on every flush call, i.e. when writing any modified page to storage. This method results in poor performance due to the high frequency of IO.
 
         - Persist FSM on every transaction commit, i.e. after a commit log of a transaction is written. Note we persist the FSM irrespective of the mode of the buffer manager.
 
-        - [v0.2] Store FSM in pages and let the buffer manager persist those pages during page replacement. This approach will also ensure that the FSM is stored on every commit if the buffer manager is in FORCE mode. Note that changes in FSM pages are not logged for recovery to ensure fast performance.
+        - Store FSM in pages and let the buffer manager persist those pages during page replacement. This approach will also ensure that the FSM is stored on every commit if the buffer manager is in FORCE mode. Note that changes in FSM pages are not logged for recovery to ensure fast performance.
 
 5. Add storage manager which allocates and de-allocates pages. The total number of pages in storage can be computes from file(s) size. This implies that no metadata object is needed for the lower level disk IO. Note the storage manager can be removed and its functionality can be moved to the implementation of the backend Storage.
 
@@ -67,6 +67,6 @@
     - Slot-Level: needed for concurrent access of slots within a page --> Implemented in the SlottedPage class
     - Record-Level: needed for concurrent operations on a record. A record is comprised of multiple slots and thus in-turn pages. --> Implemented in the ConcurrencyControlManager.
 
-10. The ConcurrencyControlManager should be implemented at the `PageSlot`-level, indirectly applying concurrency control at the page and record level. Thus concurrent threads/transactions can access the same `Page` but not the same `PageSlot`.
+10. The ConcurrencyControlManager should be implemented at the `PageSlot`-level, in turn applying concurrency control at the page and record level. Concurrent threads/transactions can thus access the same `Page` but not the same `PageSlot`.
 
 11. Use lazy serialization and de-serialization for better performance.

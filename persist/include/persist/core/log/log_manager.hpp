@@ -1,5 +1,5 @@
 /**
- * recovery/log_manager.hpp - Persist
+ * log/log_manager.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef LOG_MANAGER_HPP
-#define LOG_MANAGER_HPP
+#ifndef PERSIST_CORE_LOG_MANAGER_HPP
+#define PERSIST_CORE_LOG_MANAGER_HPP
 
 #include <atomic>
 #include <memory>
@@ -31,7 +31,7 @@
 #include <persist/core/buffer/buffer_manager.hpp>
 #include <persist/core/log/log_record.hpp>
 #include <persist/core/page/log_page/log_page.hpp>
-#include <persist/core/storage/base.hpp>
+
 #include <persist/utility/mutex.hpp>
 
 namespace persist {
@@ -53,11 +53,10 @@ class LogManager {
   typedef typename persist::LockGuard<Mutex> LockGuard;
 
   std::atomic<SeqNumber>
-      seqNumber; //<- Sequence number of the latest log record. This is used to
-                 // set sequence number of the next log record.
-  Storage<LogPage> *
-      storage PT_GUARDED_BY(lock);      //<- Pointer to backend log storage
-  BufferManager<LogPage> bufferManager; //<- Log record buffer manager
+      seq_number; //<- Sequence number of the latest log record. This is used to
+                  // set sequence number of the next log record.
+  Storage *storage PT_GUARDED_BY(lock); //<- Pointer to backend log storage
+  BufferManager buffer_manager;         //<- Log record buffer manager
   bool started GUARDED_BY(lock);        //<- flag indicating log manager started
 
 public:
@@ -67,27 +66,29 @@ public:
    * @param storage pointer to backend log sotrage
    * @param cacheSize log buffer cache size
    */
-  LogManager(Storage<LogPage> *storage,
-             uint64_t cacheSize = DEFAULT_LOG_BUFFER_SIZE)
-      : seqNumber(0), started(false), storage(storage),
-        bufferManager(storage, cacheSize) {}
+  LogManager(Storage *storage, uint64_t cacheSize = DEFAULT_LOG_BUFFER_SIZE)
+      : seq_number(0), started(false), storage(storage),
+        buffer_manager(storage, cacheSize) {}
 
   /**
    * @brief Start log manager.
    *
+   * @thread_unsafe The method is not thread safe as it is expected that the
+   * user starts the log manager before spawning any threads.
+   *
    */
-  void start() {
+  void Start() NO_THREAD_SAFETY_ANALYSIS {
     LockGuard guard(lock);
 
     if (!started) {
       // Start buffer manager
-      bufferManager.start();
+      buffer_manager.Start();
       // Load last page in buffer
-      PageId lastPageId = storage->getPageCount();
+      PageId last_page_id = storage->GetPageCount();
       // Get last sequence number if last page ID is not 0
-      if (lastPageId) {
-        auto page = bufferManager.get(lastPageId);
-        seqNumber = page->getLastSeqNumber();
+      if (last_page_id) {
+        auto page = buffer_manager.Get<LogPage>(last_page_id);
+        seq_number = page->GetLastSeqNumber();
       }
       // Set state to started
       started = true;
@@ -97,13 +98,16 @@ public:
   /**
    * @brief Stop log manager.
    *
+   * @thread_unsafe The method is not thread safe as it is expected that the
+   * user stops the log manager after joining all the threads.
+   *
    */
-  void stop() {
+  void Stop() NO_THREAD_SAFETY_ANALYSIS {
     LockGuard guard(lock);
 
     if (started) {
       // Stop buffer manager
-      bufferManager.stop();
+      buffer_manager.Stop();
       // Set state to stopped
       started = false;
     }
@@ -112,17 +116,19 @@ public:
   /**
    * @brief Add log record to transaction logs
    *
-   * @param logRecord reference to the log record object to add
+   * @thread_safe
+   *
+   * @param log_record reference to the log record object to add
    * @returns sequence number of the added log record
    */
-  LogRecord::Location add(LogRecord &logRecord) {
+  LogRecord::Location Add(LogRecord &log_record) {
     LockGuard guard(lock);
 
     // Set log record sequence number
-    logRecord.setSeqNumber(++seqNumber);
+    log_record.SetSeqNumber(++seq_number);
     // Dump log record bytes
-    ByteBuffer data(logRecord.size());
-    logRecord.dump(data);
+    ByteBuffer data(log_record.GetSize());
+    log_record.Dump(data);
 
     // Check free space in page and size of log record. If log record larger
     // than free space, then split and store it into multiple page slots. Else
@@ -130,59 +136,61 @@ public:
     // page.
 
     // Null page slot representing a virtual previous from first slot
-    LogPageSlot nullSlot;
+    LogPageSlot null_slot;
     // Bookkeeping variables
-    uint64_t toWriteSize = data.size(), writtenSize = 0;
+    uint64_t to_write_size = data.size(), written_size = 0;
     // Pointer to previous page slot in the linked list. Begins with
     // pointing to the null slot.
-    LogPageSlot *prevSlot = &nullSlot;
+    LogPageSlot *prev_slot = &null_slot;
     // Start loop to write content in linked record blocks
-    while (toWriteSize > 0) {
+    while (to_write_size > 0) {
       // Get a free page
-      auto page = bufferManager.getFreeOrNew();
-      PageId pageId = page->getId();
+      auto page = buffer_manager.GetFreeOrNew<LogPage>();
+      PageId page_id = page->GetId();
 
       // Create slot to add to page
-      LogPageSlot slot(logRecord.getSeqNumber());
-      // Compute availble space to write data in page. Here he greedy approach
+      LogPageSlot slot(log_record.GetSeqNumber());
+      // Compute availble space to write data in page. Here the greedy approach
       // is utilized where all the available free space can be used to store the
       // data. The amount of data that can be stored in the page is the
       // (freeSpace of page) - (fixedSize of page slot).
-      uint64_t writeSpace =
-          page->freeSpace(LogPage::Operation::INSERT) - slot.fixedSize;
-      if (toWriteSize < writeSpace) {
-        writeSpace = toWriteSize;
+      uint64_t write_space = page->GetFreeSpaceSize(Operation::INSERT) -
+                             (slot.GetSize() - slot.data.size());
+      if (to_write_size < write_space) {
+        write_space = to_write_size;
       }
       // Write data to slot and add to page
-      slot.data.resize(writeSpace);
-      for (int i = 0; i < writeSpace; i++) {
-        slot.data[i] = data[writtenSize + i];
+      slot.data.resize(write_space);
+      for (int i = 0; i < write_space; i++) {
+        slot.data[i] = data[written_size + i];
       }
-      auto inserted = page->insertPageSlot(slot);
+      auto inserted = page->InsertPageSlot(slot);
 
       // Create linkage between slots
-      LogPageSlot::Location nextLocation(pageId, logRecord.getSeqNumber());
+      LogPageSlot::Location next_location(page_id, log_record.GetSeqNumber());
       // TODO: This will cause data race unless a slot level lock is used.
-      prevSlot->setNextLocation(nextLocation);
+      prev_slot->SetNextLocation(next_location);
 
       // Update previous record block and location pointers
-      prevSlot = inserted;
+      prev_slot = inserted;
 
       // Update counters
-      writtenSize += writeSpace;
-      toWriteSize -= writeSpace;
+      written_size += write_space;
+      to_write_size -= write_space;
     }
 
-    return nullSlot.getNextLocation();
+    return null_slot.GetNextLocation();
   }
 
   /**
    * @brief Get Log record of given sequence number.
    *
-   * @param seqNumber sequence number of the log record to get
+   * @thread_safe
+   *
+   * @param seq_number sequence number of the log record to get
    * @returns unique pointer to the loaded log record
    */
-  std::unique_ptr<LogRecord> get(LogRecord::Location location) {
+  std::unique_ptr<LogRecord> Get(LogRecord::Location location) {
     LockGuard guard(lock);
 
     // Get the first page slot from the given location and create the log record
@@ -191,36 +199,47 @@ public:
     // Byte buffer to read
     ByteBuffer read;
     // Start reading record blocks
-    LogPageSlot::Location readLocation = location;
-    while (!readLocation.isNull()) {
+    LogPageSlot::Location read_location = location;
+    while (!read_location.IsNull()) {
       // Get page
-      auto page = bufferManager.get(readLocation.pageId);
+      auto page = buffer_manager.Get<LogPage>(read_location.page_id);
       // Get page slot
-      const LogPageSlot &slot = page->getPageSlot(readLocation.seqNumber);
+      const LogPageSlot &slot = page->GetPageSlot(read_location.seq_number);
       // Append data stored in slot to output buffer
       read.insert(read.end(), slot.data.begin(), slot.data.end());
       // Update read location to next block
-      readLocation = slot.getNextLocation();
+      read_location = slot.GetNextLocation();
     }
     // Return value
-    std::unique_ptr<LogRecord> logRecord = std::make_unique<LogRecord>();
+    std::unique_ptr<LogRecord> log_record = std::make_unique<LogRecord>();
     // Load and return log record
-    logRecord->load(read);
+    log_record->Load(read);
 
-    return logRecord;
+    return log_record;
   }
 
   /**
    * @brief Flush all log records to storage. This method is used by transaction
    * manager when a transaction is committed.
+   *
+   * @thread_safe
    */
-  void flush() {
+  void Flush() {
     LockGuard guard(lock);
 
-    bufferManager.flushAll();
+    buffer_manager.FlushAll();
   }
+
+#ifdef __PERSIST_DEBUG__
+  /**
+   * @brief Get the latest sequence number
+   *
+   * @return Current sequence number
+   */
+  SeqNumber GetSeqNumber() const { return seq_number; }
+#endif
 };
 
 } // namespace persist
 
-#endif /* LOG_MANAGER_HPP */
+#endif /* PERSIST_CORE_LOG_MANAGER_HPP */

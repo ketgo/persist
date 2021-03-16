@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef LRU_REPLACER_HPP
-#define LRU_REPLACER_HPP
+#ifndef PERSIST_CORE_BUFFER_LRU_REPLACER_HPP
+#define PERSIST_CORE_BUFFER_LRU_REPLACER_HPP
 
 #include <list>
 #include <unordered_map>
@@ -52,8 +52,8 @@ class LRUReplacer : public Replacer {
    * determins the number of times the page associated with stored ID is pinned.
    */
   struct Frame {
-    PageId pageId;
-    uint64_t pinCount;
+    PageId page_id;
+    uint64_t pin_count;
   };
 
   /**
@@ -73,30 +73,30 @@ public:
   /**
    * @brief Track page ID for detecting victum page.
    *
-   * @param pageId page identifer to remember
+   * @param page_id page identifer to remember
    */
-  void track(PageId pageId) override {
+  void Track(PageId page_id) override {
     LockGuard guard(lock);
 
-    // Check if pageId does not exist in cache
-    if (position.find(pageId) == position.end()) {
+    // Check if page_id does not exist in cache
+    if (position.find(page_id) == position.end()) {
       // Insert value in cache
-      cache.push_front({pageId, 0});
+      cache.push_front({page_id, 0});
       // Save position of value in cache
-      position[pageId] = cache.begin();
+      position[page_id] = cache.begin();
     }
   }
 
   /**
    * @brief Forget page ID for detecting victum page.
    *
-   * @param pageId page identifer to forget
+   * @param page_id page identifer to forget
    */
-  void forget(PageId pageId) override {
+  void Forget(PageId page_id) override {
     LockGuard guard(lock);
 
-    cache.erase(position.at(pageId));
-    position.erase(pageId);
+    cache.erase(position.at(page_id));
+    position.erase(page_id);
   }
 
   /**
@@ -105,13 +105,13 @@ public:
    *
    * @return PageId identifier of the victum page
    */
-  PageId getVictumId() override {
+  PageId GetVictumId() override {
     LockGuard guard(lock);
 
     // Looks for LRU page ID having 0 valued pin count
     for (auto i = cache.rbegin(); i != cache.rend(); ++i) {
-      if (i->pinCount == 0) {
-        return i->pageId;
+      if (i->pin_count == 0) {
+        return i->page_id;
       }
     }
     return 0;
@@ -122,21 +122,21 @@ public:
    * referenced by an external process and thus should be skipped while
    * detecting victum page ID.
    *
-   * @param pageId page identifer to pin
+   * @param page_id page identifer to pin
    */
-  void pin(PageId pageId) override {
+  void Pin(PageId page_id) override {
     LockGuard guard(lock);
 
     // Increase reference count for page ID
-    position.at(pageId)->pinCount += 1;
+    position.at(page_id)->pin_count += 1;
     // Move the frame for given page ID to front in accordance with LRU strategy
-    cache.splice(cache.begin(), cache, position.at(pageId));
+    cache.splice(cache.begin(), cache, position.at(page_id));
   }
 
-  bool isPinned(PageId pageId) override {
+  bool IsPinned(PageId page_id) override {
     LockGuard guard(lock);
 
-    return position.at(pageId)->pinCount > 0;
+    return position.at(page_id)->pin_count > 0;
   }
 
   /**
@@ -146,15 +146,15 @@ public:
    * multi-threaded settings. The replacer is free to select the ID as victum
    * only when all the external processeses stopped referencing the page.
    *
-   * @param pageId page identifer to unpin
+   * @param page_id page identifer to unpin
    */
-  void unpin(PageId pageId) override {
+  void Unpin(PageId page_id) override {
     LockGuard guard(lock);
 
-    position.at(pageId)->pinCount -= 1;
+    position.at(page_id)->pin_count -= 1;
   }
 };
 
 } // namespace persist
 
-#endif /* LRU_REPLACER_HPP */
+#endif /* PERSIST_CORE_BUFFER_LRU_REPLACER_HPP */

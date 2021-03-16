@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef STORAGE_FACTORY_HPP
-#define STORAGE_FACTORY_HPP
+#ifndef PERSIST_CORE_STORAGE_CREATOR_HPP
+#define PERSIST_CORE_STORAGE_CREATOR_HPP
 
 #include <persist/core/storage/base.hpp>
 #include <persist/core/storage/file_storage.hpp>
@@ -91,19 +91,17 @@ const std::unordered_map<std::string, StorageType> StorageTypeMap = {
  * file storage url looks like `file:///myCollection.db` where the backend
  * uses the file `myCollection.db` in the root folder `/` to store data.
  */
-template <class PageType>
-static std::unique_ptr<Storage<PageType>>
-createStorage(std::string connectionString) {
+static std::unique_ptr<Storage> CreateStorage(std::string connectionString) {
   ConnectionString _connectionString(connectionString);
 
   switch (StorageTypeMap.at(_connectionString.type)) {
   case StorageType::FILE:
-    return std::make_unique<FileStorage<PageType>>(_connectionString.path);
+    return std::make_unique<FileStorage>(_connectionString.path);
     break;
   case StorageType::MEMORY:
-    return std::make_unique<MemoryStorage<PageType>>();
+    return std::make_unique<MemoryStorage>();
   }
 }
 
 } // namespace persist
-#endif /* STORAGE_FACTORY_HPP */
+#endif /* PERSIST_CORE_STORAGE_CREATOR_HPP */

@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef REPLACER_BASE_HPP
-#define REPLACER_BASE_HPP
+#ifndef PERSIST_CORE_BUFFER_REPLACER_BASE_HPP
+#define PERSIST_CORE_BUFFER_REPLACER_BASE_HPP
 
 #include <memory>
 
@@ -51,14 +51,14 @@ public:
    *
    * @param pageId page identifer to remember
    */
-  virtual void track(PageId pageId) = 0;
+  virtual void Track(PageId pageId) = 0;
 
   /**
    * @brief Forget page ID for detecting victum page.
    *
    * @param pageId page identifer to forget
    */
-  virtual void forget(PageId pageId) = 0;
+  virtual void Forget(PageId pageId) = 0;
 
   /**
    * @brief Get the Victum page Id. This is the page that can be replaced by the
@@ -66,7 +66,7 @@ public:
    *
    * @return PageId identifier of the victum page
    */
-  virtual PageId getVictumId() = 0;
+  virtual PageId GetVictumId() = 0;
 
   /**
    * @brief Pin page ID. A pinned ID indicates the associated page is being
@@ -75,7 +75,7 @@ public:
    *
    * @param pageId page identifer to pin
    */
-  virtual void pin(PageId pageId) = 0;
+  virtual void Pin(PageId pageId) = 0;
 
   /**
    * @brief Check if page is pinned
@@ -83,7 +83,7 @@ public:
    * @param pageId page identifier
    * @returns true if pinned else false
    */
-  virtual bool isPinned(PageId pageId) = 0;
+  virtual bool IsPinned(PageId pageId) = 0;
 
   /**
    * @brief Unpin page ID. This notifies the replacer that the page with given
@@ -94,9 +94,9 @@ public:
    *
    * @param pageId page identifer to unpin
    */
-  virtual void unpin(PageId pageId) = 0;
+  virtual void Unpin(PageId pageId) = 0;
 };
 
 } // namespace persist
 
-#endif /* REPLACER_BASE_HPP */
+#endif /* PERSIST_CORE_BUFFER_REPLACER_BASE_HPP */

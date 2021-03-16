@@ -22,19 +22,15 @@
  * SOFTWARE.
  */
 
-#ifndef SLOTTED_PAGE_SLOT_HPP
-#define SLOTTED_PAGE_SLOT_HPP
+#ifndef PERSIST_CORE_PAGE_SLOTTED_PAGE_SLOT_HPP
+#define PERSIST_CORE_PAGE_SLOTTED_PAGE_SLOT_HPP
 
 #include <persist/core/defs.hpp>
 #include <persist/core/exceptions.hpp>
 
-namespace persist {
+#include <persist/utility/serializer.hpp>
 
-// TODO:
-// 1. Implement PageSlotHandle used for accessing slots in a thread safe way.
-// The handle locks and unlocks read-write lock of the associated slot during
-// construction and destruction of the handle.
-// 2. Add a read-write mutex to the PageSlot class or create a wrapper class.
+namespace persist {
 
 /**
  * @brief PageSlot Class
@@ -49,11 +45,11 @@ namespace persist {
  * A data record spanning accross multiple slots is stored as a doubly-linked
  * list of page slots. Thus, a slot contains the location, i.e. the (PageId,
  * SlotId) tuple, of the next and previous page slots to which it is linked.
- * This information along with its own SlotId is stored its header. The rest of
- * the slot stores the data record.
+ * This information along with its own SlotId is stored in its header. The rest
+ * of the slot stores the data record.
  *
  */
-class PageSlot {
+class SlottedPageSlot {
 public:
   /**
    * PageSlot Location Class
@@ -66,44 +62,44 @@ public:
     /**
      * @brief ID of page containing slot.
      */
-    PageId pageId;
+    PageId page_id;
     /**
      * @brief ID of the slot inside the above page.
      */
-    PageSlotId slotId;
+    PageSlotId slot_id;
 
     /**
      * Constructor
      */
-    Location() : pageId(0), slotId(0) {}
-    Location(PageId pageId, PageSlotId slotId)
-        : pageId(pageId), slotId(slotId) {}
+    Location() : page_id(0), slot_id(0) {}
+    Location(PageId page_id, PageSlotId slot_id)
+        : page_id(page_id), slot_id(slot_id) {}
 
     /**
      * @brief Check if location is NULL
      */
-    bool isNull() const { return pageId == 0; }
+    bool IsNull() const { return page_id == 0; }
 
     /**
      * @brief Set the location to NULL
      */
-    void setNull() {
-      pageId = 0;
-      slotId = 0;
+    void SetNull() {
+      page_id = 0;
+      slot_id = 0;
     }
 
     /**
      * @brief Equality comparision operator.
      */
     bool operator==(const Location &other) const {
-      return pageId == other.pageId && slotId == other.slotId;
+      return page_id == other.page_id && slot_id == other.slot_id;
     }
 
     /**
      * @brief Non-equality comparision operator.
      */
     bool operator!=(const Location &other) const {
-      return pageId != other.pageId || slotId != other.slotId;
+      return page_id != other.page_id || slot_id != other.slot_id;
     }
 
 #ifdef __PERSIST_DEBUG__
@@ -112,7 +108,7 @@ public:
      */
     friend std::ostream &operator<<(std::ostream &os,
                                     const Location &location) {
-      os << "[" << location.pageId << ", " << location.slotId << "]";
+      os << "[" << location.page_id << ", " << location.slot_id << "]";
       return os;
     }
 #endif
@@ -129,39 +125,33 @@ public:
     /**
      * @brief Next page slot location
      */
-    Location nextLocation;
+    Location next_location;
     /**
      * @brief Previous page slot location
      */
-    Location prevLocation;
-
-    /**
-     * @brief Checksum to detect slot corruption
-     */
-    Checksum checksum;
+    Location prev_location;
 
     /**
      * Constructors
      */
-    Header() : checksum(0) {}
+    Header() = default;
 
     /**
      * Get storage size of header.
      */
-    uint64_t size() { return sizeof(Header); }
+    size_t GetSize() const { return sizeof(Header); }
 
     /**
      * Load slot header from byte string.
      *
      * @param input input buffer span to load
      */
-    void load(Span input) {
-      if (input.size < size()) {
+    void Load(Span input) {
+      if (input.size < GetSize()) {
         throw PageSlotParseError();
       }
-
       // Load bytes
-      std::memcpy((void *)this, (const void *)input.start, size());
+      persist::load(input, next_location, prev_location);
     }
 
     /**
@@ -169,28 +159,28 @@ public:
      *
      * @param output output buffer span to dump
      */
-    void dump(Span output) {
-      if (output.size < size()) {
+    void Dump(Span output) {
+      if (output.size < GetSize()) {
         throw PageSlotParseError();
       }
       // Dump bytes
-      std::memcpy((void *)output.start, (const void *)this, size());
+      persist::dump(output, next_location, prev_location);
     }
 
     /**
      * @brief Equality comparision operator.
      */
     bool operator==(const Header &other) const {
-      return nextLocation == other.nextLocation &&
-             prevLocation == other.prevLocation;
+      return next_location == other.next_location &&
+             prev_location == other.prev_location;
     }
 
     /**
      * @brief Non-equality comparision operator.
      */
     bool operator!=(const Header &other) const {
-      return nextLocation != other.nextLocation ||
-             prevLocation != other.prevLocation;
+      return next_location != other.next_location ||
+             prev_location != other.prev_location;
     }
 
 #ifdef __PERSIST_DEBUG__
@@ -199,8 +189,8 @@ public:
      */
     friend std::ostream &operator<<(std::ostream &os, const Header &header) {
       os << "---- Header ----\n";
-      os << "next: " << header.nextLocation << "\n";
-      os << "prev: " << header.prevLocation << "\n";
+      os << "next: " << header.next_location << "\n";
+      os << "prev: " << header.prev_location << "\n";
       os << "-----------------";
       return os;
     }
@@ -214,31 +204,6 @@ public:
    */
   Header header;
 
-  /**
-   * @brief Computes checksum for page slot.
-   */
-  Checksum _checksum() {
-
-    // Implemented hash function based on comment in
-    // https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
-
-    Checksum seed = size();
-
-    seed = std::hash<PageId>()(header.nextLocation.pageId) + 0x9e3779b9 +
-           (seed << 6) + (seed >> 2);
-    seed ^= std::hash<PageSlotId>()(header.nextLocation.slotId) + 0x9e3779b9 +
-            (seed << 6) + (seed >> 2);
-    seed ^= std::hash<PageId>()(header.prevLocation.pageId) + 0x9e3779b9 +
-            (seed << 6) + (seed >> 2);
-    seed ^= std::hash<PageSlotId>()(header.prevLocation.slotId) + 0x9e3779b9 +
-            (seed << 6) + (seed >> 2);
-    for (auto &i : data) {
-      seed ^= i + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-    }
-
-    return seed;
-  }
-
 public:
   ByteBuffer data; //<- data contained in the record block
 
@@ -246,65 +211,62 @@ public:
    * @brief Construct a new Page Slot object
    *
    */
-  PageSlot() {}
-  PageSlot(PageSlot::Header header) : header(header) {}
-  PageSlot(ByteBuffer data) : data(data) {}
-  PageSlot(ByteBuffer data, PageSlot::Header header) : data(data), header(header) {}
-  
+  SlottedPageSlot() {}
+  SlottedPageSlot(SlottedPageSlot::Header header) : header(header) {}
+  SlottedPageSlot(ByteBuffer data) : data(data) {}
+  SlottedPageSlot(ByteBuffer data, SlottedPageSlot::Header header)
+      : data(data), header(header) {}
+
   /**
    * Get storage size of page slot.
+   *
    */
-  uint64_t size() { return header.size() + sizeof(Byte) * data.size(); }
+  size_t GetSize() const {
+    return header.GetSize() + sizeof(size_t) + data.size();
+  }
 
   /**
    * @brief Get the next page slot location
    *
    * @return Location of the next linked page slot
    */
-  const Location &getNextLocation() const { return header.nextLocation; }
+  const Location &GetNextLocation() const { return header.next_location; }
 
   /**
    * @brief Set the next page slot location
    *
    * @param location Location of the next linked page slot
    */
-  void setNextLocation(Location &location) { header.nextLocation = location; }
+  void SetNextLocation(Location &location) { header.next_location = location; }
 
   /**
    * @brief Get the previous page slot location
    *
    * @return Location of the previous linked page slot
    */
-  const Location &getPrevLocation() const { return header.prevLocation; }
+  const Location &GetPrevLocation() const { return header.prev_location; }
 
   /**
    * @brief Set the previous page slot location
    *
    * @param location Location of the previous linked page slot
    */
-  void setPrevLocation(Location &location) { header.prevLocation = location; }
+  void SetPrevLocation(Location &location) { header.prev_location = location; }
 
   /**
    * Load page slot object from byte string.
    *
    * @param input input buffer span to load
    */
-  void load(Span input) {
-    if (input.size < size()) {
+  void Load(Span input) {
+    if (input.size < GetSize()) {
       throw PageSlotParseError();
     }
     // Load header
-    header.load(input);
+    header.Load(input);
+    input += header.GetSize();
     // Load data
-    size_t dataSize = input.size - header.size();
-    data.resize(dataSize);
-    std::memcpy((void *)data.data(),
-                (const void *)(input.start + header.size()), dataSize);
-
-    // Check for corruption by matching checksum
-    if (_checksum() != header.checksum) {
-      throw PageSlotCorruptError();
-    }
+    persist::load(input, data);
   }
 
   /**
@@ -312,32 +274,28 @@ public:
    *
    * @param output output buffer span to dump
    */
-  void dump(Span output) {
-    if (output.size < size()) {
+  void Dump(Span output) {
+    if (output.size < GetSize()) {
       throw PageSlotParseError();
     }
-
-    // Compute and set checksum
-    header.checksum = _checksum();
-
     // Dump header
-    header.dump(output);
+    header.Dump(output);
+    output += header.GetSize();
     // Dump data
-    std::memcpy((void *)(output.start + header.size()),
-                (const void *)data.data(), data.size());
+    persist::dump(output, data);
   }
 
   /**
    * @brief Equality comparision operator.
    */
-  bool operator==(const PageSlot &other) const {
+  bool operator==(const SlottedPageSlot &other) const {
     return header == other.header && data == other.data;
   }
 
   /**
    * @brief Non-equality comparision operator.
    */
-  bool operator!=(const PageSlot &other) const {
+  bool operator!=(const SlottedPageSlot &other) const {
     return header != other.header || data != other.data;
   }
 
@@ -345,7 +303,8 @@ public:
   /**
    * @brief Write record block to output stream
    */
-  friend std::ostream &operator<<(std::ostream &os, const PageSlot &slot) {
+  friend std::ostream &operator<<(std::ostream &os,
+                                  const SlottedPageSlot &slot) {
     os << "------ PageSlot ------\n";
     os << slot.header << "\n";
     os << "data: " << slot.data << "\n";
@@ -357,4 +316,4 @@ public:
 
 } // namespace persist
 
-#endif /* SLOTTED_PAGE_SLOT_HPP */
+#endif /* PERSIST_CORE_PAGE_SLOTTED_PAGE_SLOT_HPP */

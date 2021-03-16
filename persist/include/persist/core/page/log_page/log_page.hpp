@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef LOG_PAGE_HPP
-#define LOG_PAGE_HPP
+#ifndef PERSIST_CORE_PAGE_LOG_PAGE_HPP
+#define PERSIST_CORE_PAGE_LOG_PAGE_HPP
 
 #include <unordered_map>
 
@@ -32,6 +32,12 @@
 #include <persist/core/page/log_page/page_slot.hpp>
 
 namespace persist {
+
+// TODO:
+// 1. The insert is not thread safe as it exposes a loophole for
+// accessing protected slots by returning a pointer. We need a LogSlotHandle
+// which locks the access to slots from concurrent read and writes.
+// 2. Use move operations for writing page slots in page.
 
 /**
  * @brief LogPage Class
@@ -47,32 +53,11 @@ public:
    * The header contains page ID information.
    */
   class Header {
-    PERSIST_PRIVATE
-    /**
-     * @brief Computes checksum for record block.
-     */
-    Checksum _checksum() {
-
-      // Implemented hash function based on comment in
-      // https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
-
-      Checksum seed = size();
-
-      seed ^=
-          std::hash<PageId>()(pageId) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-      seed ^= std::hash<SeqNumber>()(lastSeqNumber) + 0x9e3779b9 + (seed << 6) +
-              (seed >> 2);
-      seed ^= std::hash<uint64_t>()(slotCount) + 0x9e3779b9 + (seed << 6) +
-              (seed >> 2);
-
-      return seed;
-    }
-
   public:
     /**
      * @brief Page unique identifer
      */
-    PageId pageId;
+    PageId page_id;
 
     /**
      * @brief Sequence number of the last log record in page.
@@ -80,36 +65,32 @@ public:
      * Note: A value of 0 indicates no complete or starting part of the log
      * record found in page.
      */
-    SeqNumber lastSeqNumber;
+    SeqNumber last_seq_number;
 
     /**
      * @brief Number of slots in the page
      *
      */
-    uint64_t slotCount;
+    size_t slot_count;
 
     /**
      * @brief Storage size of the page.
      */
-    uint64_t pageSize;
-
-    /**
-     * @brief Checksum to detect page corruption
-     */
-    Checksum checksum;
+    size_t page_size;
 
     /**
      * @brief Construct a new Header object
      *
      */
-    Header(PageId pageId = 0, uint64_t pageSize = DEFAULT_PAGE_SIZE)
-        : pageId(pageId), pageSize(pageSize), lastSeqNumber(0), slotCount(0) {}
+    Header(PageId page_id = 0, size_t page_size = DEFAULT_PAGE_SIZE)
+        : page_id(page_id), page_size(page_size), last_seq_number(0),
+          slot_count(0) {}
 
     /**
      * @brief Get storage size of header
      *
      */
-    uint64_t size() {
+    size_t GetSize() {
       return sizeof(PageId) + sizeof(SeqNumber) + sizeof(uint64_t) +
              sizeof(Checksum);
     }
@@ -119,25 +100,12 @@ public:
      *
      * @param input input buffer span to load
      */
-    void load(Span input) {
-      if (input.size < size()) {
+    void Load(Span input) {
+      if (input.size < GetSize()) {
         throw PageParseError();
       }
-
       // Load bytes
-      Byte *pos = input.start;
-      std::memcpy((void *)&pageId, (const void *)pos, sizeof(PageId));
-      pos += sizeof(PageId);
-      std::memcpy((void *)&lastSeqNumber, (const void *)pos, sizeof(SeqNumber));
-      pos += sizeof(SeqNumber);
-      std::memcpy((void *)&slotCount, (const void *)pos, sizeof(uint64_t));
-      pos += sizeof(uint64_t);
-      std::memcpy((void *)&checksum, (const void *)pos, sizeof(Checksum));
-
-      // Check for corruption by matching checksum
-      if (_checksum() != checksum) {
-        throw PageCorruptError();
-      }
+      persist::load(input, page_id, last_seq_number, slot_count);
     }
 
     /**
@@ -145,23 +113,12 @@ public:
      *
      * @param output output buffer span to dump
      */
-    void dump(Span output) {
-      if (output.size < size()) {
+    void Dump(Span output) {
+      if (output.size < GetSize()) {
         throw PageParseError();
       }
-
-      // Compute and set checksum
-      checksum = _checksum();
-
       // Dump bytes
-      Byte *pos = output.start;
-      std::memcpy((void *)pos, (const void *)&pageId, sizeof(PageId));
-      pos += sizeof(PageId);
-      std::memcpy((void *)pos, (const void *)&lastSeqNumber, sizeof(SeqNumber));
-      pos += sizeof(SeqNumber);
-      std::memcpy((void *)pos, (const void *)&slotCount, sizeof(uint64_t));
-      pos += sizeof(uint64_t);
-      std::memcpy((void *)pos, (const void *)&checksum, sizeof(Checksum));
+      persist::dump(output, page_id, last_seq_number, slot_count);
     }
 
 #ifdef __PERSIST_DEBUG__
@@ -170,9 +127,9 @@ public:
      */
     friend std::ostream &operator<<(std::ostream &os, const Header &header) {
       os << "------- Header -------\n";
-      os << "id: " << header.pageId << "\n";
-      os << "lastSeqNumber: " << header.lastSeqNumber << "\n";
-      os << "slotCount: " << header.slotCount << "\n";
+      os << "id: " << header.page_id << "\n";
+      os << "lastSeqNumber: " << header.last_seq_number << "\n";
+      os << "slotCount: " << header.slot_count << "\n";
       os << "----------------------";
       return os;
     }
@@ -195,41 +152,42 @@ public:
   /**
    * @brief Size of free space available on the page.
    */
-  uint64_t dataSize;
+  size_t data_Size;
 
 public:
   /**
    * @brief Construct a new Log Page object
    */
-  LogPage(PageId pageId = 0, uint64_t pageSize = DEFAULT_LOG_PAGE_SIZE)
-      : header(pageId, pageSize), dataSize(header.size()) {
-    // Check page size greater than minimum size
-    if (pageSize < MINIMUM_PAGE_SIZE) {
-      throw PageSizeError(pageSize);
-    }
-  }
+  LogPage(PageId page_id = 0, size_t page_size = DEFAULT_LOG_PAGE_SIZE)
+      : header(page_id, page_size), data_Size(header.GetSize()) {}
 
   /**
-   * Get page ID.
+   * @brief Get the page type identifer.
+   *
+   * @returns The page type identifier
+   */
+  PageTypeId GetTypeId() const override { return LOG_PAGE_TYPE_ID; }
+
+  /**
+   * Get page identifier.
    *
    * @returns page identifier
    */
-  const PageId &getId() const override { return header.pageId; }
+  const PageId &GetId() const override { return header.page_id; }
 
   /**
-   * Get free space in bytes available in the page.
+   * @brief Get the storage free space size in the page for specified operation.
    *
-   * @param operation The type of page operation for which free space is
-   * requested.
-   * @returns free space available in page
+   * @param operation Operaion to be performed
+   * @returns Free space in bytes
    */
-  uint64_t freeSpace(Operation operation) override {
+  size_t GetFreeSpaceSize(Operation operation) const override {
     // If stored data size greater than page size then return 0
-    if (header.pageSize <= dataSize) {
+    if (header.page_size <= data_Size) {
       return 0;
     }
 
-    return header.pageSize - dataSize;
+    return header.page_size - data_Size;
   }
 
   /**
@@ -237,52 +195,49 @@ public:
    *
    * @returns Constant reference to last sequence number
    */
-  const SeqNumber &getLastSeqNumber() const { return header.lastSeqNumber; }
+  const SeqNumber &GetLastSeqNumber() const { return header.last_seq_number; }
 
   /**
    * @brief Set the last sequence number in the page
    *
-   * @param seqNumber last sequence number in the page
+   * @param seq_number last sequence number in the page
    */
-  void setLastSeqNumber(SeqNumber seqNumber) {
-    header.lastSeqNumber = seqNumber;
+  void SetLastSeqNumber(SeqNumber seq_number) {
+    header.last_seq_number = seq_number;
     // Notify observers of modification
-    notifyObservers();
+    NotifyObservers();
   }
 
   /**
    * Get page slot of given identifier within the page.
    *
-   * @param seqNumber sequence number of the log record seeked
+   * @param seq_number sequence number of the log record seeked
    * @returns Constant reference to the LogPageSlot object if found
    * @throws PageSlotNotFoundError
    */
-  const LogPageSlot &getPageSlot(SeqNumber seqNumber) const {
+  const LogPageSlot &GetPageSlot(SeqNumber seq_number) const {
     // Check if slot exists
-    SlotMap::const_iterator it = slots.find(seqNumber);
+    SlotMap::const_iterator it = slots.find(seq_number);
     if (it == slots.end()) {
-      throw PageSlotNotFoundError(header.pageId, seqNumber);
+      throw PageSlotNotFoundError(header.page_id, seq_number);
     }
     return it->second;
   }
 
-  // TODO: The insert is not thread safe as it exposes a loophole for
-  // accessing protected slots by returning a pointer. We need a SlotHandle
-  // which locks the access to slots from concurrent read and writes.
   /**
    * @brief Insert log page slot to page.
    *
-   * @param pageSlot Reference to the LogPageSlot object to insert
+   * @param page_slot Reference to the LogPageSlot object to insert
    * @returns pointer to the inserted LogPageSlot
    */
-  LogPageSlot *insertPageSlot(LogPageSlot &pageSlot) {
+  LogPageSlot *InsertPageSlot(LogPageSlot &page_slot) {
     // Update data size in page
-    dataSize += pageSlot.size();
+    data_Size += page_slot.GetSize();
     // Insert record block at slot
-    auto inserted = slots.emplace(pageSlot.getSeqNumber(), pageSlot);
+    auto inserted = slots.emplace(page_slot.GetSeqNumber(), page_slot);
 
     // Notify observers of modification
-    notifyObservers();
+    NotifyObservers();
 
     return &inserted.first->second;
   }
@@ -292,27 +247,25 @@ public:
    *
    * @param input input buffer span to load
    */
-  void load(Span input) override {
-    if (input.size < header.pageSize) {
+  void Load(Span input) override {
+    if (input.size < header.page_size) {
       throw PageParseError();
     }
     slots.clear(); //<- clears data in case it is loaded
 
     // Load Page header
-    header.load(input);
-
+    header.Load(input);
+    data_Size = header.GetSize();
+    input += data_Size;
     // Load bytes
-    dataSize = header.size();
-    Byte *pos = input.start + dataSize;
-    // Load Slots
-    for (int i = 0; i < header.slotCount; ++i) {
+    for (size_t i = 0; i < header.slot_count; ++i) {
       // Load slot
       LogPageSlot slot;
-      slot.load(Span(pos, input.size - dataSize));
-      uint64_t slotSize = slot.size();
-      dataSize += slotSize;
-      slots.emplace(slot.getSeqNumber(), slot);
-      pos += slotSize;
+      slot.Load(input);
+      size_t slot_size = slot.GetSize();
+      data_Size += slot_size;
+      input += slot_size;
+      slots.emplace(slot.GetSeqNumber(), slot);
     }
   }
 
@@ -321,27 +274,22 @@ public:
    *
    * @param output output buffer span to dump
    */
-  void dump(Span output) override {
-    if (output.size < header.pageSize) {
+  void Dump(Span output) override {
+    if (output.size < header.page_size) {
       throw PageParseError();
     }
-
-    // Set slot count in header
-    header.slotCount = slots.size();
     // Dump header
-    header.dump(output);
-
+    header.slot_count = slots.size();
+    header.Dump(output);
+    output += header.GetSize();
     // Dump bytes
-    Byte *pos = output.start + header.size();
-    // Dump slots
     for (auto &element : slots) {
       LogPageSlot &slot = element.second;
-      uint64_t slotSize = slot.size();
-      slot.dump(Span(pos, slotSize));
-      pos += slotSize;
+      slot.Dump(output);
+      output += slot.GetSize();
     }
     // Dump free space
-    std::memset((void *)pos, 0, freeSpace(Operation::INSERT));
+    std::memset((void *)output.start, 0, output.size);
   }
 
 #ifdef __PERSIST_DEBUG__
@@ -349,10 +297,10 @@ public:
    * @brief Write page to output stream
    */
   friend std::ostream &operator<<(std::ostream &os, const LogPage &page) {
-    os << "--------- Page " << page.header.pageId << " ---------\n";
+    os << "--------- Page " << page.header.page_id << " ---------\n";
     os << page.header << "\n";
     for (auto element : page.slots) {
-      os << ":--> [" << page.header.pageId << ", " << element.first << "]\n";
+      os << ":--> [" << page.header.page_id << ", " << element.first << "]\n";
       os << element.second << "\n";
     }
     os << "-----------------------------";
@@ -364,4 +312,4 @@ public:
 
 } // namespace persist
 
-#endif /* LOG_PAGE_HPP */
+#endif /* PERSIST_CORE_PAGE_LOG_PAGE_HPP */

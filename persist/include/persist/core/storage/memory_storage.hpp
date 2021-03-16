@@ -22,12 +22,13 @@
  * SOFTWARE.
  */
 
-#ifndef MEMORY_STORAGE_HPP
-#define MEMORY_STORAGE_HPP
+#ifndef PERSIST_CORE_STORAGE_MEMORY_STORAGE_HPP
+#define PERSIST_CORE_STORAGE_MEMORY_STORAGE_HPP
 
 #include <memory>
 #include <unordered_map>
 
+#include <persist/core/page/serializer.hpp>
 #include <persist/core/storage/base.hpp>
 
 namespace persist {
@@ -37,10 +38,10 @@ namespace persist {
  * In memory backend storage to store data in RAM. Note that this is a volatile
  * storage and should be used accordingly.
  */
-template <class PageType> class MemoryStorage : public Storage<PageType> {
+class MemoryStorage : public Storage {
 private:
-  uint64_t pageSize;                           //<- page size
-  uint64_t pageCount;                          //<- Number of pages in storage
+  size_t page_size;                            //<- page size
+  uint64_t page_count;                         //<- Number of pages in storage
   FSL fsl;                                     //<- free space list
   std::unordered_map<PageId, ByteBuffer> data; //<- pages stored as map
 
@@ -48,31 +49,30 @@ public:
   /**
    * Constructor
    */
-  MemoryStorage() : pageSize(DEFAULT_PAGE_SIZE), pageCount(0) {}
-  MemoryStorage(uint64_t pageSize) : pageSize(pageSize), pageCount(0) {}
+  MemoryStorage() : page_size(DEFAULT_PAGE_SIZE), page_count(0) {}
+  MemoryStorage(size_t page_size) : page_size(page_size), page_count(0) {}
 
   /**
    * @brief Open memory storage. No operation is performed.
    */
-  void open() override {}
+  void Open() override {}
 
   /**
    * Check if memory storage is open. Always returns `true`.
    */
-  bool is_open() override { return true; }
+  bool IsOpen() override { return true; }
 
   /**
    * Close memory storage. No operation is performed.
    */
-  void close() override {}
+  void Close() override {}
 
   /**
    * Remove storage. Data is cleared.
    */
-  void remove() override {
-    fsl.freePages.clear();
+  void Remove() override {
     data.clear();
-    pageCount = 0;
+    page_count = 0;
   }
 
   /**
@@ -80,14 +80,29 @@ public:
    *
    * @returns page size used in storage
    */
-  uint64_t getPageSize() override { return pageSize; }
+  size_t GetPageSize() override { return page_size; }
 
   /**
    * @brief Get page count.
    *
    * @returns number of pages in storage
    */
-  uint64_t getPageCount() override { return pageCount; }
+  uint64_t GetPageCount() override { return page_count; }
+
+  /**
+   * Read Page with given identifier from storage.
+   *
+   * @param page_id page identifier
+   * @returns pointer to Page object
+   */
+  std::unique_ptr<Page> Read(PageId page_id) override {
+    if (data.find(page_id) == data.end()) {
+      throw PageNotFoundError(page_id);
+    }
+    std::unique_ptr<Page> page = persist::LoadPage(data.at(page_id));
+
+    return page;
+  }
 
   /**
    * Read free space list from storage. If no free list is found then pointer to
@@ -95,7 +110,7 @@ public:
    *
    * @return pointer to FSL object
    */
-  std::unique_ptr<FSL> read() override {
+  std::unique_ptr<FSL> Read() override {
     std::unique_ptr<FSL> _fsl = std::make_unique<FSL>(fsl);
 
     return _fsl;
@@ -106,33 +121,17 @@ public:
    *
    * @param fsl reference to FSL object to be written
    */
-  void write(FSL &fsl) override { this->fsl.freePages = fsl.freePages; }
-
-  /**
-   * Read Page with given identifier from storage.
-   *
-   * @param pageId page identifier
-   * @returns pointer to Page object
-   */
-  std::unique_ptr<PageType> read(PageId pageId) override {
-    if (data.find(pageId) == data.end()) {
-      throw PageNotFoundError(pageId);
-    }
-    std::unique_ptr<PageType> page = std::make_unique<PageType>(0, pageSize);
-    page->load(Span(data.at(pageId)));
-
-    return page;
-  }
+  void Write(FSL &fsl) override { this->fsl.freePages = fsl.freePages; }
 
   /**
    * Write Page object to storage.
    *
    * @param page reference to Page object to be written
    */
-  void write(PageType &page) override {
-    PageId pageId = page.getId();
-    data[pageId] = ByteBuffer(pageSize);
-    page.dump(Span(data.at(pageId)));
+  void Write(Page &page) override {
+    PageId page_id = page.GetId();
+    data[page_id] = ByteBuffer(page_size);
+    persist::DumpPage(page, data.at(page_id));
   }
 
   /**
@@ -141,23 +140,23 @@ public:
    *
    * @returns identifier of the newly allocated page
    */
-  PageId allocate() override {
+  PageId Allocate() override {
     // Increase page count by 1. No need to write an empty page to storage since
     // it will be automatically handled by buffer manager.
-    pageCount += 1;
-    return pageCount;
+    page_count += 1;
+    return page_count;
   }
 
   /**
    * @brief Deallocate page with given identifier.
    *
-   * @param pageId identifier of the page to deallocate
+   * @param page_id identifier of the page to deallocate
    */
-  void deallocate(PageId pageId) override {
+  void Deallocate(PageId page_id) override {
     // TODO: No operation performed for now
   }
 };
 
 } // namespace persist
 
-#endif /* MEMORY_STORAGE_HPP */
+#endif /* PERSIST_CORE_STORAGE_MEMORY_STORAGE_HPP */

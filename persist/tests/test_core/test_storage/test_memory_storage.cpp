@@ -33,27 +33,30 @@
 #include <vector>
 
 #include <persist/core/exceptions.hpp>
-#include <persist/core/page/simple_page.hpp>
+#include <persist/core/page/creator.hpp>
 #include <persist/core/storage/memory_storage.hpp>
 
+#include "persist/test/simple_page.hpp"
+
 using namespace persist;
+using namespace persist::test;
 
 class MemoryStorageTestFixture : public ::testing::Test {
 protected:
-  const uint64_t pageSize = 512;
-  std::unique_ptr<MemoryStorage<SimplePage>> storage;
+  const uint64_t page_size = 512;
+  std::unique_ptr<MemoryStorage> storage;
 
   void SetUp() override {
-    storage = std::make_unique<MemoryStorage<SimplePage>>(pageSize);
-    storage->open();
+    storage = std::make_unique<MemoryStorage>(page_size);
+    storage->Open();
   }
 
-  void TearDown() override { storage->close(); }
+  void TearDown() override { storage->Close(); }
 };
 
 TEST_F(MemoryStorageTestFixture, TestReadPageError) {
   try {
-    std::unique_ptr<Page> page = storage->read(1);
+    auto page = storage->Read(1);
     FAIL() << "Expected PageNotFoundError Exception.";
   } catch (PageNotFoundError &err) {
     SUCCEED();
@@ -63,27 +66,28 @@ TEST_F(MemoryStorageTestFixture, TestReadPageError) {
 }
 
 TEST_F(MemoryStorageTestFixture, TestReadWritePage) {
-  SimplePage page(1, pageSize);
+  auto page = CreatePage<SimplePage>(1, page_size);
   ByteBuffer record = "testing"_bb;
-  page.setRecord(record);
+  page->SetRecord(record);
 
-  storage->write(page);
-  std::unique_ptr<SimplePage> _page = storage->read(1);
+  storage->Write(*page);
+  auto _page = storage->Read(1);
 
-  ASSERT_EQ(page.getId(), _page->getId());
-  ASSERT_EQ(page.getRecord(), _page->getRecord());
+  ASSERT_EQ(page->GetId(), _page->GetId());
+  ASSERT_EQ(page->GetRecord(),
+            static_cast<SimplePage *>(_page.get())->GetRecord());
 }
 
 TEST_F(MemoryStorageTestFixture, TestAllocate) {
-  ASSERT_EQ(storage->allocate(), 1);
+  ASSERT_EQ(storage->Allocate(), 1);
 }
 
 TEST_F(MemoryStorageTestFixture, TestReadWriteFSL) {
   FSL fsl;
   fsl.freePages = {1, 2, 3};
-  storage->write(fsl);
+  storage->Write(fsl);
 
-  std::unique_ptr<FSL> _fsl = storage->read();
+  std::unique_ptr<FSL> _fsl = storage->Read();
 
   ASSERT_EQ(fsl.freePages, _fsl->freePages);
 }

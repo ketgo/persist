@@ -1,5 +1,5 @@
 /**
- * replacer/factory.hpp - Persist
+ * replacer/creator.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef REPLACER_FACTORY_HPP
-#define REPLACER_FACTORY_HPP
+#ifndef PERSIST_CORE_BUFFER_REPLACER_CREATOR_HPP
+#define PERSIST_CORE_BUFFER_REPLACER_CREATOR_HPP
 
 #include <persist/core/buffer/replacer/base.hpp>
 #include <persist/core/buffer/replacer/lru_replacer.hpp>
@@ -39,11 +39,11 @@ enum class ReplacerType { LRU };
 /**
  * @brief Factory method to create replacer of given type.
  *
- * @param replacerType type of replacer to create
+ * @param replacer_type type of replacer to create
  * @returns unique pointer to created replacer object
  */
-static std::unique_ptr<Replacer> createReplacer(ReplacerType replacerType) {
-  switch (replacerType) {
+static std::unique_ptr<Replacer> CreateReplacer(ReplacerType replacer_type) {
+  switch (replacer_type) {
   case ReplacerType::LRU:
     return std::make_unique<LRUReplacer>();
     break;
@@ -52,4 +52,4 @@ static std::unique_ptr<Replacer> createReplacer(ReplacerType replacerType) {
 
 } // namespace persist
 
-#endif /* REPLACER_FACTORY_HPP */
+#endif /* PERSIST_CORE_BUFFER_REPLACER_CREATOR_HPP */
