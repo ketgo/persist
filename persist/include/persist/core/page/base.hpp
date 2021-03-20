@@ -25,9 +25,7 @@
 #ifndef PERSIST_CORE_PAGE_BASE_HPP
 #define PERSIST_CORE_PAGE_BASE_HPP
 
-#include <list>
-
-#include <persist/core/defs.hpp>
+#include <persist/core/common.hpp>
 
 namespace persist {
 
@@ -130,4 +128,4 @@ public:
 
 } // namespace persist
 
-#endif /* PERSIST_CORE_PAGE_BASE_HPP */
+#endif /* BASE_HPP */

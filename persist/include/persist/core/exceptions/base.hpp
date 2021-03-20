@@ -1,7 +1,7 @@
 /**
- * test_creator.cpp - Persist
+ * base.hpp - Persist
  *
- * Copyright 2020 Ketan Goyal
+ * Copyright 2021 Ketan Goyal
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,34 +22,39 @@
  * SOFTWARE.
  */
 
+#ifndef PERSIST_CORE_EXCEPTIONS_BASE_HPP
+#define PERSIST_CORE_EXCEPTIONS_BASE_HPP
+
+namespace persist {
+
 /**
- * @brief Backend storage creator test.
+ * @brief Persist package base exception class
+ *
+ * Use this to capture all package excpetions.
  */
+class PersistException : public std::exception {};
 
-#include <gtest/gtest.h>
+/**
+ * @brief Data corruption base exception class
+ *
+ * Use this to capture all corruption exceptions.
+ */
+class CorruptException : public PersistException {};
 
-#include <memory>
-#include <typeinfo>
+/**
+ * @brief Data parsing base exception class
+ *
+ * Use this to capture all parsing exceptions.
+ */
+class ParseException : public PersistException {};
 
-#include <persist/core/storage/base.hpp>
-#include <persist/core/storage/creator.hpp>
+/**
+ * @brief Not found error base excpetion class
+ *
+ * Use this to capture all not found exceptions.
+ */
+class NotFoundException : public PersistException {};
 
-#include "persist/test/simple_page.hpp"
+} // namespace persist
 
-using namespace persist;
-using namespace persist::test;
-
-TEST(StorageFactoryTest, TestCreateMemoryStorage) {
-  std::unique_ptr<Storage> storage = CreateStorage("memory://");
-  Storage *ptr = storage.get();
-  std::string className = typeid(*ptr).name();
-  ASSERT_TRUE(className.find("MemoryStorage") != std::string::npos);
-}
-
-TEST(StorageFactoryTest, TestCreateFileStorage) {
-  std::unique_ptr<Storage> storage = CreateStorage("file://storage.db");
-  Storage *ptr = storage.get();
-  std::string className = typeid(*ptr).name();
-  ASSERT_TRUE(className.find("FileStorage") != std::string::npos);
-  ASSERT_EQ(static_cast<FileStorage *>(ptr)->GetPath(), "storage.db");
-}
+#endif /* PERSIST_CORE_EXCEPTIONS_BASE_HPP */

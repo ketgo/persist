@@ -1,5 +1,5 @@
 /**
- * page_observer.hpp - Persist
+ * test_collection.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,29 +22,22 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP
-#define PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP
-
-#include <gmock/gmock.h>
-
-#include <persist/core/page/base.hpp>
-
-using ::testing::_;
-using ::testing::Invoke;
-
-namespace persist {
-namespace test {
-
 /**
- * @brief Page Observer Mock
+ * @brief Uint Test List Collection
  *
  */
-class MockPageObserver : public PageObserver {
-public:
-  MOCK_METHOD(void, HandleModifiedPage, (PageId pageId), (override));
+
+#include <gtest/gtest.h>
+
+#include <persist/list/collection.hpp>
+
+using namespace persist;
+
+class ListCollectionTestFixture : public ::testing::Test {
+protected:
+  void SetUp() override {}
+
+  void TearDown() override {}
 };
 
-} // namespace test
-} // namespace persist
-
-#endif /* PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP */
+TEST_F(ListCollectionTestFixture, TestIterator) {}

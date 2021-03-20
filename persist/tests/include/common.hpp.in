@@ -32,9 +32,9 @@
 
 #include <gtest/gtest.h>
 
-#include <persist/core/page/factory.hpp>
+// #include <persist/core/page/factory.hpp>
 
-#include "persist/test/simple_page.hpp"
+// #include "persist/test/simple_page.hpp"
 
 /**
  * @brief Location of the test data.
@@ -49,12 +49,12 @@ class Environment : public ::testing::Environment {
 public:
   void SetUp() override {
     // Register simple page
-    persist::PageFactory::RegisterPage<persist::test::SimplePage>();
+    // persist::PageFactory::RegisterPage<persist::test::SimplePage>();
   }
 
   void TearDown() override {
     // UnRegister simple page
-    persist::PageFactory::UnRegisterPage<persist::test::SimplePage>();
+    // persist::PageFactory::UnRegisterPage<persist::test::SimplePage>();
   }
 };
 

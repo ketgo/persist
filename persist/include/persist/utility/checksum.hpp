@@ -25,7 +25,7 @@
 #ifndef PERSIST_UTILITY_CHECKSUM_HPP
 #define PERSIST_UTILITY_CHECKSUM_HPP
 
-#include <persist/core/defs.hpp>
+#include <persist/core/common.hpp>
 
 namespace persist {
 

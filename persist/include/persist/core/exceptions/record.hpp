@@ -1,5 +1,5 @@
 /**
- * thread_safety/replacer.hpp - Persist
+ * record.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,44 +22,30 @@
  * SOFTWARE.
  */
 
-/**
- * @brief Replacer thread safety test header. The interface provided in this
- * file can be used to test thread safety of custom Replacer implementations.
- *
- */
+#ifndef PERSIST_CORE_EXCEPTIONS_RECORD_HPP
+#define PERSIST_CORE_EXCEPTIONS_RECORD_HPP
 
-#ifndef PERSIST_TEST_THREADSAFETY_REPLACER_TS_HPP
-#define PERSIST_TEST_THREADSAFETY_REPLACER_TS_HPP
+#include <string>
 
-#include <gtest/gtest.h>
+#include <persist/core/exceptions/base.hpp>
 
 namespace persist {
-namespace test {
 
 /**
- * @brief Replacer thread safety test fixture.
+ * Record Parse Error
  *
- * @tparam ReplacerType type of replacer
+ * This error is thrown while parsing a record.
  */
-template <class ReplacerType>
-class ReplacerThreadSafetyTestFixture : public testing::Test {};
+class RecordParseError : public ParseException {
+private:
+  std::string msg;
 
-TYPED_TEST_SUITE_P(ReplacerThreadSafetyTestFixture);
+public:
+  RecordParseError() : msg("Record parse error.") {}
 
-/**
- * @brief Test concurrent call to `GetVictum` and `UnPin` methods.
- *
- */
-TYPED_TEST_P(ReplacerThreadSafetyTestFixture, TestGetVictumUnPin) {
-  // Inside a test, refer to TypeParam to get the type parameter.
-  TypeParam replace;
-}
+  const char *what() const throw() { return msg.c_str(); }
+};
 
-// Registering all tests
-REGISTER_TYPED_TEST_SUITE_P(ReplacerThreadSafetyTestFixture,
-                            TestGetVictumUnPin);
-
-} // namespace test
 } // namespace persist
 
-#endif /* PERSIST_TEST_THREADSAFETY_REPLACER_TS_HPP */
+#endif /* PERSIST_CORE_EXCEPTIONS_RECORD_HPP */

@@ -1,5 +1,5 @@
 /**
- * page/creator.hpp - Persist
+ * record_manager.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,34 +22,25 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_CORE_PAGE_CREATOR_HPP
-#define PERSIST_CORE_PAGE_CREATOR_HPP
+#ifndef PERSIST_LIST_RECORD_MANAGER_HPP
+#define PERSIST_LIST_RECORD_MANAGER_HPP
 
-#include <memory>
-
-#include <persist/core/defs.hpp>
-#include <persist/core/exceptions.hpp>
-#include <persist/core/page/type_header.hpp>
+#include <persist/core/common.hpp>
 
 namespace persist {
+
 /**
- * @brief Create an empty page object of specified type.
+ * @brief List record manager.
  *
- * @tparam PageType The type of page to create.
- * @param page_id The page identifier.
- * @param page_size The page size.
- * @returns Unique pointer to the created page.
+ * @tparam RecordType Record type stored in list.
  */
-template <class PageType>
-static std::unique_ptr<PageType> CreatePage(PageId page_id, size_t page_size) {
-  // Check page size greater than minimum size
-  if (page_size < MINIMUM_PAGE_SIZE) {
-    throw PageSizeError(page_size);
-  }
-  // The page size is adjusted to incorporate the type header.
-  return std::make_unique<PageType>(page_id,
-                                    page_size - PageTypeHeader::GetSize());
-}
+template<class RecordType>
+class ListRecordManager {
+    // Record should be storage
+  static_assert(std::is_base_of<Storable, RecordType>::value,
+                "Record must be derived from persist::Storable");
+};
+
 } // namespace persist
 
-#endif /* PERSIST_CORE_PAGE_CREATOR_HPP */
+#endif /* PERSIST_LIST_RECORD_MANAGER_HPP */
