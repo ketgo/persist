@@ -189,10 +189,11 @@ struct FileHeader : public Storable {
  * @tparam PageType The type of page stored by storage.
  */
 template <class PageType> class FileStorage : public Storage<PageType> {
+  using Storage<PageType>::page_size;
+  using Storage<PageType>::page_count;
+
   PERSIST_PRIVATE
-  size_t page_size;       //<- page block size
-  uint64_t page_count;    //<- number of pages in the storage file
-  std::string path;       //<- storage files name with path
+  std::string path;       //<- Storage path
   std::fstream data_file; //<- IO file stream for data
   std::fstream fsl_file;  //<- IO file stream for free space list
   static const size_t offset =
@@ -210,14 +211,12 @@ public:
    * @param page_size storage size of data block. Default set to 1024
    */
   FileStorage() {}
-  FileStorage(const std::string &path)
-      : path(path), page_size(DEFAULT_PAGE_SIZE), page_count(0) {}
-  FileStorage(const char *path)
-      : path(path), page_size(DEFAULT_PAGE_SIZE), page_count(0) {}
+  FileStorage(const std::string &path) : path(path) {}
+  FileStorage(const char *path) : path(path) {}
   FileStorage(const std::string &path, uint64_t page_size)
-      : path(path), page_size(page_size), page_count(0) {}
+      : path(path), Storage<PageType>(page_size) {}
   FileStorage(const char *path, uint64_t page_size)
-      : path(path), page_size(page_size), page_count(0) {}
+      : path(path), Storage<PageType>(page_size) {}
 
   /**
    * Destructor
@@ -295,20 +294,6 @@ public:
   }
 
   /**
-   * @brief Get page size.
-   *
-   * @returns page size used in storage
-   */
-  size_t GetPageSize() override { return page_size; }
-
-  /**
-   * @brief Get page count.
-   *
-   * @returns number of pages in storage
-   */
-  uint64_t GetPageCount() override { return page_count; }
-
-  /**
    * Reads Page with given identifier from storage file.
    *
    * @param page_id page identifier
@@ -356,28 +341,6 @@ public:
     ByteBuffer buffer(page_size);
     persist::DumpPage(page, buffer);
     file::write(data_file, buffer, page_offset);
-  }
-
-  /**
-   * @brief Allocate a new page in storage. The identifier of the newly created
-   * page is returned.
-   *
-   * @returns identifier of the newly allocated page
-   */
-  PageId Allocate() override {
-    // Increase page count by 1. No need to write an empty page to storage since
-    // it will be automatically handled by buffer manager.
-    page_count += 1;
-    return page_count;
-  }
-
-  /**
-   * @brief Deallocate page with given identifier.
-   *
-   * @param page_id identifier of the page to deallocate
-   */
-  void Deallocate(PageId page_id) override {
-    // TODO: No operation performed for now
   }
 };
 

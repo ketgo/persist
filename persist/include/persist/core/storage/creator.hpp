@@ -90,16 +90,20 @@ const std::unordered_map<std::string, StorageType> StorageTypeMap = {
  * arguments. The url schema is `<type>://<host>/<path>?<args>`. For example a
  * file storage url looks like `file:///myCollection.db` where the backend
  * uses the file `myCollection.db` in the root folder `/` to store data.
+ *
+ * @tparam PageType The type of page stored by the created storage.
  */
-static std::unique_ptr<Storage> CreateStorage(std::string connectionString) {
+template <class PageType>
+static std::unique_ptr<Storage<PageType>>
+CreateStorage(std::string connectionString) {
   ConnectionString _connectionString(connectionString);
 
   switch (StorageTypeMap.at(_connectionString.type)) {
   case StorageType::FILE:
-    return std::make_unique<FileStorage>(_connectionString.path);
+    return std::make_unique<FileStorage<PageType>>(_connectionString.path);
     break;
   case StorageType::MEMORY:
-    return std::make_unique<MemoryStorage>();
+    return std::make_unique<MemoryStorage<PageType>>();
   }
 }
 

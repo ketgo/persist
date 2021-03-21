@@ -55,9 +55,30 @@ template <class PageType> class Storage {
   static_assert(std::is_base_of<Page, PageType>::value,
                 "PageType must be derived from Page class.");
 
+  PERSIST_PROTECTED
+  /**
+   * @brief Page size
+   *
+   */
+  size_t page_size;
+
+  /**
+   * @brief Number of pages in storage
+   *
+   */
+  size_t page_count;
+
 public:
   /**
-   * @brief Destroy the Storage object
+   * @brief Construct a new Storage object.
+   *
+   * @param page_size Page size.
+   */
+  Storage(size_t page_size = DEFAULT_PAGE_SIZE)
+      : page_size(page_size), page_count(0) {}
+
+  /**
+   * @brief Destroy the Storage object.
    *
    */
   virtual ~Storage() {} //<- Virtual destructor
@@ -83,20 +104,6 @@ public:
   virtual void Remove() = 0;
 
   /**
-   * @brief Get page size.
-   *
-   * @returns Page size used in storage
-   */
-  virtual size_t GetPageSize() = 0;
-
-  /**
-   * @brief Get page count.
-   *
-   * @returns Number of pages in storage
-   */
-  virtual uint64_t GetPageCount() = 0;
-
-  /**
    * @brief Read Page with given identifier from storage.
    *
    * @param page_id Page identifier
@@ -112,19 +119,40 @@ public:
   virtual void Write(PageType &page) = 0;
 
   /**
+   * @brief Get page size.
+   *
+   * @returns Page size used in storage
+   */
+  size_t GetPageSize() const { return page_size; }
+
+  /**
+   * @brief Get page count.
+   *
+   * @returns Number of pages in storage
+   */
+  size_t GetPageCount() const { return page_count; }
+
+  /**
    * @brief Allocate a new page in storage. The identifier of the newly created
    * page is returned.
    *
    * @returns identifier of the newly allocated page
    */
-  virtual PageId Allocate() = 0;
+  PageId Allocate() {
+    // Increase page count by 1. No need to write an empty page to storage since
+    // it will be automatically handled by buffer manager.
+    page_count += 1;
+    return page_count;
+  }
 
   /**
    * @brief Deallocate page with given identifier.
    *
    * @param page_id identifier of the page to deallocate
    */
-  virtual void Deallocate(PageId page_id) = 0;
+  void Deallocate(PageId page_id) {
+    // TODO: No operation performed for now
+  }
 };
 
 } // namespace persist
