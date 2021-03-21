@@ -25,6 +25,8 @@
 #ifndef PERSIST_CORE_EXCEPTIONS_BASE_HPP
 #define PERSIST_CORE_EXCEPTIONS_BASE_HPP
 
+#include <persist/core/common.hpp>
+
 namespace persist {
 
 /**

@@ -1,5 +1,5 @@
 /**
- * record.hpp - Persist
+ * test_creator.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -23,34 +23,28 @@
  */
 
 /**
- * @brief The header file contains record related exceptions.
+ * @brief Test page creator.
  *
  */
 
-#ifndef PERSIST_CORE_EXCEPTIONS_RECORD_HPP
-#define PERSIST_CORE_EXCEPTIONS_RECORD_HPP
+#include <gtest/gtest.h>
 
-#include <string>
+#include <memory>
 
-#include <persist/core/exceptions/base.hpp>
+#include <persist/core/page/creator.hpp>
 
-namespace persist {
+#include "persist/test/simple_page.hpp"
 
-/**
- * Record Parse Error
- *
- * This error is thrown while parsing a record.
- */
-class RecordParseError : public ParseException {
-private:
-  std::string msg;
+using namespace persist;
+using namespace persist::test;
 
-public:
-  RecordParseError() : msg("Record parse error.") {}
-
-  const char *what() const throw() { return msg.c_str(); }
-};
-
-} // namespace persist
-
-#endif /* PERSIST_CORE_EXCEPTIONS_RECORD_HPP */
+TEST(PageCreatorTestFixture, PageSizeError) {
+  try {
+    auto page = CreatePage<SimplePage>(1, 64);
+    FAIL() << "Expected PageSizeError Exception.";
+  } catch (PageSizeError &err) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected PageSizeError Exception.";
+  }
+}

@@ -81,12 +81,6 @@ namespace persist {
 enum class Operation { READ, INSERT, UPDATE, DELETE };
 
 /**
- * Page type identifier type
- *
- */
-typedef uint8_t PageTypeId;
-
-/**
  * Page identifier type
  *
  * NOTE: An ID with value 0 is considered NULL

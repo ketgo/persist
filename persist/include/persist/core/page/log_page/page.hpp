@@ -22,14 +22,14 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_CORE_PAGE_LOG_PAGE_HPP
-#define PERSIST_CORE_PAGE_LOG_PAGE_HPP
+#ifndef PERSIST_CORE_PAGE_LOGPAGE_PAGE_HPP
+#define PERSIST_CORE_PAGE_LOGPAGE_PAGE_HPP
 
 #include <unordered_map>
 
-#include <persist/core/exceptions.hpp>
+#include <persist/core/exceptions/page.hpp>
 #include <persist/core/page/base.hpp>
-#include <persist/core/page/log_page/page_slot.hpp>
+#include <persist/core/page/log_page/slot.hpp>
 
 namespace persist {
 
@@ -52,7 +52,7 @@ public:
    *
    * The header contains page ID information.
    */
-  class Header {
+  class Header : public Storable {
   public:
     /**
      * @brief Page unique identifer
@@ -90,9 +90,8 @@ public:
      * @brief Get storage size of header
      *
      */
-    size_t GetSize() {
-      return sizeof(PageId) + sizeof(SeqNumber) + sizeof(uint64_t) +
-             sizeof(Checksum);
+    size_t GetStorageSize() const override {
+      return sizeof(PageId) + sizeof(SeqNumber) + sizeof(uint64_t);
     }
 
     /**
@@ -100,8 +99,8 @@ public:
      *
      * @param input input buffer span to load
      */
-    void Load(Span input) {
-      if (input.size < GetSize()) {
+    void Load(Span input) override {
+      if (input.size < GetStorageSize()) {
         throw PageParseError();
       }
       // Load bytes
@@ -113,8 +112,8 @@ public:
      *
      * @param output output buffer span to dump
      */
-    void Dump(Span output) {
-      if (output.size < GetSize()) {
+    void Dump(Span output) override {
+      if (output.size < GetStorageSize()) {
         throw PageParseError();
       }
       // Dump bytes
@@ -159,14 +158,7 @@ public:
    * @brief Construct a new Log Page object
    */
   LogPage(PageId page_id = 0, size_t page_size = DEFAULT_LOG_PAGE_SIZE)
-      : header(page_id, page_size), data_Size(header.GetSize()) {}
-
-  /**
-   * @brief Get the page type identifer.
-   *
-   * @returns The page type identifier
-   */
-  PageTypeId GetTypeId() const override { return LOG_PAGE_TYPE_ID; }
+      : header(page_id, page_size), data_Size(header.GetStorageSize()) {}
 
   /**
    * Get page identifier.
@@ -186,7 +178,6 @@ public:
     if (header.page_size <= data_Size) {
       return 0;
     }
-
     return header.page_size - data_Size;
   }
 
@@ -232,7 +223,7 @@ public:
    */
   LogPageSlot *InsertPageSlot(LogPageSlot &page_slot) {
     // Update data size in page
-    data_Size += page_slot.GetSize();
+    data_Size += page_slot.GetStorageSize();
     // Insert record block at slot
     auto inserted = slots.emplace(page_slot.GetSeqNumber(), page_slot);
 
@@ -241,6 +232,13 @@ public:
 
     return &inserted.first->second;
   }
+
+  /**
+   * @brief Get the storage size of the page.
+   *
+   * @returns Storage size.
+   */
+  size_t GetStorageSize() const override { return header.page_size; }
 
   /**
    * Load LogPage object from byte string.
@@ -255,14 +253,14 @@ public:
 
     // Load Page header
     header.Load(input);
-    data_Size = header.GetSize();
+    data_Size = header.GetStorageSize();
     input += data_Size;
     // Load bytes
     for (size_t i = 0; i < header.slot_count; ++i) {
       // Load slot
       LogPageSlot slot;
       slot.Load(input);
-      size_t slot_size = slot.GetSize();
+      size_t slot_size = slot.GetStorageSize();
       data_Size += slot_size;
       input += slot_size;
       slots.emplace(slot.GetSeqNumber(), slot);
@@ -281,12 +279,12 @@ public:
     // Dump header
     header.slot_count = slots.size();
     header.Dump(output);
-    output += header.GetSize();
+    output += header.GetStorageSize();
     // Dump bytes
     for (auto &element : slots) {
       LogPageSlot &slot = element.second;
       slot.Dump(output);
-      output += slot.GetSize();
+      output += slot.GetStorageSize();
     }
     // Dump free space
     std::memset((void *)output.start, 0, output.size);
@@ -312,4 +310,4 @@ public:
 
 } // namespace persist
 
-#endif /* PERSIST_CORE_PAGE_LOG_PAGE_HPP */
+#endif /* PERSIST_CORE_PAGE_LOGPAGE_PAGE_HPP */

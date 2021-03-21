@@ -25,6 +25,8 @@
 #ifndef PERSIST_CORE_PAGE_BASE_HPP
 #define PERSIST_CORE_PAGE_BASE_HPP
 
+#include <list>
+
 #include <persist/core/common.hpp>
 
 namespace persist {
@@ -51,7 +53,7 @@ public:
  * exposes interface common to all types of pages.
  *
  */
-class Page {
+class Page : public virtual Storable {
   PERSIST_PROTECTED
   /**
    * @brief List of registered page modification observers
@@ -84,19 +86,6 @@ public:
   }
 
   /**
-   * @brief Get the page type identifer.
-   *
-   * NOTES:
-   *  1. The underlying implementation does not need to serialize/deserialize
-   * this identifer as that is taken care by the polymorphic Load and Dump
-   * methods.
-   *  2. Each implementation should have a unique type ID.
-   *
-   * @returns The page type identifier
-   */
-  virtual PageTypeId GetTypeId() const = 0;
-
-  /**
    * Get page identifier.
    *
    * @returns Page identifier
@@ -110,20 +99,6 @@ public:
    * @returns Free space in bytes
    */
   virtual size_t GetFreeSpaceSize(Operation operation) const = 0;
-
-  /**
-   * Load page object from byte string.
-   *
-   * @param input input buffer span to load
-   */
-  virtual void Load(Span input) = 0;
-
-  /**
-   * Dump page object as byte string.
-   *
-   * @param output output buffer span to dump
-   */
-  virtual void Dump(Span output) = 0;
 };
 
 } // namespace persist

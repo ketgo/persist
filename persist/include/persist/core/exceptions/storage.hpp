@@ -1,5 +1,5 @@
 /**
- * record.hpp - Persist
+ * storage.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -23,12 +23,12 @@
  */
 
 /**
- * @brief The header file contains record related exceptions.
+ * @brief The header file contains storage related exceptions.
  *
  */
 
-#ifndef PERSIST_CORE_EXCEPTIONS_RECORD_HPP
-#define PERSIST_CORE_EXCEPTIONS_RECORD_HPP
+#ifndef PERSIST_CORE_EXCEPTIONS_STORAGE_HPP
+#define PERSIST_CORE_EXCEPTIONS_STORAGE_HPP
 
 #include <string>
 
@@ -37,20 +37,39 @@
 namespace persist {
 
 /**
- * Record Parse Error
+ * Page Not Found Error
  *
- * This error is thrown while parsing a record.
+ * This error is thrown if page is not found.
  */
-class RecordParseError : public ParseException {
+class PageNotFoundError : public NotFoundException {
 private:
   std::string msg;
 
 public:
-  RecordParseError() : msg("Record parse error.") {}
+  PageNotFoundError(PageId &page_id)
+      : msg(std::string("Page with ID '") + std::to_string(page_id) +
+            std::string("' not found.")) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
+ * Storage Error
+ *
+ * This error is thrown by backend storage.
+ */
+class StorageError : public PersistException {
+private:
+  std::string msg;
+
+public:
+  StorageError() : msg("Unable to open Storage.") {}
+  StorageError(const char *msg) : msg(msg) {}
+  StorageError(std::string &msg) : msg(msg) {}
 
   const char *what() const throw() { return msg.c_str(); }
 };
 
 } // namespace persist
 
-#endif /* PERSIST_CORE_EXCEPTIONS_RECORD_HPP */
+#endif /* PERSIST_CORE_EXCEPTIONS_STORAGE_HPP */

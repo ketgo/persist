@@ -104,6 +104,10 @@
     - handles metadata containing the starting location, ending location, and number of records in a collection
     - writes metadata to the first record block of the collection
 
+12. Refactor LogManager and LogRecord:
+    - Use polymorphic log record to allow the logging of operations on different types of pages.
+    - Add collection name as part of log record so that the transaction manager can manage multiple collections.
+
 ------------------------------------------------------------
 
 ## Collections

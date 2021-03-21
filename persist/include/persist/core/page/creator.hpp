@@ -1,5 +1,5 @@
 /**
- * record.hpp - Persist
+ * creator.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,35 +22,38 @@
  * SOFTWARE.
  */
 
-/**
- * @brief The header file contains record related exceptions.
- *
- */
+#ifndef PERSIST_CORE_PAGE_CREATOR_HPP
+#define PERSIST_CORE_PAGE_CREATOR_HPP
 
-#ifndef PERSIST_CORE_EXCEPTIONS_RECORD_HPP
-#define PERSIST_CORE_EXCEPTIONS_RECORD_HPP
+#include <memory>
 
-#include <string>
-
-#include <persist/core/exceptions/base.hpp>
+#include <persist/core/common.hpp>
+#include <persist/core/exceptions/page.hpp>
+#include <persist/core/page/base.hpp>
 
 namespace persist {
 
 /**
- * Record Parse Error
+ * @brief Create an empty page object of specified type.
  *
- * This error is thrown while parsing a record.
+ * @tparam PageType The type of page to create.
+ * @param page_id The page identifier.
+ * @param page_size The page size.
+ * @returns Unique pointer to the created page.
  */
-class RecordParseError : public ParseException {
-private:
-  std::string msg;
+template <class PageType>
+static std::unique_ptr<PageType> CreatePage(PageId page_id, size_t page_size) {
+  static_assert(std::is_base_of<Page, PageType>::value,
+                "Page must be derived from persist::Page");
 
-public:
-  RecordParseError() : msg("Record parse error.") {}
-
-  const char *what() const throw() { return msg.c_str(); }
-};
+  // Check page size greater than minimum size
+  if (page_size < MINIMUM_PAGE_SIZE) {
+    throw PageSizeError(page_size);
+  }
+  // The page size is adjusted to incorporate checksum.
+  return std::make_unique<PageType>(page_id, page_size - sizeof(Checksum));
+}
 
 } // namespace persist
 
-#endif /* PERSIST_CORE_EXCEPTIONS_RECORD_HPP */
+#endif /* PERSIST_CORE_PAGE_CREATOR_HPP */

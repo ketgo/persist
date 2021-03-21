@@ -1,5 +1,5 @@
 /**
- * record.hpp - Persist
+ * page_observer.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,35 +22,29 @@
  * SOFTWARE.
  */
 
-/**
- * @brief The header file contains record related exceptions.
- *
- */
+#ifndef PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP
+#define PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP
 
-#ifndef PERSIST_CORE_EXCEPTIONS_RECORD_HPP
-#define PERSIST_CORE_EXCEPTIONS_RECORD_HPP
+#include <gmock/gmock.h>
 
-#include <string>
+#include <persist/core/page/base.hpp>
 
-#include <persist/core/exceptions/base.hpp>
+using ::testing::_;
+using ::testing::Invoke;
 
 namespace persist {
+namespace test {
 
 /**
- * Record Parse Error
+ * @brief Page Observer Mock
  *
- * This error is thrown while parsing a record.
  */
-class RecordParseError : public ParseException {
-private:
-  std::string msg;
-
+class MockPageObserver : public PageObserver {
 public:
-  RecordParseError() : msg("Record parse error.") {}
-
-  const char *what() const throw() { return msg.c_str(); }
+  MOCK_METHOD(void, HandleModifiedPage, (PageId pageId), (override));
 };
 
+} // namespace test
 } // namespace persist
 
-#endif /* PERSIST_CORE_EXCEPTIONS_RECORD_HPP */
+#endif /* PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP */

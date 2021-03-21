@@ -1,5 +1,5 @@
 /**
- * record.hpp - Persist
+ * wal.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -23,12 +23,12 @@
  */
 
 /**
- * @brief The header file contains record related exceptions.
+ * @brief The header file contains write ahead logging (WAL) related exceptions.
  *
  */
 
-#ifndef PERSIST_CORE_EXCEPTIONS_RECORD_HPP
-#define PERSIST_CORE_EXCEPTIONS_RECORD_HPP
+#ifndef PERSIST_CORE_EXCEPTIONS_WAL_HPP
+#define PERSIST_CORE_EXCEPTIONS_WAL_HPP
 
 #include <string>
 
@@ -37,20 +37,22 @@
 namespace persist {
 
 /**
- * Record Parse Error
+ * Log Record Parsing Error
  *
- * This error is thrown while parsing a record.
+ * This error is thrown if unable to parse log record.
  */
-class RecordParseError : public ParseException {
+class LogRecordParseError : public ParseException {
 private:
   std::string msg;
 
 public:
-  RecordParseError() : msg("Record parse error.") {}
+  LogRecordParseError() : msg("Log record parsing error.") {}
+  LogRecordParseError(const char *msg) : msg(msg) {}
+  LogRecordParseError(std::string &msg) : msg(msg) {}
 
   const char *what() const throw() { return msg.c_str(); }
 };
 
 } // namespace persist
 
-#endif /* PERSIST_CORE_EXCEPTIONS_RECORD_HPP */
+#endif /* PERSIST_CORE_EXCEPTIONS_WAL_HPP */

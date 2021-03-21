@@ -81,7 +81,7 @@ template <class RecordType> class List {
      * @param input input buffer span to load
      */
     void Load(Span input) {
-      if (input.size < GetStorageSize(())) {
+      if (input.size < GetStorageSize()) {
         throw RecordParseError();
       }
       // Load bytes
@@ -95,7 +95,7 @@ template <class RecordType> class List {
      * @param output output buffer span to dump
      */
     void Dump(Span output) {
-      if (output.size < GetStorageSize(())) {
+      if (output.size < GetStorageSize()) {
         throw RecordParseError();
       }
       // Load bytes

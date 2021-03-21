@@ -1,5 +1,5 @@
 /**
- * record.hpp - Persist
+ * test_factory.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -23,34 +23,21 @@
  */
 
 /**
- * @brief The header file contains record related exceptions.
- *
+ * @brief Replacer creator test.
  */
 
-#ifndef PERSIST_CORE_EXCEPTIONS_RECORD_HPP
-#define PERSIST_CORE_EXCEPTIONS_RECORD_HPP
+#include <gtest/gtest.h>
 
-#include <string>
+#include <memory>
+#include <typeinfo>
 
-#include <persist/core/exceptions/base.hpp>
+#include <persist/core/buffer/replacer/creator.hpp>
 
-namespace persist {
+using namespace persist;
 
-/**
- * Record Parse Error
- *
- * This error is thrown while parsing a record.
- */
-class RecordParseError : public ParseException {
-private:
-  std::string msg;
-
-public:
-  RecordParseError() : msg("Record parse error.") {}
-
-  const char *what() const throw() { return msg.c_str(); }
-};
-
-} // namespace persist
-
-#endif /* PERSIST_CORE_EXCEPTIONS_RECORD_HPP */
+TEST(ReplacerCreatorTest, TestCreateLRUReplacer) {
+  std::unique_ptr<Replacer> replacer = CreateReplacer(ReplacerType::LRU);
+  Replacer *ptr = replacer.get();
+  std::string class_name = typeid(*ptr).name();
+  ASSERT_TRUE(class_name.find("LRUReplacer") != std::string::npos);
+}
