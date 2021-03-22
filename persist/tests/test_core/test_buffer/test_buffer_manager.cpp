@@ -105,6 +105,13 @@ TEST_F(BufferManagerTestFixture, TestGetError) {
   ASSERT_THROW(buffer_manager->Get(10), PageNotFoundError);
 }
 
+TEST_F(BufferManagerTestFixture, TestGetNew) {
+  auto page = buffer_manager->GetNew();
+
+  // A new page with ID 4 should be created
+  ASSERT_EQ(page->GetId(), 4);
+}
+
 TEST_F(BufferManagerTestFixture, TestFlush) {
   ByteBuffer record;
 

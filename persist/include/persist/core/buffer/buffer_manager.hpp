@@ -28,8 +28,9 @@
 #include <persist/core/buffer/page_handle.hpp>
 #include <persist/core/buffer/replacer/creator.hpp>
 #include <persist/core/exceptions/buffer.hpp>
-#include <persist/core/page/base.hpp>
+#include <persist/core/page/creator.hpp>
 #include <persist/core/storage/base.hpp>
+
 #include <persist/utility/mutex.hpp>
 
 // At the minimum 2 pages are needed in memory by record manager.
@@ -133,22 +134,6 @@ public:
   }
 
   /**
-   * @brief The method handles modified pages by marking the corresponding frame
-   * as modified.
-   *
-   * @thread_safe
-   *
-   * @param page_id ID of the page modified
-   */
-  void HandleModifiedPage(PageId page_id) override {
-    LockGuard guard(lock);
-
-    auto &slot = buffer.at(page_id);
-    // Mark slot as modified
-    slot.modified = true;
-  }
-
-  /**
    * @brief Start buffer manager.
    *
    * @thread_unsafe The method is not thread safe as it is expected that the
@@ -215,6 +200,30 @@ public:
   }
 
   /**
+   * Get a new page. The method creates a new page by allocating space in
+   * backend storage and loads it into buffer.
+   *
+   * @thread_safe
+   *
+   * @tparam PageType Type of Page
+   * @returns page handle object
+   */
+  PageHandle<PageType> GetNew() {
+    LockGuard guard(lock);
+
+    // Allocate space for new page
+    PageId page_id = storage->Allocate();
+    // Create an empty page
+    std::unique_ptr<PageType> page =
+        persist::CreatePage<PageType>(page_id, storage->GetPageSize());
+    // Load the new page in buffer
+    Put(page);
+
+    // Return loaded page
+    return Get(page_id);
+  }
+
+  /**
    * Save a single page to backend storage. The page will be stored only
    * if it is marked as modified and is unpinned.
    *
@@ -255,6 +264,22 @@ public:
     for (const auto &element : buffer) {
       Flush(element.first);
     }
+  }
+
+  /**
+   * @brief The method handles modified pages by marking the corresponding frame
+   * as modified.
+   *
+   * @thread_safe
+   *
+   * @param page_id ID of the page modified
+   */
+  void HandleModifiedPage(PageId page_id) override {
+    LockGuard guard(lock);
+
+    auto &slot = buffer.at(page_id);
+    // Mark slot as modified
+    slot.modified = true;
   }
 
 #ifdef __PERSIST_DEBUG__
