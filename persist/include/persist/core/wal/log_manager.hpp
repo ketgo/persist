@@ -87,6 +87,7 @@ class LogManager {
   PageHandle<LogPage> GetFreeOrNewPage() {
     LockGuard guard(lock);
 
+    // Get last page
     auto page = buffer_manager.Get(last_page_id);
     // Check if last page has free space else return a new page.
     if (!page->GetFreeSpaceSize(Operation::INSERT)) {
@@ -127,10 +128,14 @@ public:
       buffer_manager.Start();
       // Load last page in buffer
       last_page_id = storage->GetPageCount();
-      // Get last sequence number if last page ID is not 0
+      // Get last sequence number if last page ID is not 0 else create a new
+      // page and set its ID to the last page ID.
       if (last_page_id) {
         auto page = buffer_manager.Get(last_page_id);
         seq_number = page->GetLastSeqNumber();
+      } else {
+        auto new_page = buffer_manager.GetNew();
+        last_page_id = new_page->GetId();
       }
       // Set state to started
       started = true;
