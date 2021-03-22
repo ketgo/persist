@@ -52,15 +52,53 @@ class LogManager {
   Mutex lock; //<- lock for achieving thread safety via mutual exclusion
   typedef typename persist::LockGuard<Mutex> LockGuard;
 
-  std::atomic<SeqNumber>
-      seq_number; //<- Sequence number of the latest log record. This is used to
-  // set sequence number of the next log record.
-  PageId last_page_id; //<- Identifer of the last page in the backend storage of
-                       // the log.
-  Storage<LogPage> *
-      storage PT_GUARDED_BY(lock);       //<- Pointer to backend log storage
-  BufferManager<LogPage> buffer_manager; //<- Log record buffer manager
-  bool started GUARDED_BY(lock); //<- flag indicating log manager started
+  /**
+   * @brief Sequence number of the latest log record. This is used to set
+   * sequence number of the next log record.
+   *
+   */
+  std::atomic<SeqNumber> seq_number;
+  /**
+   * @brief Identifer of the last page in the backend storage of the log.
+   *
+   */
+  PageId last_page_id GUARDED_BY(lock);
+  /**
+   * @brief Pointer to backend log storage.
+   *
+   */
+  Storage<LogPage> *storage PT_GUARDED_BY(lock);
+  /**
+   * @brief Log record buffer manager.
+   *
+   */
+  BufferManager<LogPage> buffer_manager;
+  /**
+   * @brief Flag indicating log manager started.
+   *
+   */
+  bool started GUARDED_BY(lock);
+
+  /**
+   * @brief Get a page with free space or a new page.
+   *
+   * @returns Page handle object.
+   */
+  PageHandle<LogPage> GetFreeOrNewPage() {
+    LockGuard guard(lock);
+
+    auto page = buffer_manager.Get(last_page_id);
+    // Check if last page has free space else return a new page.
+    if (!page->GetFreeSpaceSize(Operation::INSERT)) {
+      auto new_page = buffer_manager.GetNew();
+      // Set the ID of the new page as last page ID.
+      last_page_id = new_page->GetId();
+
+      return new_page;
+    }
+
+    return page;
+  }
 
 public:
   /**
@@ -71,7 +109,7 @@ public:
    */
   LogManager(Storage<LogPage> *storage,
              uint64_t cacheSize = DEFAULT_LOG_BUFFER_SIZE)
-      : seq_number(0), started(false), storage(storage),
+      : seq_number(0), last_page_id(0), started(false), storage(storage),
         buffer_manager(storage, cacheSize) {}
 
   /**
@@ -149,7 +187,7 @@ public:
     // Start loop to write content in linked record blocks
     while (to_write_size > 0) {
       // Get a free page
-      auto page = buffer_manager.GetFreeOrNew<LogPage>();
+      auto page = GetFreeOrNewPage();
       PageId page_id = page->GetId();
 
       // Create slot to add to page

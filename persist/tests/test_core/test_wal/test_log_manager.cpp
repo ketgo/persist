@@ -54,9 +54,8 @@ protected:
   const std::string path = "test_log_manager";
   std::unique_ptr<LogPage> page;
   std::unique_ptr<LogRecord> log_record;
-  std::unique_ptr<FSL> fsl;
   std::unique_ptr<LogManager> log_manager;
-  std::unique_ptr<Storage> storage;
+  std::unique_ptr<Storage<LogPage>> storage;
 
   void SetUp() override {
     // Setting log record
@@ -67,17 +66,13 @@ protected:
     // Setting up page
     page = persist::CreatePage<LogPage>(page_id, DEFAULT_LOG_PAGE_SIZE);
     LogPageSlot slot(seq_number);
-    slot.data.resize(log_record->GetSize());
+    slot.data.resize(log_record->GetStorageSize());
     log_record->Dump(slot.data);
     page->InsertPageSlot(slot);
     page->SetLastSeqNumber(seq_number);
 
-    // setting up free space list
-    fsl = std::make_unique<FSL>();
-    fsl->freePages = {page_id};
-
     // setting up storage
-    storage = persist::CreateStorage("file://" + path);
+    storage = persist::CreateStorage<LogPage>("file://" + path);
     Insert();
 
     // Setup log manager
@@ -97,7 +92,6 @@ private:
   void Insert() {
     storage->Open();
     storage->Write(*page);
-    storage->Write(*fsl);
     storage->Close();
   }
 };
@@ -114,10 +108,10 @@ TEST_F(LogManagerTestFixture, TestGet) {
 
 TEST_F(LogManagerTestFixture, TestAdd) {
   // Creating log record which should span multiple page slots
-  SlottedPageSlot page_slot_a, page_slot_b;
+  RecordPageSlot page_slot_a, page_slot_b;
   page_slot_a.data = ByteBuffer(storage->GetPageSize(), 'A');
   page_slot_b.data = ByteBuffer(storage->GetPageSize(), 'B');
-  SlottedPageSlot::Location slot_location = {10, 1};
+  RecordPageSlot::Location slot_location = {10, 1};
   LogRecord::Location prev_log_record_location = {0, 0};
   LogRecord log_record(11, prev_log_record_location, LogRecord::Type::UPDATE,
                        slot_location, page_slot_a, page_slot_b);
@@ -131,10 +125,10 @@ TEST_F(LogManagerTestFixture, TestAdd) {
 
 TEST_F(LogManagerTestFixture, TestFlush) {
   // Creating log record which should span multiple page slots
-  SlottedPageSlot page_slot_a, page_slot_b;
+  RecordPageSlot page_slot_a, page_slot_b;
   page_slot_a.data = ByteBuffer(storage->GetPageSize(), 'A');
   page_slot_b.data = ByteBuffer(storage->GetPageSize(), 'B');
-  SlottedPageSlot::Location slot_location = {10, 1};
+  RecordPageSlot::Location slot_location = {10, 1};
   LogRecord::Location prev_log_record_location = {0, 0};
   LogRecord log_record(11, prev_log_record_location, LogRecord::Type::UPDATE,
                        slot_location, page_slot_a, page_slot_b);
@@ -144,7 +138,7 @@ TEST_F(LogManagerTestFixture, TestFlush) {
   log_manager->Flush();
 
   // Create storage to test page flush
-  auto _storage = CreateStorage("file://" + path);
+  auto _storage = CreateStorage<LogPage>("file://" + path);
   _storage->Open();
   ASSERT_TRUE(_storage->GetPageCount() > 1);
   _storage->Close();

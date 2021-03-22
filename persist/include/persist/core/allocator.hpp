@@ -97,7 +97,7 @@ public:
    *
    * @returns Page handle object
    */
-  virtual PageHandle<PageType> GetNewPage() = 0;
+  PageHandle<PageType> GetNewPage() = 0;
 
   /**
    * @brief Get a page with free space. If no such page is available then a new
@@ -105,7 +105,7 @@ public:
    *
    * @returns Page handle object
    */
-  virtual PageHandle<PageType> GetNewOrFreePage() = 0;
+  PageHandle<PageType> GetNewOrFreePage() = 0;
 };
 
 } // namespace persist
