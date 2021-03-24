@@ -1,5 +1,5 @@
 /**
- * page_observer.hpp - Persist
+ * fsm/creator.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,29 +22,35 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP
-#define PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP
+#ifndef PERSIST_CORE_FSM_CREATOR_HPP
+#define PERSIST_CORE_FSM_CREATOR_HPP
 
-#include <gmock/gmock.h>
-
-#include <persist/core/page/base.hpp>
-
-using ::testing::_;
-using ::testing::Invoke;
+#include <persist/core/fsm/base.hpp>
+#include <persist/core/fsm/fsl.hpp>
 
 namespace persist {
-namespace test {
 
 /**
- * @brief Page Observer Mock
+ * @brief Enumerated list of free space manager types
  *
  */
-class MockPageObserver : public PageObserver {
-public:
-  MOCK_METHOD(void, HandleModifiedPage, (const Page &), (override));
-};
+enum class FSMType { FSL };
 
-} // namespace test
+/**
+ * @brief Factory method to create free space manager of given type.
+ *
+ * @param fsm_type Type of free space manager to create
+ * @returns Unique pointer to created FreeSpaceManager object
+ */
+static std::unique_ptr<FreeSpaceManager> CreateFSM(FSMType fsm_type,
+                                                   Storage *storage) {
+  switch (fsm_type) {
+  case FSMType::FSL:
+    return std::make_unique<FSLManager>(storage);
+    break;
+  }
+}
+
 } // namespace persist
 
-#endif /* PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP */
+#endif /* PERSIST_CORE_FSM_CREATOR_HPP */

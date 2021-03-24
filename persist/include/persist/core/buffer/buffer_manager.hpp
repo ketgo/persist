@@ -80,7 +80,7 @@ template <class PageType> class BufferManager : public PageObserver {
 
   size_t max_size GUARDED_BY(lock); //<- maximum size of buffer
   typedef typename std::unordered_map<PageId, Frame> Buffer;
-  Buffer buffer GUARDED_BY(lock); //<- buffer of page slots
+  Buffer buffer GUARDED_BY(lock); //<- buffer of page frames
   bool started GUARDED_BY(lock);  //<- flag indicating buffer manager started
 
   /**
@@ -136,11 +136,10 @@ public:
   /**
    * @brief Start buffer manager.
    *
-   * @thread_unsafe The method is not thread safe as it is expected that the
-   * user starts the buffer manager before spawning any threads.
+   * @thread_safe
    *
    */
-  void Start() NO_THREAD_SAFETY_ANALYSIS {
+  void Start() {
     LockGuard guard(lock);
 
     if (!started) {
@@ -157,10 +156,10 @@ public:
    * All the modified pages loaded onto the buffer are flushed to backend
    * storage before stopping the manager.
    *
-   * @thread_unsafe The method is not thread safe as it is expected that the
-   * user stops the buffer manager after joining all the threads.
+   * @thread_safe
+   *
    */
-  void Stop() NO_THREAD_SAFETY_ANALYSIS {
+  void Stop() {
     LockGuard guard(lock);
 
     if (started) {
@@ -272,14 +271,14 @@ public:
    *
    * @thread_safe
    *
-   * @param page_id ID of the page modified
+   * @param page Constant reference to the modified page.
    */
-  void HandleModifiedPage(PageId page_id) override {
+  void HandleModifiedPage(const Page &page) override {
     LockGuard guard(lock);
 
-    auto &slot = buffer.at(page_id);
-    // Mark slot as modified
-    slot.modified = true;
+    auto &frame = buffer.at(page.GetId());
+    // Mark frame as modified
+    frame.modified = true;
   }
 
 #ifdef __PERSIST_DEBUG__

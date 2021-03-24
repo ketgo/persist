@@ -105,13 +105,13 @@ public:
   /**
    * @brief Construct a new log manager object.
    *
-   * @param storage pointer to backend log sotrage
-   * @param cacheSize log buffer cache size
+   * @param storage Pointer to backend log sotrage
+   * @param cache_size Log buffer cache size
    */
   LogManager(Storage<LogPage> *storage,
-             uint64_t cacheSize = DEFAULT_LOG_BUFFER_SIZE)
+             size_t cache_size = DEFAULT_LOG_BUFFER_SIZE)
       : seq_number(0), last_page_id(0), started(false), storage(storage),
-        buffer_manager(storage, cacheSize) {}
+        buffer_manager(storage, cache_size) {}
 
   /**
    * @brief Start log manager.

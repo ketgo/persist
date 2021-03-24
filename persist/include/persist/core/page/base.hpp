@@ -32,6 +32,12 @@
 namespace persist {
 
 /**
+ * @brief Forward declare Page class
+ *
+ */
+class Page;
+
+/**
  * @brief Page Observer
  *
  * Observes modification on page.
@@ -41,9 +47,9 @@ public:
   /**
    * @brief Handle page modification.
    *
-   * @param page_id ID of the page modified
+   * @param page Constant reference to the modified page.
    */
-  virtual void HandleModifiedPage(PageId page_id) = 0;
+  virtual void HandleModifiedPage(const Page &page) = 0;
 };
 
 /**
@@ -65,7 +71,7 @@ class Page : public virtual Storable {
    */
   void NotifyObservers() {
     for (auto observer : observers) {
-      observer->HandleModifiedPage(GetId());
+      observer->HandleModifiedPage(*this);
     }
   }
 

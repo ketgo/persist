@@ -292,7 +292,8 @@ TEST_F(RecordPageTestFixture, TestGetNextBlockId) {
 TEST_F(RecordPageTestFixture, TestSetNextBlockId) {
   PageId blockId = 99;
   page->RegisterObserver(&observer);
-  EXPECT_CALL(observer, HandleModifiedPage(page->GetId())).Times(AtLeast(1));
+  EXPECT_CALL(observer, HandleModifiedPage(testing::Ref(*page)))
+      .Times(AtLeast(1));
   page->SetNextPageId(blockId);
   ASSERT_EQ(page->GetNextPageId(), blockId);
 }
@@ -304,7 +305,8 @@ TEST_F(RecordPageTestFixture, TestGetPrevBlockId) {
 TEST_F(RecordPageTestFixture, TestSetPrevBlockId) {
   PageId blockId = 99;
   page->RegisterObserver(&observer);
-  EXPECT_CALL(observer, HandleModifiedPage(page->GetId())).Times(AtLeast(1));
+  EXPECT_CALL(observer, HandleModifiedPage(testing::Ref(*page)))
+      .Times(AtLeast(1));
   page->SetPrevPageId(blockId);
   ASSERT_EQ(page->GetPrevPageId(), blockId);
 }
@@ -343,7 +345,8 @@ TEST_F(RecordPageTestFixture, TestAddPageSlot) {
 
   // Current free space in block
   page->RegisterObserver(&observer);
-  EXPECT_CALL(observer, HandleModifiedPage(page->GetId())).Times(AtLeast(1));
+  EXPECT_CALL(observer, HandleModifiedPage(testing::Ref(*page)))
+      .Times(AtLeast(1));
   size_t old_free_space = page->GetFreeSpaceSize(Operation::INSERT);
   Transaction txn(log_manager.get(), 0);
   PageSlotId slot_id = page->InsertPageSlot(page_slot, txn).first;
@@ -370,7 +373,8 @@ TEST_F(RecordPageTestFixture, TestUpdatePageSlot) {
 
   // Current free space in block
   page->RegisterObserver(&observer);
-  EXPECT_CALL(observer, HandleModifiedPage(page->GetId())).Times(AtLeast(1));
+  EXPECT_CALL(observer, HandleModifiedPage(testing::Ref(*page)))
+      .Times(AtLeast(1));
   size_t old_free_space = page->GetFreeSpaceSize(Operation::UPDATE);
   Transaction txn(log_manager.get(), 0);
   page->UpdatePageSlot(slot_id_1, page_slot, txn);
@@ -395,7 +399,8 @@ TEST_F(RecordPageTestFixture, TestUpdatePageSlot) {
 
 TEST_F(RecordPageTestFixture, TestRemovePageSlot) {
   page->RegisterObserver(&observer);
-  EXPECT_CALL(observer, HandleModifiedPage(page->GetId())).Times(AtLeast(1));
+  EXPECT_CALL(observer, HandleModifiedPage(testing::Ref(*page)))
+      .Times(AtLeast(1));
   size_t old_free_space = page->GetFreeSpaceSize(Operation::UPDATE);
   Transaction txn(log_manager.get(), 0);
   page->RemovePageSlot(slot_id_2, txn);

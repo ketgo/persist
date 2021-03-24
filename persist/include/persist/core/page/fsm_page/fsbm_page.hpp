@@ -1,5 +1,5 @@
 /**
- * page_observer.hpp - Persist
+ * fsbm_page.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,29 +22,7 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP
-#define PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP
+#ifndef PERSIST_CORE_PAGE_FSMPAGE_FSBMPAGE_HPP
+#define PERSIST_CORE_PAGE_FSMPAGE_FSBMPAGE_HPP
 
-#include <gmock/gmock.h>
-
-#include <persist/core/page/base.hpp>
-
-using ::testing::_;
-using ::testing::Invoke;
-
-namespace persist {
-namespace test {
-
-/**
- * @brief Page Observer Mock
- *
- */
-class MockPageObserver : public PageObserver {
-public:
-  MOCK_METHOD(void, HandleModifiedPage, (const Page &), (override));
-};
-
-} // namespace test
-} // namespace persist
-
-#endif /* PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP */
+#endif /* PERSIST_CORE_PAGE_FSMPAGE_FSBMPAGE_HPP */

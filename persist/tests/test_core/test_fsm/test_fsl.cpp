@@ -1,5 +1,5 @@
 /**
- * page_observer.hpp - Persist
+ * test_fsl.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,29 +22,28 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP
-#define PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP
-
-#include <gmock/gmock.h>
-
-#include <persist/core/page/base.hpp>
-
-using ::testing::_;
-using ::testing::Invoke;
-
-namespace persist {
-namespace test {
-
 /**
- * @brief Page Observer Mock
- *
+ * Free space list unit tests.
  */
-class MockPageObserver : public PageObserver {
-public:
-  MOCK_METHOD(void, HandleModifiedPage, (const Page &), (override));
+
+#include <gtest/gtest.h>
+
+#include <list>
+#include <memory>
+
+#include <persist/core/fsm/fsl.hpp>
+
+using namespace persist;
+
+class FSLTestFixture : public ::testing::Test {
+protected:
+  ByteBuffer input;
+  std::unique_ptr<FSLManager> fsl;
+  const std::set<PageId> free_pages = {0, 1, 2, 3};
+
+  void SetUp() override {}
 };
 
-} // namespace test
-} // namespace persist
+TEST_F(FSLTestFixture, TestManager) {}
 
-#endif /* PERSIST_TEST_MOCKS_PAGE_OBSERVER_HPP */
+TEST_F(FSLTestFixture, TestGetPageId) {}

@@ -1,5 +1,5 @@
 /**
- * test_log_page.cpp - Persist
+ * test_page.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -214,14 +214,7 @@ TEST_F(LogPageTestFixture, TestGetPageSlot) {
 }
 
 TEST_F(LogPageTestFixture, TestGetPageSlotError) {
-  try {
-    auto _page_slot = page->GetPageSlot(20);
-    FAIL() << "Expected PageSlotNotFoundError Exception.";
-  } catch (PageSlotNotFoundError &err) {
-    SUCCEED();
-  } catch (...) {
-    FAIL() << "Expected PageSlotNotFoundError Exception.";
-  }
+  ASSERT_THROW(page->GetPageSlot(20), PageSlotNotFoundError);
 }
 
 TEST_F(LogPageTestFixture, TestInsertPageSlot) {
@@ -231,7 +224,8 @@ TEST_F(LogPageTestFixture, TestInsertPageSlot) {
 
   // Current free space in block
   page->RegisterObserver(&observer);
-  EXPECT_CALL(observer, HandleModifiedPage(page->GetId())).Times(AtLeast(1));
+  EXPECT_CALL(observer, HandleModifiedPage(testing::Ref(*page)))
+      .Times(AtLeast(1));
   size_t old_free_space = page->GetFreeSpaceSize(Operation::INSERT);
   page->InsertPageSlot(page_slot);
   size_t new_free_size = page->GetFreeSpaceSize(Operation::INSERT);
@@ -255,16 +249,9 @@ TEST_F(LogPageTestFixture, TestLoad) {
 }
 
 TEST_F(LogPageTestFixture, TestLoadError) {
-  try {
-    ByteBuffer _input;
-    LogPage _page;
-    _page.Load(_input);
-    FAIL() << "Expected PageParseError Exception.";
-  } catch (PageParseError &err) {
-    SUCCEED();
-  } catch (...) {
-    FAIL() << "Expected PageParseError Exception.";
-  }
+  ByteBuffer _input;
+  LogPage _page;
+  ASSERT_THROW(_page.Load(_input), PageParseError);
 }
 
 TEST_F(LogPageTestFixture, TestDump) {
