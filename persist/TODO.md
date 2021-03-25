@@ -38,19 +38,19 @@
     - [DONE] implement very basic thread-safety by applying a recursive mutex to each method call
 
 3. [IN-PROGRESS] Create a FreeSpaceManager for efficient detection and handling of pages with free space
-    -[DONE] serialize/deserialize polymorphic pages
-    -[DONE] refactor buffer manager to use polymorphic page
-    -[DONE] refactor `getFree` method of buffer manager to take sizeHint parameter as an argument. This parameter provides a hint to the free space manager about the amount of free space requested. Note that this parameter is treated only as a hint with the FreeSpaceManager free to return a page with less available free space.
-    -[DONE] create an interface for FreeSpaceManager to allow for different FreeSpaceManager implementations
-    - implement a basic FreeSpaceManager
-    - refactor buffer manager to use FreeSpaceManager
-    - remove the FSL and the read and write method of backend storage
-    - FreeSpaceManager should use Pages obtained from the buffer manager to persist FSL
+    - [SKIPPED] serialize/deserialize polymorphic pages
+    - [SKIPPED] refactor buffer manager to use polymorphic page
+    - [DONE] refactor `GetFree` method of buffer manager to take sizeHint parameter as an argument. This parameter provides a hint to the free space manager about the amount of free space requested. Note that this parameter is treated only as a hint with the FreeSpaceManager free to return a page with less available free space.
+    - [DONE] create an interface for FreeSpaceManager to allow for different FreeSpaceManager implementations
+    - [DONE] implement a basic FreeSpaceManager
+    - [DONE] decouple buffer manager from FreeSpaceManager
+    - [DONE] remove the FSL and the read and write method of backend storage
+    - [DONE] FreeSpaceManager should use Pages obtained from the buffer manager to persist FSL
 
 4. [DONE] Implement a persistent log file for transaction logging:
-    - create page class for storing log records
-    - use buffer manager for loading pages of log records in the log manager
-    - log manager to persist pages using the flush method of buffer manager
+    - [DONE] create page class for storing log records
+    - [DONE] use buffer manager for loading pages of log records in the log manager
+    - [DONE] log manager to persist pages using the flush method of buffer manager
 
 5. [DONE] Implement the FORCE and NO-FORCE mode of operations of the transaction manager:
     - [DONE] Re-design and implement transaction class
@@ -62,41 +62,43 @@
         - implement and use no-lock/lock-based concurrent hash map --> used in multiple places like buffer manager and slotted pages
         - implement and use no-lock/lock-based concurrent replacer --> used by the buffer manager
         - implement and use no-lock/lock-based concurrent FreeSpaceManager --> used by the buffer manager
-    -[DONE] Add thread-safety annotations
-    -[IN-PROGRESS] Add lock guards for basic thread-safety in:
-        -[DONE] BufferManager
-        -[DONE] LRUReplacer
-        -[DONE] LogManager --> Possibly can be skipped
-        - FSM
-    -[DONE] Create utility classes for unit-testing thread-safety --> [Created TSTest lib]
-        - Create an event queue to store a chronologically ordered sequence of unit operations
-        - Create an `UnitOperation` Class to run one or more statements as a single unit. The class should push the start and end event records in the event queue.
-        - Create a `Runner` class to execute a sequence of `UnitOperation` objects in multiple threads.
-        - Create an `AssertionMap` class to map a sequence of events to a lambda function. The lambda function will assert expected behavior for the mapped event sequence.
-    -[SKIPPED] Support plugin of thread-safe and unsafe Replacers for BufferManager:
+    - [DONE] Add thread-safety annotations
+    - [IN-PROGRESS] Add lock guards for basic thread-safety in:
+        - [DONE] BufferManager
+        - [DONE] LRUReplacer
+        - [DONE] LogManager --> Possibly can be skipped
+        - [DONE] FSM
+    - [DONE] Create utility classes for unit-testing thread-safety --> [Created TSTest lib]
+        - [DONE] Create an event queue to store a chronologically ordered sequence of unit operations
+        - [DONE] Create an `UnitOperation` Class to run one or more statements as a single unit. The class should push the start and end event records in the event queue.
+        - [DONE] Create a `Runner` class to execute a sequence of `UnitOperation` objects in multiple threads.
+        - [DONE] Create an `AssertionMap` class to map a sequence of events to a lambda function. The lambda function will assert expected behavior for the mapped event sequence.
+    - [SKIPPED] Support plugin of thread-safe and unsafe Replacers for BufferManager:
         - Add `ReplacerTraits` template class containing thread-safety trait information for replacers
         - Create a `ThreadSafeReplacer` class to wrap thread-unsafe replacer implementations
         - Create traits class for LRUReplacer implying it is thread-safe
-    -[IN-PROGRESS] Create Type-Parameterized thread-safety test fixtures inside test headers
-    -[IN-PROGRESS] Write thread-safety unit tests for:
-        -[IN-PROGRESS] BufferManager
-        -[IN-PROGRESS] LRUReplacer
+    - [IN-PROGRESS] Create Type-Parameterized thread-safety test fixtures inside test headers
+    - [IN-PROGRESS] Write thread-safety unit tests for:
+        - [IN-PROGRESS] BufferManager
+        - [IN-PROGRESS] LRUReplacer
         - LogManager
+        - FSM
 
-7. Refactor all components to policy-based design.
+7. [SKIPPED] Refactor all components to policy-based design.
 
-8. Design a Storable object interface. A storable object should expose the interface:
-    - size_t GetSize(): The amount of storage space in bytes occupied by the object
-    - size_t GetMinSize(): The minimum amount of storage space in bytes occupied by the object.
-    - size_t GetMaxSize(): The maximum amount of storage space in bytes occupied by the object. A returned value of 0 indicates no max size.
-    - void Load(Span input): Load object from byte buffer
-    - void Dump(Span output): Dump object to byte buffer
+8. [DONE] Design a Storable object interface. A storable object should expose the interface:
+    - [DONE] size_t GetStorageSize(): The amount of storage space in bytes occupied by the object
+    - [SKIPPED] size_t GetMinSize(): The minimum amount of storage space in bytes occupied by the object.
+    -  [SKIPPED] size_t GetMaxSize(): The maximum amount of storage space in bytes occupied by the object. A returned value of 0 indicates no max size.
+    - [DONE] void Load(Span input): Load object from byte buffer
+    - [DONE] void Dump(Span output): Dump object to byte buffer
 
 9. Create Concurrency Control Manager:
     - Design manager class. The design should be extendable to support different concurrency control protocols
     - Create a separate project to PoC concurrency manager design
     - Implement different types of concurrency control policies
     - Implement RECORD-LEVEL atomic operations by providing concurrency control at PAGE_SLOT-LEVEL
+    - Design approach to handle the scenario where FSM returns the same page ID for multiple concurrent transactions.
 
 10. Implement recovery manager and checkpoint manager
 
@@ -112,9 +114,9 @@
 
 ## Collections
 
-1. Implement List collection
-    - implement record manager for list collection
-    - implement list collection class
+1. [IN-PROGRESS] Implement List collection
+    - [IN-PROGRESS] implement record manager for list collection
+    - [IN-PROGRESS] implement list collection class
 
 ------------------------------------------------------------
 
