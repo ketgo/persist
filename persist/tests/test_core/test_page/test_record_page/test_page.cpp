@@ -190,7 +190,7 @@ protected:
   void SetUp() override {
     // Setup log manager
     storage = persist::CreateStorage<LogPage>("file://test_slotted_page_log");
-    log_manager = std::make_unique<LogManager>(storage.get(), 2);
+    log_manager = std::make_unique<LogManager>(*storage, 2);
     log_manager->Start();
 
     // Setup valid page
@@ -198,7 +198,7 @@ protected:
     page->SetNextPageId(next_page_id);
     page->SetPrevPageId(prev_page_id);
     // Add record blocks
-    Transaction txn(log_manager.get(), 0);
+    Transaction txn(*log_manager, 0);
     page_slot_1 = std::make_unique<RecordPageSlot>();
     page_slot_1->data = page_slot_date_1;
     slot_id_1 = page->InsertPageSlot(*page_slot_1, txn).first;
@@ -326,7 +326,7 @@ TEST_F(RecordPageTestFixture, TestFreeSpace) {
 }
 
 TEST_F(RecordPageTestFixture, TestGetPageSlot) {
-  Transaction txn(log_manager.get(), 0);
+  Transaction txn(*log_manager, 0);
   RecordPageSlot _page_slot = page->GetPageSlot(slot_id_1, txn);
 
   ASSERT_EQ(_page_slot.data, page_slot_date_1);
@@ -335,7 +335,7 @@ TEST_F(RecordPageTestFixture, TestGetPageSlot) {
 }
 
 TEST_F(RecordPageTestFixture, TestGetPageSlotError) {
-  Transaction txn(log_manager.get(), 0);
+  Transaction txn(*log_manager, 0);
   ASSERT_THROW(page->GetPageSlot(10, txn), PageSlotNotFoundError);
 }
 
@@ -348,7 +348,7 @@ TEST_F(RecordPageTestFixture, TestAddPageSlot) {
   EXPECT_CALL(observer, HandleModifiedPage(testing::Ref(*page)))
       .Times(AtLeast(1));
   size_t old_free_space = page->GetFreeSpaceSize(Operation::INSERT);
-  Transaction txn(log_manager.get(), 0);
+  Transaction txn(*log_manager, 0);
   PageSlotId slot_id = page->InsertPageSlot(page_slot, txn).first;
 
   auto log_record = log_manager->Get(txn.log_location);
@@ -376,7 +376,7 @@ TEST_F(RecordPageTestFixture, TestUpdatePageSlot) {
   EXPECT_CALL(observer, HandleModifiedPage(testing::Ref(*page)))
       .Times(AtLeast(1));
   size_t old_free_space = page->GetFreeSpaceSize(Operation::UPDATE);
-  Transaction txn(log_manager.get(), 0);
+  Transaction txn(*log_manager, 0);
   page->UpdatePageSlot(slot_id_1, page_slot, txn);
 
   auto log_record = log_manager->Get(txn.log_location);
@@ -402,7 +402,7 @@ TEST_F(RecordPageTestFixture, TestRemovePageSlot) {
   EXPECT_CALL(observer, HandleModifiedPage(testing::Ref(*page)))
       .Times(AtLeast(1));
   size_t old_free_space = page->GetFreeSpaceSize(Operation::UPDATE);
-  Transaction txn(log_manager.get(), 0);
+  Transaction txn(*log_manager, 0);
   page->RemovePageSlot(slot_id_2, txn);
 
   auto log_record = log_manager->Get(txn.log_location);
@@ -422,7 +422,7 @@ TEST_F(RecordPageTestFixture, TestRemovePageSlot) {
 }
 
 TEST_F(RecordPageTestFixture, TestRemovePageSlotError) {
-  Transaction txn(log_manager.get(), 0);
+  Transaction txn(*log_manager, 0);
   ASSERT_THROW(page->RemovePageSlot(20, txn), PageSlotNotFoundError);
 }
 
@@ -432,7 +432,7 @@ TEST_F(RecordPageTestFixture, TestLoad) {
 
   ASSERT_EQ(_page.GetId(), page->GetId());
 
-  Transaction txn(log_manager.get(), 0);
+  Transaction txn(*log_manager, 0);
 
   RecordPageSlot _page_slot_1 = _page.GetPageSlot(slot_id_1, txn);
   ASSERT_EQ(_page_slot_1.data, page_slot_date_1);

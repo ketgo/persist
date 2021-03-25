@@ -84,7 +84,7 @@
         - LogManager
         - FSM
 
-7. [SKIPPED] Refactor all components to policy-based design.
+7. [DONE] Refactor all components to policy-based design.
 
 8. [DONE] Design a Storable object interface. A storable object should expose the interface:
     - [DONE] size_t GetStorageSize(): The amount of storage space in bytes occupied by the object

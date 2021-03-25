@@ -26,21 +26,39 @@
 #define PERSIST_CORE_ALLOCATOR_HPP
 
 #include <persist/core/buffer/buffer_manager.hpp>
+#include <persist/core/fsm/fsl.hpp>
+#include <persist/core/page/record_page/page.hpp>
 
 namespace persist {
 
 /**
- * @brief
+ * @brief The page allocator allocates and de-allocates pages for storage of
+ * records.
  *
- * @tparam PageType
+ * @tparam ReplacerType The type of page replacer to be used by buffer manager.
+ * Default set to LRUReplacer.
+ * @tparam FreeSpaceManagerType The type of free space manager. Default set to
+ * FSLManager.
  */
-template <class PageType> class PageAllocator {
+template <class ReplacerType = LRUReplacer,
+          class FreeSpaceManagerType = FSLManager>
+class PageAllocator {
+  static_assert(
+      std::is_base_of<FreeSpaceManager, FreeSpaceManagerType>::value,
+      "FreeSpaceManagerType must be derived from FreeSpaceManager class.");
+
   PERSIST_PROTECTED
   /**
    * @brief Pointer to buffer manager containing buffer of pages.
    *
    */
-  BufferManager<PageType> *buffer_manager;
+  BufferManager<RecordPage, ReplacerType> *buffer_manager;
+
+  /**
+   * @brief Pointer to free space manager
+   *
+   */
+  FreeSpaceManagerType *fsm;
 
   /**
    * @brief Flag indicating allocator started.
@@ -53,9 +71,11 @@ public:
    * @brief Construct a new Page Allocator object
    *
    * @param buffer_manager Pointer to buffer manager.
+   * @param fsm Pointer to free space manager.
    */
-  PageAllocator(BufferManager<PageType> *buffer_manager)
-      : buffer_manager(buffer_manager) {}
+  PageAllocator(BufferManager<RecordPage, ReplacerType> *buffer_manager,
+                FreeSpaceManagerType *fsm)
+      : buffer_manager(buffer_manager), fsm(fsm) {}
 
   /**
    * @brief Start page allocator.
@@ -87,7 +107,7 @@ public:
    * @param page_id Page identifer
    * @returns Page handle object
    */
-  PageHandle<PageType> GetPage(PageId page_id) {
+  PageHandle<RecordPage> GetPage(PageId page_id) {
     return buffer_manager->Get(page_id);
   }
 
@@ -97,7 +117,7 @@ public:
    *
    * @returns Page handle object
    */
-  PageHandle<PageType> GetNewPage() = 0;
+  PageHandle<RecordPage> GetNewPage() { return buffer_manager->GetNew(); }
 
   /**
    * @brief Get a page with free space. If no such page is available then a new
@@ -105,7 +125,7 @@ public:
    *
    * @returns Page handle object
    */
-  PageHandle<PageType> GetNewOrFreePage() = 0;
+  PageHandle<RecordPage> GetNewOrFreePage() = 0;
 };
 
 } // namespace persist

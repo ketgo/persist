@@ -76,7 +76,7 @@ protected:
     Insert();
 
     // Setup log manager
-    log_manager = std::make_unique<LogManager>(storage.get(), max_size);
+    log_manager = std::make_unique<LogManager>(*storage, max_size);
     log_manager->Start();
   }
 

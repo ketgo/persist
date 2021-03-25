@@ -25,8 +25,8 @@
 #ifndef PERSIST_CORE_BUFFER_MANAGER_HPP
 #define PERSIST_CORE_BUFFER_MANAGER_HPP
 
-#include <persist/core/buffer/page_handle.hpp>
-#include <persist/core/buffer/replacer/creator.hpp>
+#include <persist/core/buffer/base.hpp>
+#include <persist/core/buffer/replacer/lru_replacer.hpp>
 #include <persist/core/exceptions/buffer.hpp>
 #include <persist/core/page/creator.hpp>
 #include <persist/core/storage/base.hpp>
@@ -43,10 +43,12 @@ namespace persist {
  * perfromed in compliance with the page repleacement policy.
  *
  * @tparam PageType The type of page managed.
+ * @tparam ReplacerType The type of page replacer. Default set to LRUReplacer.
  */
-template <class PageType> class BufferManager : public PageObserver {
-  static_assert(std::is_base_of<Page, PageType>::value,
-                "PageType must be derived from Page class.");
+template <class PageType, class ReplacerType = LRUReplacer>
+class BufferManager : public BufferManagerBase<PageType> {
+  static_assert(std::is_base_of<Replacer, ReplacerType>::value,
+                "ReplacerType must be derived from Replacer class.");
 
   PERSIST_PRIVATE
   /**
@@ -75,13 +77,12 @@ template <class PageType> class BufferManager : public PageObserver {
     Frame() : page(nullptr), modified(false) {}
   };
 
-  Storage<PageType> *storage;         //<- opened backend storage
-  std::unique_ptr<Replacer> replacer; //<- page replacer
-
-  size_t max_size GUARDED_BY(lock); //<- maximum size of buffer
+  ReplacerType replacer;                       //<- Page replacer
+  Storage<PageType> &storage GUARDED_BY(lock); //<- Reference to backend storage
+  size_t max_size GUARDED_BY(lock);            //<- Maximum size of buffer
   typedef typename std::unordered_map<PageId, Frame> Buffer;
-  Buffer buffer GUARDED_BY(lock); //<- buffer of page frames
-  bool started GUARDED_BY(lock);  //<- flag indicating buffer manager started
+  Buffer buffer GUARDED_BY(lock); //<- Buffer of page frames
+  bool started GUARDED_BY(lock);  //<- Flag indicating buffer manager started
 
   /**
    * Add page to buffer.
@@ -94,13 +95,13 @@ template <class PageType> class BufferManager : public PageObserver {
     // If buffer is full then remove the victum page
     if (max_size != 0 && buffer.size() == max_size) {
       // Get victum page ID from replacer
-      PageId victum_page_id = replacer->GetVictumId();
+      PageId victum_page_id = replacer.GetVictumId();
       // Write victum page to storage if modified
       Flush(victum_page_id);
       // Remove page from buffer
       buffer.erase(victum_page_id);
       // Replacer can stop tracking the victum page
-      replacer->Forget(victum_page_id);
+      replacer.Forget(victum_page_id);
     }
 
     PageId page_id = page->GetId();
@@ -109,23 +110,21 @@ template <class PageType> class BufferManager : public PageObserver {
     // Register buffer manager as observer to inserted page
     buffer[page_id].page->RegisterObserver(this);
     // Replacer starts tracking page for victum page discovery
-    replacer->Track(page_id);
+    replacer.Track(page_id);
   }
 
 public:
   /**
    * Construct a new BufferManager object.
    *
-   * @param storage Pointer to backend storage.
+   * @param storage Reference to backend storage.
    * @param max_size Maximum buffer size. If set to 0, no maximum limit is set.
    * @param replacer_type Type of page replacer to be used by buffer manager.
    *
    */
-  BufferManager(Storage<PageType> *storage,
-                size_t max_size = DEFAULT_BUFFER_SIZE,
-                ReplacerType replacer_type = ReplacerType::LRU)
-      : storage(storage), replacer(persist::CreateReplacer(replacer_type)),
-        max_size(max_size), started(false) {
+  BufferManager(Storage<PageType> &storage,
+                size_t max_size = DEFAULT_BUFFER_SIZE)
+      : storage(storage), max_size(max_size), started(false) {
     // Check buffer size value
     if (max_size != 0 && max_size < MINIMUM_BUFFER_SIZE) {
       throw BufferManagerError("Invalid value for max buffer size. The max "
@@ -139,12 +138,12 @@ public:
    * @thread_safe
    *
    */
-  void Start() {
+  void Start() override {
     LockGuard guard(lock);
 
     if (!started) {
       // Start backend storage
-      storage->Open();
+      storage.Open();
       // Set state to started
       started = true;
     }
@@ -159,14 +158,14 @@ public:
    * @thread_safe
    *
    */
-  void Stop() {
+  void Stop() override {
     LockGuard guard(lock);
 
     if (started) {
       // Flush all loaded pages
       FlushAll();
       // Close backend storage
-      storage->Close();
+      storage.Close();
       // Set state to stopped
       started = false;
     }
@@ -179,23 +178,23 @@ public:
    *
    * @thread_safe
    *
-   * @param page_id page ID
-   * @returns page handle object
+   * @param page_id Page identifier.
+   * @returns Page handle object
    */
-  PageHandle<PageType> Get(PageId page_id) {
+  PageHandle<PageType> Get(PageId page_id) override {
     LockGuard guard(lock);
 
     // Check if page not present in buffer
     if (buffer.find(page_id) == buffer.end()) {
       // Load page from storage
-      std::unique_ptr<PageType> page = storage->Read(page_id);
+      std::unique_ptr<PageType> page = storage.Read(page_id);
       // Insert page in buffer in accordance with LRU strategy
       Put(page);
     }
 
     // Create and return page handle object
     PageType *page_ptr = buffer.at(page_id).page.get();
-    return PageHandle<PageType>(page_ptr, replacer.get());
+    return PageHandle<PageType>(page_ptr, &replacer);
   }
 
   /**
@@ -204,17 +203,16 @@ public:
    *
    * @thread_safe
    *
-   * @tparam PageType Type of Page
-   * @returns page handle object
+   * @returns Page handle object
    */
-  PageHandle<PageType> GetNew() {
+  PageHandle<PageType> GetNew() override {
     LockGuard guard(lock);
 
     // Allocate space for new page
-    PageId page_id = storage->Allocate();
+    PageId page_id = storage.Allocate();
     // Create an empty page
     std::unique_ptr<PageType> page =
-        persist::CreatePage<PageType>(page_id, storage->GetPageSize());
+        persist::CreatePage<PageType>(page_id, storage.GetPageSize());
     // Load the new page in buffer
     Put(page);
 
@@ -223,7 +221,7 @@ public:
   }
 
   /**
-   * Save a single page to backend storage. The page will be stored only
+   * Dump a single page to backend storage. The page will be stored only
    * if it is marked as modified and is unpinned.
    *
    * @thread_safe
@@ -231,7 +229,7 @@ public:
    * @param page_id page identifer
    * @returns `true` if page is flushed else `false`
    */
-  bool Flush(PageId page_id) {
+  bool Flush(PageId page_id) override {
     LockGuard guard(lock);
 
     // Find page in buffer
@@ -239,9 +237,9 @@ public:
     BufferPosition it = buffer.find(page_id);
     // Save page if found, modified, and not pinned
     if (it != buffer.end() && it->second.modified &&
-        !replacer->IsPinned(page_id)) {
+        !replacer.IsPinned(page_id)) {
       // Persist page on backend storage
-      storage->Write(*(it->second.page));
+      storage.Write(*(it->second.page));
       // Since the page has been saved it is now considered as un-modified
       it->second.modified = false;
       // Page successfully flushed
@@ -252,11 +250,11 @@ public:
   }
 
   /**
-   * @brief Save all modified and unpinned pages to backend storage.
+   * @brief Dump all modified and unpinned pages to backend storage.
    *
    * @thread_safe
    */
-  void FlushAll() {
+  void FlushAll() override {
     LockGuard guard(lock);
 
     // Flush all pages in buffer

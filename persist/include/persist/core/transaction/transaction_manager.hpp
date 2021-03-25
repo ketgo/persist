@@ -25,7 +25,7 @@
 #ifndef PERSIST_CORE_TRANSACTION_MANAGER_HPP
 #define PERSIST_CORE_TRANSACTION_MANAGER_HPP
 
-#include <persist/core/buffer/buffer_manager.hpp>
+#include <persist/core/buffer/base.hpp>
 #include <persist/core/page/record_page/page.hpp>
 #include <persist/core/transaction/transaction.hpp>
 #include <persist/core/wal/log_manager.hpp>
@@ -46,16 +46,19 @@ namespace persist {
 class TransactionManager {
   PERSIST_PRIVATE
   /**
-   * @brief Pointer to Buffer Manager
+   * @brief Reference to Buffer Manager base class.
+   *
+   * NOTE: The reference to the base class enables referring to buffer managers with
+   * different replacer types.
    *
    */
-  BufferManager<RecordPage> *buffer_manager;
+  BufferManagerBase<RecordPage> &buffer_manager;
 
   /**
-   * @brief Pointer to Log Manager
+   * @brief Reference to Log Manager
    *
    */
-  LogManager *log_manager;
+  LogManager &log_manager;
 
   /**
    * @brief Log transaction begin.
@@ -67,7 +70,7 @@ class TransactionManager {
     LogRecord log_record(txn.GetId(), txn.GetLogLocation(),
                          LogRecord::Type::BEGIN);
     // Add log record and update the location in the transaction
-    txn.SetLogLocation(log_manager->Add(log_record));
+    txn.SetLogLocation(log_manager.Add(log_record));
   }
 
   /**
@@ -80,7 +83,7 @@ class TransactionManager {
     LogRecord log_record(txn.GetId(), txn.GetLogLocation(),
                          LogRecord::Type::ABORT);
     // Add log record and update the location in the transaction
-    txn.SetLogLocation(log_manager->Add(log_record));
+    txn.SetLogLocation(log_manager.Add(log_record));
   }
 
   /**
@@ -93,7 +96,7 @@ class TransactionManager {
     LogRecord log_record(txn.GetId(), txn.GetLogLocation(),
                          LogRecord::Type::COMMIT);
     // Add log record and update the location in the transaction
-    txn.SetLogLocation(log_manager->Add(log_record));
+    txn.SetLogLocation(log_manager.Add(log_record));
   }
 
   /**
@@ -105,18 +108,18 @@ class TransactionManager {
   void Undo(Transaction &txn, LogRecord &log_record) {
     switch (log_record.GetLogType()) {
     case LogRecord::Type::INSERT: {
-      auto page = buffer_manager->Get(log_record.GetLocation().page_id);
+      auto page = buffer_manager.Get(log_record.GetLocation().page_id);
       page->RemovePageSlot(log_record.GetLocation().slot_id, txn);
       break;
     }
     case LogRecord::Type::DELETE: {
-      auto page = buffer_manager->Get(log_record.GetLocation().page_id);
+      auto page = buffer_manager.Get(log_record.GetLocation().page_id);
       page->UndoRemovePageSlot(log_record.GetLocation().slot_id,
                                log_record.GetPageSlotA(), txn);
       break;
     }
     case LogRecord::Type::UPDATE: {
-      auto page = buffer_manager->Get(log_record.GetLocation().page_id);
+      auto page = buffer_manager.Get(log_record.GetLocation().page_id);
       // NOTE: The value from log record object is being moved
       page->UpdatePageSlot(log_record.GetLocation().slot_id,
                            log_record.GetPageSlotA(), txn);
@@ -131,12 +134,13 @@ public:
   /**
    * @brief Construct a new Transaction Manager object
    *
-   * @param buffer_manager slotted page buffer manager for which transactions
-   * are to be managed
-   * @param log_manager transaction log manager
+   * TODO: Create log manager inside transaction manager.
+   *
+   * @param buffer_manager Reference to record page buffer manager.
+   * @param log_manager Reference to log manager.
    */
-  TransactionManager(BufferManager<RecordPage> *buffer_manager,
-                     LogManager *log_manager)
+  TransactionManager(BufferManager<RecordPage> &buffer_manager,
+                     LogManager &log_manager)
       : buffer_manager(buffer_manager), log_manager(log_manager) {}
 
   /**
@@ -165,10 +169,10 @@ public:
     if (txn.GetState() != Transaction::State::COMMITED &&
         txn.GetState() != Transaction::State::ABORTED) {
       // Undo all operations performed as part of the transaction
-      auto log_record = log_manager->Get(txn.GetLogLocation());
+      auto log_record = log_manager.Get(txn.GetLogLocation());
       Undo(txn, *log_record);
       while (!log_record->GetPrevLocation().IsNull()) {
-        log_record = log_manager->Get(log_record->GetPrevLocation());
+        log_record = log_manager.Get(log_record->GetPrevLocation());
         Undo(txn, *log_record);
       }
 
@@ -202,7 +206,7 @@ public:
       // Log transaction commit record
       LogCommit(txn);
       // Flush all log records to stable storage
-      log_manager->Flush();
+      log_manager.Flush();
       // Set transaction to partially commited state. This is in compliance
       // with the requirement that all log records are flushed to backend
       // storage on transaction commit.
@@ -215,7 +219,7 @@ public:
 
         // Flush all staged pages
         for (auto page_id : txn.GetStaged()) {
-          buffer_manager->Flush(page_id);
+          buffer_manager.Flush(page_id);
         }
         // Set transaction to commited state as all modified pages by the
         // transaction have been flushed to disk.

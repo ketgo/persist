@@ -56,10 +56,10 @@ class FSLManager : public FreeSpaceManager {
   typedef typename persist::LockGuard<Mutex> LockGuard;
 
   /**
-   * @brief Pointer to backend storage.
+   * @brief Reference to backend storage.
    *
    */
-  Storage<FSLPage> *storage PT_GUARDED_BY(lock);
+  Storage<FSLPage> &storage GUARDED_BY(lock);
   /**
    * @brief Log record buffer manager.
    *
@@ -117,11 +117,11 @@ public:
   /**
    * @brief Construct a new FSL object
    *
-   * @param storage Pointer to backend FSL sotrage
+   * @param storage Reference to backend FSL sotrage
    * @param cache_size FSL buffer cache
    *
    */
-  explicit FSLManager(Storage<FSLPage> *storage,
+  explicit FSLManager(Storage<FSLPage> &storage,
                       size_t cache_size = DEFAULT_FSL_BUFFER_SIZE)
       : started(false), last_page_id(0), storage(storage),
         buffer_manager(storage, cache_size) {}
@@ -137,7 +137,7 @@ public:
       // Start buffer manager.
       buffer_manager.Start();
       // Get last page ID
-      last_page_id = storage->GetPageCount();
+      last_page_id = storage.GetPageCount();
       // Create a new page if no last page found
       if (!last_page_id) {
         auto new_page = buffer_manager.GetNew();

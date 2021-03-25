@@ -67,9 +67,9 @@ public:
   PERSIST_PRIVATE
 
   /**
-   * @brief Pointer to log manager.
+   * @brief Reference to log manager.
    */
-  LogManager *log_manager;
+  LogManager &log_manager;
 
   /**
    * @brief Transaction ID
@@ -96,11 +96,11 @@ public:
   /**
    * Construct a new Transaction object
    *
-   * @param log_manager pointer to log manager
+   * @param log_manager Reference to log manager
    * @param id Transaction ID
-   * @param state transaction state
+   * @param state Initial transaction state. Default set to ACTIVE.
    */
-  Transaction(LogManager *log_manager, TransactionId id,
+  Transaction(LogManager &log_manager, TransactionId id,
               State state = State::ACTIVE)
       : log_manager(log_manager), id(id), state(state), log_location(0, 0) {}
 
@@ -117,7 +117,7 @@ public:
     // Log record for insert operation
     LogRecord log_record(id, log_location, LogRecord::Type::INSERT, location,
                          page_slot);
-    log_location = log_manager->Add(log_record);
+    log_location = log_manager.Add(log_record);
   }
 
   /**
@@ -135,7 +135,7 @@ public:
     // Log record for update operation
     LogRecord log_record(id, log_location, LogRecord::Type::UPDATE, location,
                          old_page_slot, new_page_slot);
-    log_location = log_manager->Add(log_record);
+    log_location = log_manager.Add(log_record);
   }
 
   /**
@@ -151,7 +151,7 @@ public:
     // Log record for delete operation
     LogRecord log_record(id, log_location, LogRecord::Type::DELETE, location,
                          page_slot);
-    log_location = log_manager->Add(log_record);
+    log_location = log_manager.Add(log_record);
   }
 
   /**

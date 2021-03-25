@@ -65,7 +65,7 @@ protected:
     Insert();
 
     buffer_manager =
-        std::make_unique<BufferManager<SimplePage>>(storage.get(), max_size);
+        std::make_unique<BufferManager<SimplePage>>(*storage, max_size);
     buffer_manager->Start();
   }
 
@@ -88,7 +88,7 @@ private:
 };
 
 TEST_F(BufferManagerTestFixture, TestBufferManagerError) {
-  ASSERT_THROW(BufferManager<SimplePage> manager(storage.get(), 1),
+  ASSERT_THROW(BufferManager<SimplePage> manager(*storage, 1),
                BufferManagerError);
 }
 

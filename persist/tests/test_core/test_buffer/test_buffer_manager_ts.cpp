@@ -80,7 +80,7 @@ protected:
     insert();
 
     buffer_manager =
-        std::make_unique<BufferManager<SimplePage>>(storage.get(), max_size);
+        std::make_unique<BufferManager<SimplePage>>(*storage, max_size);
     buffer_manager->Start();
   }
 

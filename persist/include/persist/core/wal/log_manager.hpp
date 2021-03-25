@@ -40,6 +40,7 @@ namespace persist {
  * @brief Log Manager Class
  *
  * The log manager handles collection of log records for all transactions.
+ *
  */
 class LogManager {
   PERSIST_PRIVATE
@@ -64,10 +65,10 @@ class LogManager {
    */
   PageId last_page_id GUARDED_BY(lock);
   /**
-   * @brief Pointer to backend log storage.
+   * @brief Reference to backend log storage.
    *
    */
-  Storage<LogPage> *storage PT_GUARDED_BY(lock);
+  Storage<LogPage> &storage GUARDED_BY(lock);
   /**
    * @brief Log record buffer manager.
    *
@@ -105,10 +106,10 @@ public:
   /**
    * @brief Construct a new log manager object.
    *
-   * @param storage Pointer to backend log sotrage
+   * @param storage Reference to backend log storage
    * @param cache_size Log buffer cache size
    */
-  LogManager(Storage<LogPage> *storage,
+  LogManager(Storage<LogPage> &storage,
              size_t cache_size = DEFAULT_LOG_BUFFER_SIZE)
       : seq_number(0), last_page_id(0), started(false), storage(storage),
         buffer_manager(storage, cache_size) {}
@@ -127,7 +128,7 @@ public:
       // Start buffer manager
       buffer_manager.Start();
       // Load last page in buffer
-      last_page_id = storage->GetPageCount();
+      last_page_id = storage.GetPageCount();
       // Get last sequence number if last page ID is not 0 else create a new
       // page and set its ID to the last page ID.
       if (last_page_id) {

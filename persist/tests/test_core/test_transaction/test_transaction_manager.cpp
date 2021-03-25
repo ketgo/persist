@@ -54,17 +54,17 @@ protected:
     log_storage = persist::CreateStorage<LogPage>("file://" + path + "_log");
 
     // Setting up buffer manager
-    buffer_manager = std::make_unique<BufferManager<RecordPage>>(
-        data_storage.get(), max_size);
+    buffer_manager =
+        std::make_unique<BufferManager<RecordPage>>(*data_storage, max_size);
     buffer_manager->Start();
 
     // Setting up log manager
-    log_manager = std::make_unique<LogManager>(log_storage.get(), max_size);
+    log_manager = std::make_unique<LogManager>(*log_storage, max_size);
     log_manager->Start();
 
     // Setup transaction manager
-    txn_manager = std::make_unique<TransactionManager>(buffer_manager.get(),
-                                                       log_manager.get());
+    txn_manager =
+        std::make_unique<TransactionManager>(*buffer_manager, *log_manager);
 
     // Setup data for test
     Insert();

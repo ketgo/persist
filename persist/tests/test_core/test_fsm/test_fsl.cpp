@@ -63,7 +63,7 @@ protected:
     Insert();
 
     // Setup FSL Manager
-    fsl_manager = std::make_unique<FSLManager>(storage.get(), cache_size);
+    fsl_manager = std::make_unique<FSLManager>(*storage, cache_size);
     fsl_manager->Start();
 
     // Setup empty page

@@ -55,11 +55,11 @@ protected:
     storage = persist::CreateStorage<LogPage>("file://" + path);
 
     // Setting up log manager
-    log_manager = std::make_unique<LogManager>(storage.get(), max_size);
+    log_manager = std::make_unique<LogManager>(*storage, max_size);
     log_manager->Start();
 
     // Setup transaction
-    txn = std::make_unique<Transaction>(log_manager.get(), txn_id);
+    txn = std::make_unique<Transaction>(*log_manager, txn_id);
   }
 
   void TearDown() override {
