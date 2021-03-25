@@ -109,6 +109,16 @@ protected:
 
 TEST_F(FSLPageTestFixture, TestGetId) { ASSERT_EQ(page->GetId(), page_id); }
 
+TEST_F(FSLPageTestFixture, TestGetMaxPageId) {
+  ASSERT_EQ(page->GetMaxPageId(),
+            page_id * (page->GetMaxFreeSpace() / sizeof(PageId)));
+}
+
+TEST_F(FSLPageTestFixture, TestGetMinPageId) {
+  ASSERT_EQ(page->GetMinPageId(),
+            (page_id - 1) * (page->GetMaxFreeSpace() / sizeof(PageId)) + 1);
+}
+
 TEST_F(FSLPageTestFixture, TestLoad) {
   FSLPage _page;
   _page.Load(input);

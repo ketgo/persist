@@ -41,7 +41,6 @@
 #include <persist/utility/serializer.hpp>
 
 #define FILE_STORAGE_DATA_FILE_EXTENTION ".stg"
-#define FILE_STORAGE_FSL_FILE_EXTENTION ".fsl"
 
 namespace persist {
 
@@ -195,7 +194,6 @@ template <class PageType> class FileStorage : public Storage<PageType> {
   PERSIST_PRIVATE
   std::string path;       //<- Storage path
   std::fstream data_file; //<- IO file stream for data
-  std::fstream fsl_file;  //<- IO file stream for free space list
   static const size_t offset =
       sizeof(FileHeader); //<- Offset after which pages are stored
 
@@ -237,8 +235,6 @@ public:
   void Open() override {
     data_file = file::open(path + FILE_STORAGE_DATA_FILE_EXTENTION,
                            std::ios::binary | std::ios::in | std::ios::out);
-    fsl_file = file::open(path + FILE_STORAGE_FSL_FILE_EXTENTION,
-                          std::ios::binary | std::ios::in | std::ios::out);
 
     // If file is not empty then set the page size and count using data from
     // file header else write a new file header
@@ -271,7 +267,7 @@ public:
   /**
    * Checks if storage file is open
    */
-  bool IsOpen() override { return data_file.is_open() && fsl_file.is_open(); }
+  bool IsOpen() override { return data_file.is_open(); }
 
   /**
    * Closes opened storage file. No operation is performed if
@@ -280,8 +276,6 @@ public:
   void Close() override {
     // Close storage file if opened
     data_file.close();
-    // Close FSL file if opened
-    fsl_file.close();
   }
 
   /**
@@ -290,7 +284,6 @@ public:
   void Remove() override {
     Close();
     std::remove((path + FILE_STORAGE_DATA_FILE_EXTENTION).c_str());
-    std::remove((path + FILE_STORAGE_FSL_FILE_EXTENTION).c_str());
   }
 
   /**

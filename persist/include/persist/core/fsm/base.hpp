@@ -80,6 +80,14 @@ public:
    * @param page Constant reference to a Page object.
    */
   virtual void Manage(const Page &page) = 0;
+
+  /**
+   * @brief Flush all free space page information to storage. This method is
+   * used by transaction manager when a transaction is committed.
+   *
+   * @thread_safe
+   */
+  virtual void Flush() = 0;
 };
 
 } // namespace persist

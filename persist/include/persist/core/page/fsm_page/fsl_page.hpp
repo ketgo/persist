@@ -102,9 +102,26 @@ public:
    */
   size_t GetStorageSize() const override { return page_size; }
 
+  /**
+   * @brief Get the maximum page ID value storable in the page.
+   *
+   * @returns Maximum page ID value storable in the page.
+   */
   PageId GetMaxPageId() const { return max_page_id; }
 
+  /**
+   * @brief Get the minimum page ID value storable in the page.
+   *
+   * @returns Minimum page ID value storable in the page.
+   */
   PageId GetMinPageId() const { return min_page_id; }
+
+  /**
+   * @brief Get the maximum amount of free space in the page.
+   *
+   * @returns Maximum free space in bytes in the page.
+   */
+  size_t GetMaxFreeSpace() const { return max_free_space; }
 
   /**
    * Load page object from byte string.
@@ -118,6 +135,9 @@ public:
     free_pages.clear(); //<- clears free pages in case they are loaded
     // Load bytes
     persist::load(input, page_id, next_page_id, prev_page_id, free_pages);
+    // Re-calculate max and min page ID
+    max_page_id = page_id * (max_free_space / sizeof(PageId));
+    min_page_id = (page_id - 1) * (max_free_space / sizeof(PageId)) + 1;
   }
 
   /**

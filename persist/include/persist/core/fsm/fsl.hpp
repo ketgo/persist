@@ -80,7 +80,7 @@ class FSLManager : public FreeSpaceManager {
    * @brief Find FSLPage to contain free space page of specified ID. The lookup
    * algorithm assumes that all the free space page IDs are stored in ascending
    * order.
-   * 
+   *
    * @thread_safe
    *
    * @param page_id Constant reference to identifer of page with free space.
@@ -92,8 +92,8 @@ class FSLManager : public FreeSpaceManager {
 
     PageId rvalue = last_page_id;
     // Check last FSLPage
-    auto page = buffer_manager.Get(rvalue);
-    if (page_id > page->GetMaxPageId()) {
+    PageId max_page_id = buffer_manager.Get(rvalue)->GetMaxPageId();
+    if (page_id > max_page_id) {
       // Load new FSLPages
       auto new_page = buffer_manager.GetNew();
       last_page_id = new_page->GetId();
@@ -201,6 +201,18 @@ public:
     } else {
       _page->free_pages.erase(page_id);
     }
+  }
+
+  /**
+   * @brief Flush all free space page information to storage. This method is
+   * used by transaction manager when a transaction is committed.
+   *
+   * @thread_safe
+   */
+  void Flush() override {
+    LockGuard guard(lock);
+
+    buffer_manager.FlushAll();
   }
 };
 
