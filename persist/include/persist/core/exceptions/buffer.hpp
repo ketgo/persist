@@ -1,5 +1,5 @@
 /**
- * tests/common.hpp - Persist
+ * buffer.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,30 +22,31 @@
  * SOFTWARE.
  */
 
+#ifndef PERSIST_CORE_EXCEPTIONS_BUFFER_HPP
+#define PERSIST_CORE_EXCEPTIONS_BUFFER_HPP
+
+#include <string>
+
+#include <persist/core/exceptions/base.hpp>
+
+namespace persist {
+
 /**
- * @brief The header file contains common definitions and methods used for
- * testing.
+ * Buffer Manager Error
  *
+ * This error is thrown by the buffer manager.
  */
-#ifndef TESTS_COMMON_HPP
-#define TESTS_COMMON_HPP
+class BufferManagerError : public PersistException {
+private:
+  std::string msg;
 
-#include <gtest/gtest.h>
-
-/**
- * @brief Location of the test data.
- */
-#define DATA_PATH "@DATA_PATH@"
-
-/**
- * @brief Global testing environment setup.
- *
- */
-class Environment : public ::testing::Environment {
 public:
-  void SetUp() override {}
+  BufferManagerError(const char *msg) : msg(msg) {}
+  BufferManagerError(std::string &msg) : msg(msg) {}
 
-  void TearDown() override {}
+  const char *what() const throw() { return msg.c_str(); }
 };
 
-#endif /* TESTS_COMMON_HPP */
+} // namespace persist
+
+#endif /* PERSIST_CORE_EXCEPTIONS_BUFFER_HPP */

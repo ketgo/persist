@@ -1,5 +1,5 @@
 /**
- * slotted_page/page_slot.hpp - Persist
+ * slot.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,25 +22,23 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_CORE_PAGE_SLOTTED_PAGE_SLOT_HPP
-#define PERSIST_CORE_PAGE_SLOTTED_PAGE_SLOT_HPP
+#ifndef PERSIST_CORE_PAGE_RECORDPAGE_SLOT_HPP
+#define PERSIST_CORE_PAGE_RECORDPAGE_SLOT_HPP
 
-#include <persist/core/defs.hpp>
-#include <persist/core/exceptions.hpp>
+#include <persist/core/common.hpp>
+#include <persist/core/exceptions/page.hpp>
 
 #include <persist/utility/serializer.hpp>
 
 namespace persist {
 
 /**
- * @brief PageSlot Class
- *
- * The class implements a page slot used by slotted pages. It stores a full or
- * partial data record which is to be stored in a slotted page. Each page slot
- * belonging to a page has a unique identifier called SlotId. The SlotId is only
- * unique within the context of a page. For a globally unique identifier the
- * (PageId, SlotId) tuple is used. This tuple acts as an abstract address of the
- * slot within a backend storage.
+ * @brief The class implements a page slot used by slotted pages. It stores a
+ * full or partial data record which is to be stored in a slotted page. Each
+ * page slot belonging to a page has a unique identifier called SlotId. The
+ * SlotId is only unique within the context of a page. For a globally unique
+ * identifier the (PageId, SlotId) tuple is used. This tuple acts as an abstract
+ * address of the slot within a backend storage.
  *
  * A data record spanning accross multiple slots is stored as a doubly-linked
  * list of page slots. Thus, a slot contains the location, i.e. the (PageId,
@@ -49,10 +47,10 @@ namespace persist {
  * of the slot stores the data record.
  *
  */
-class SlottedPageSlot {
+class RecordPageSlot : public Storable {
 public:
   /**
-   * PageSlot Location Class
+   * RecordPageSlot Location Class
    *
    * The class object represents the address location of a page slot. This is
    * simply the global unique identifier of the slot given by the (PageId,
@@ -115,12 +113,12 @@ public:
   };
 
   /**
-   * PageSlot Header Class
+   * RecordPageSlot Header Class
    *
    * The class represents header of a page slot. It contains the metadata
    * information required for facilitating read write operations of records.
    */
-  class Header {
+  class Header : public Storable {
   public:
     /**
      * @brief Next page slot location
@@ -139,16 +137,16 @@ public:
     /**
      * Get storage size of header.
      */
-    size_t GetSize() const { return sizeof(Header); }
+    size_t GetStorageSize() const override { return sizeof(Header); }
 
     /**
      * Load slot header from byte string.
      *
      * @param input input buffer span to load
      */
-    void Load(Span input) {
-      if (input.size < GetSize()) {
-        throw PageSlotParseError();
+    void Load(Span input) override {
+      if (input.size < GetStorageSize()) {
+        throw PageParseError();
       }
       // Load bytes
       persist::load(input, next_location, prev_location);
@@ -159,9 +157,9 @@ public:
      *
      * @param output output buffer span to dump
      */
-    void Dump(Span output) {
-      if (output.size < GetSize()) {
-        throw PageSlotParseError();
+    void Dump(Span output) override {
+      if (output.size < GetStorageSize()) {
+        throw PageParseError();
       }
       // Dump bytes
       persist::dump(output, next_location, prev_location);
@@ -211,18 +209,18 @@ public:
    * @brief Construct a new Page Slot object
    *
    */
-  SlottedPageSlot() {}
-  SlottedPageSlot(SlottedPageSlot::Header header) : header(header) {}
-  SlottedPageSlot(ByteBuffer data) : data(data) {}
-  SlottedPageSlot(ByteBuffer data, SlottedPageSlot::Header header)
+  RecordPageSlot() {}
+  RecordPageSlot(RecordPageSlot::Header header) : header(header) {}
+  RecordPageSlot(ByteBuffer data) : data(data) {}
+  RecordPageSlot(ByteBuffer data, RecordPageSlot::Header header)
       : data(data), header(header) {}
 
   /**
    * Get storage size of page slot.
    *
    */
-  size_t GetSize() const {
-    return header.GetSize() + sizeof(size_t) + data.size();
+  size_t GetStorageSize() const override {
+    return header.GetStorageSize() + sizeof(size_t) + data.size();
   }
 
   /**
@@ -258,13 +256,13 @@ public:
    *
    * @param input input buffer span to load
    */
-  void Load(Span input) {
-    if (input.size < GetSize()) {
-      throw PageSlotParseError();
+  void Load(Span input) override {
+    if (input.size < GetStorageSize()) {
+      throw PageParseError();
     }
     // Load header
     header.Load(input);
-    input += header.GetSize();
+    input += header.GetStorageSize();
     // Load data
     persist::load(input, data);
   }
@@ -274,13 +272,13 @@ public:
    *
    * @param output output buffer span to dump
    */
-  void Dump(Span output) {
-    if (output.size < GetSize()) {
-      throw PageSlotParseError();
+  void Dump(Span output) override {
+    if (output.size < GetStorageSize()) {
+      throw PageParseError();
     }
     // Dump header
     header.Dump(output);
-    output += header.GetSize();
+    output += header.GetStorageSize();
     // Dump data
     persist::dump(output, data);
   }
@@ -288,14 +286,14 @@ public:
   /**
    * @brief Equality comparision operator.
    */
-  bool operator==(const SlottedPageSlot &other) const {
+  bool operator==(const RecordPageSlot &other) const {
     return header == other.header && data == other.data;
   }
 
   /**
    * @brief Non-equality comparision operator.
    */
-  bool operator!=(const SlottedPageSlot &other) const {
+  bool operator!=(const RecordPageSlot &other) const {
     return header != other.header || data != other.data;
   }
 
@@ -304,7 +302,7 @@ public:
    * @brief Write record block to output stream
    */
   friend std::ostream &operator<<(std::ostream &os,
-                                  const SlottedPageSlot &slot) {
+                                  const RecordPageSlot &slot) {
     os << "------ PageSlot ------\n";
     os << slot.header << "\n";
     os << "data: " << slot.data << "\n";
@@ -316,4 +314,4 @@ public:
 
 } // namespace persist
 
-#endif /* PERSIST_CORE_PAGE_SLOTTED_PAGE_SLOT_HPP */
+#endif /* PERSIST_CORE_PAGE_RECORDPAGE_SLOT_HPP */

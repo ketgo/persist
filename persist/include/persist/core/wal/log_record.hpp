@@ -32,13 +32,13 @@
  *
  */
 
-#ifndef PERSIST_CORE_LOG_RECORD_HPP
-#define PERSIST_CORE_LOG_RECORD_HPP
+#ifndef PERSIST_CORE_WAL_LOG_RECORD_HPP
+#define PERSIST_CORE_WAL_LOG_RECORD_HPP
 
-#include <persist/core/defs.hpp>
-#include <persist/core/exceptions.hpp>
-#include <persist/core/page/log_page/page_slot.hpp>
-#include <persist/core/page/slotted_page/page_slot.hpp>
+#include <persist/core/common.hpp>
+#include <persist/core/exceptions/wal.hpp>
+#include <persist/core/page/log_page/slot.hpp>
+#include <persist/core/page/record_page/slot.hpp>
 
 #include <persist/utility/serializer.hpp>
 
@@ -49,7 +49,7 @@ namespace persist {
  *
  * Records used to store operations performed by transactions.
  */
-class LogRecord {
+class LogRecord : public Storable {
 public:
   /**
    * @brief Log record location type
@@ -62,7 +62,7 @@ public:
    *
    * The header contains the metadata information of the record.
    */
-  class Header {
+  class Header : public Storable {
   public:
     /**
      * @brief Record sequence number
@@ -92,15 +92,15 @@ public:
     /**
      * @brief Get size of the log record header.
      */
-    size_t GetSize() const { return sizeof(Header); }
+    size_t GetStorageSize() const override { return sizeof(Header); }
 
     /**
      * Load record block header from byte string.
      *
      * @param input input buffer span to load
      */
-    void Load(Span input) {
-      if (input.size < GetSize()) {
+    void Load(Span input) override {
+      if (input.size < GetStorageSize()) {
         throw LogRecordParseError();
       }
       // Load bytes
@@ -113,8 +113,8 @@ public:
      *
      * @param output output buffer span to dump
      */
-    void Dump(Span output) {
-      if (output.size < GetSize()) {
+    void Dump(Span output) override {
+      if (output.size < GetStorageSize()) {
         throw LogRecordParseError();
       }
       // Dump bytes
@@ -188,14 +188,14 @@ public:
   Type type;
 
   /**
-   * @brief Record Block Location
+   * @brief Record page slot location
    */
-  SlottedPageSlot::Location location;
+  RecordPageSlot::Location location;
 
   /**
-   * @brief Record Blocks
+   * @brief Record page slots
    */
-  SlottedPageSlot page_slot_a, page_slot_b;
+  RecordPageSlot page_slot_a, page_slot_b;
 
 public:
   /**
@@ -220,8 +220,8 @@ public:
    * records.
    */
   LogRecord(TransactionId transaction_id, Location prev_log_record_location,
-            Type type, SlottedPageSlot::Location location,
-            SlottedPageSlot pageSlot)
+            Type type, RecordPageSlot::Location location,
+            RecordPageSlot pageSlot)
       : header(0, prev_log_record_location, transaction_id), type(type),
         location(location), page_slot_a(pageSlot) {}
 
@@ -231,8 +231,8 @@ public:
    * This constructor is used to create UPDATE type log record.
    */
   LogRecord(TransactionId transaction_id, Location prev_log_record_location,
-            Type type, SlottedPageSlot::Location location,
-            SlottedPageSlot oldPageSlot, SlottedPageSlot newPageSlot)
+            Type type, RecordPageSlot::Location location,
+            RecordPageSlot oldPageSlot, RecordPageSlot newPageSlot)
       : header(0, prev_log_record_location, transaction_id), type(type),
         location(location), page_slot_a(oldPageSlot), page_slot_b(newPageSlot) {
   }
@@ -256,7 +256,7 @@ public:
    *
    * @returns Consant reference to previous location
    */
-  const Location &GetPrevLogRecordLocation() const {
+  const Location &GetPrevLocation() const {
     return header.prev_log_record_location;
   }
 
@@ -281,7 +281,7 @@ public:
    *
    * @returns Consant reference to page slot location targeted by log record
    */
-  const SlottedPageSlot::Location &GetLocation() const { return location; }
+  const RecordPageSlot::Location &GetLocation() const { return location; }
 
   // TODO: Add const qualifier for get page slot methods.
 
@@ -290,14 +290,14 @@ public:
    *
    * @return Consant reference to page slot
    */
-  SlottedPageSlot &GetPageSlotA() { return page_slot_a; }
+  RecordPageSlot &GetPageSlotA() { return page_slot_a; }
 
   /**
    * @brief Get the second PageSlot targeted by log record
    *
    * @return Consant reference to page slot
    */
-  SlottedPageSlot &GetPageSlotB() { return page_slot_b; }
+  RecordPageSlot &GetPageSlotB() { return page_slot_b; }
 
   /**
    * @brief Get size of log record.
@@ -307,9 +307,9 @@ public:
    * - page_slot_a.GetSize()
    * - page_slot_b.GetSize()
    */
-  size_t GetSize() const {
-    return header.GetSize() + sizeof(type) + sizeof(location) +
-           page_slot_a.GetSize() + page_slot_b.GetSize();
+  size_t GetStorageSize() const override {
+    return header.GetStorageSize() + sizeof(type) + sizeof(location) +
+           page_slot_a.GetStorageSize() + page_slot_b.GetStorageSize();
   }
 
   /**
@@ -317,19 +317,19 @@ public:
    *
    * @param input input buffer span to load
    */
-  void Load(Span input) {
-    if (input.size < GetSize()) {
+  void Load(Span input) override {
+    if (input.size < GetStorageSize()) {
       throw LogRecordParseError();
     }
     // Load header
     header.Load(input);
-    input += header.GetSize();
+    input += header.GetStorageSize();
     // Load bytes
     persist::load(input, type, location);
     page_slot_a.Load(input);
-    input += page_slot_a.GetSize();
+    input += page_slot_a.GetStorageSize();
     page_slot_b.Load(input);
-    input += page_slot_b.GetSize();
+    input += page_slot_b.GetStorageSize();
   }
 
   /**
@@ -337,19 +337,19 @@ public:
    *
    * @param output output buffer span to dump
    */
-  void Dump(Span output) {
-    if (output.size < GetSize()) {
+  void Dump(Span output) override {
+    if (output.size < GetStorageSize()) {
       throw LogRecordParseError();
     }
     // Dump header
     header.Dump(output);
-    output += header.GetSize();
+    output += header.GetStorageSize();
     // Dump bytes
     persist::dump(output, type, location);
     page_slot_a.Dump(output);
-    output += page_slot_a.GetSize();
+    output += page_slot_a.GetStorageSize();
     page_slot_b.Dump(output);
-    output += page_slot_b.GetSize();
+    output += page_slot_b.GetStorageSize();
   }
 
   /**
@@ -387,4 +387,4 @@ public:
 
 } // namespace persist
 
-#endif /* PERSIST_CORE_LOG_RECORD_HPP */
+#endif /* PERSIST_CORE_WAL_LOG_RECORD_HPP */

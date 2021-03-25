@@ -27,9 +27,15 @@
 
 #include <list>
 
-#include <persist/core/defs.hpp>
+#include <persist/core/common.hpp>
 
 namespace persist {
+
+/**
+ * @brief Forward declare Page class
+ *
+ */
+class Page;
 
 /**
  * @brief Page Observer
@@ -41,9 +47,9 @@ public:
   /**
    * @brief Handle page modification.
    *
-   * @param page_id ID of the page modified
+   * @param page Constant reference to the modified page.
    */
-  virtual void HandleModifiedPage(PageId page_id) = 0;
+  virtual void HandleModifiedPage(const Page &page) = 0;
 };
 
 /**
@@ -53,7 +59,7 @@ public:
  * exposes interface common to all types of pages.
  *
  */
-class Page {
+class Page : public virtual Storable {
   PERSIST_PROTECTED
   /**
    * @brief List of registered page modification observers
@@ -65,7 +71,7 @@ class Page {
    */
   void NotifyObservers() {
     for (auto observer : observers) {
-      observer->HandleModifiedPage(GetId());
+      observer->HandleModifiedPage(*this);
     }
   }
 
@@ -86,19 +92,6 @@ public:
   }
 
   /**
-   * @brief Get the page type identifer.
-   *
-   * NOTES:
-   *  1. The underlying implementation does not need to serialize/deserialize
-   * this identifer as that is taken care by the polymorphic Load and Dump
-   * methods.
-   *  2. Each implementation should have a unique type ID.
-   *
-   * @returns The page type identifier
-   */
-  virtual PageTypeId GetTypeId() const = 0;
-
-  /**
    * Get page identifier.
    *
    * @returns Page identifier
@@ -112,22 +105,8 @@ public:
    * @returns Free space in bytes
    */
   virtual size_t GetFreeSpaceSize(Operation operation) const = 0;
-
-  /**
-   * Load page object from byte string.
-   *
-   * @param input input buffer span to load
-   */
-  virtual void Load(Span input) = 0;
-
-  /**
-   * Dump page object as byte string.
-   *
-   * @param output output buffer span to dump
-   */
-  virtual void Dump(Span output) = 0;
 };
 
 } // namespace persist
 
-#endif /* PERSIST_CORE_PAGE_BASE_HPP */
+#endif /* BASE_HPP */

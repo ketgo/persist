@@ -34,14 +34,13 @@
 #include <memory>
 #include <string>
 
-#include <persist/core/exceptions.hpp>
+#include <persist/core/exceptions/storage.hpp>
 #include <persist/core/page/serializer.hpp>
 #include <persist/core/storage/base.hpp>
 
 #include <persist/utility/serializer.hpp>
 
 #define FILE_STORAGE_DATA_FILE_EXTENTION ".stg"
-#define FILE_STORAGE_FSL_FILE_EXTENTION ".fsl"
 
 namespace persist {
 
@@ -137,17 +136,21 @@ static void write(std::fstream &file, ByteBuffer &buffer,
  *
  * The file header contains basic information about the storage file.
  */
-struct FileHeader {
+struct FileHeader : public Storable {
   size_t page_size; //<- page size used in the storage file
 
-  static size_t GetSize() { return sizeof(FileHeader); }
+  /**
+   * @brief Get the storage size of header.
+   *
+   */
+  size_t GetStorageSize() const override { return sizeof(FileHeader); }
 
   /**
    * Load object from byte string
    *
    * @param input input buffer span to load
    */
-  void Load(Span input) {
+  void Load(Span input) override {
     // Load bytes
     persist::load(input, page_size);
   }
@@ -157,7 +160,7 @@ struct FileHeader {
    *
    * @param output output buffer span to dump
    */
-  void Dump(Span output) {
+  void Dump(Span output) override {
     // Dump bytes
     persist::dump(output, page_size);
   }
@@ -181,14 +184,16 @@ struct FileHeader {
  *
  * The class implements Block IO operations for a file stored on
  * a local disk. This is the default storage used by the package.
+ *
+ * @tparam PageType The type of page stored by storage.
  */
-class FileStorage : public Storage {
+template <class PageType> class FileStorage : public Storage<PageType> {
+  using Storage<PageType>::page_size;
+  using Storage<PageType>::page_count;
+
   PERSIST_PRIVATE
-  size_t page_size;       //<- page block size
-  uint64_t page_count;    //<- number of pages in the storage file
-  std::string path;       //<- storage files name with path
+  std::string path;       //<- Storage path
   std::fstream data_file; //<- IO file stream for data
-  std::fstream fsl_file;  //<- IO file stream for free space list
   static const size_t offset =
       sizeof(FileHeader); //<- Offset after which pages are stored
 
@@ -204,14 +209,12 @@ public:
    * @param page_size storage size of data block. Default set to 1024
    */
   FileStorage() {}
-  FileStorage(const std::string &path)
-      : path(path), page_size(DEFAULT_PAGE_SIZE), page_count(0) {}
-  FileStorage(const char *path)
-      : path(path), page_size(DEFAULT_PAGE_SIZE), page_count(0) {}
+  FileStorage(const std::string &path) : path(path) {}
+  FileStorage(const char *path) : path(path) {}
   FileStorage(const std::string &path, uint64_t page_size)
-      : path(path), page_size(page_size), page_count(0) {}
+      : path(path), Storage<PageType>(page_size) {}
   FileStorage(const char *path, uint64_t page_size)
-      : path(path), page_size(page_size), page_count(0) {}
+      : path(path), Storage<PageType>(page_size) {}
 
   /**
    * Destructor
@@ -232,8 +235,6 @@ public:
   void Open() override {
     data_file = file::open(path + FILE_STORAGE_DATA_FILE_EXTENTION,
                            std::ios::binary | std::ios::in | std::ios::out);
-    fsl_file = file::open(path + FILE_STORAGE_FSL_FILE_EXTENTION,
-                          std::ios::binary | std::ios::in | std::ios::out);
 
     // If file is not empty then set the page size and count using data from
     // file header else write a new file header
@@ -266,7 +267,7 @@ public:
   /**
    * Checks if storage file is open
    */
-  bool IsOpen() override { return data_file.is_open() && fsl_file.is_open(); }
+  bool IsOpen() override { return data_file.is_open(); }
 
   /**
    * Closes opened storage file. No operation is performed if
@@ -275,8 +276,6 @@ public:
   void Close() override {
     // Close storage file if opened
     data_file.close();
-    // Close FSL file if opened
-    fsl_file.close();
   }
 
   /**
@@ -285,58 +284,6 @@ public:
   void Remove() override {
     Close();
     std::remove((path + FILE_STORAGE_DATA_FILE_EXTENTION).c_str());
-    std::remove((path + FILE_STORAGE_FSL_FILE_EXTENTION).c_str());
-  }
-
-  /**
-   * @brief Get page size.
-   *
-   * @returns page size used in storage
-   */
-  size_t GetPageSize() override { return page_size; }
-
-  /**
-   * @brief Get page count.
-   *
-   * @returns number of pages in storage
-   */
-  uint64_t GetPageCount() override { return page_count; }
-
-  /**
-   * Read free space list from storage. If no free list is found then pointer to
-   * an empty FSL object is returned.
-   *
-   * @return pointer to FSL object
-   */
-  std::unique_ptr<FSL> Read() override {
-    // Read the binary FSL file and check for content size. If no content
-    // found then return pointer to an empty FSL object otherwise return a
-    // serialize MetaData object.
-
-    std::unique_ptr<FSL> fsl_ptr = std::make_unique<FSL>();
-    uint64_t size = file::size(fsl_file);
-
-    // Check if the file is emtpy
-    if (size != 0) {
-      // Load FSL object
-      ByteBuffer buffer;
-      buffer.resize(size);
-      file::read(fsl_file, buffer, 0);
-      fsl_ptr->load(buffer);
-    }
-
-    return fsl_ptr;
-  }
-
-  /**
-   * Write FSL object to storage.
-   *
-   * @param fsl reference to FSL object to be written
-   */
-  void Write(FSL &fsl) override {
-    ByteBuffer buffer(fsl.size());
-    fsl.dump(Span(buffer));
-    file::write(fsl_file, buffer, 0);
   }
 
   /**
@@ -345,7 +292,7 @@ public:
    * @param page_id page identifier
    * @returns pointer to requested Page object
    */
-  std::unique_ptr<Page> Read(PageId page_id) override {
+  std::unique_ptr<PageType> Read(PageId page_id) override {
     // The page ID and page_size is used to compute the offset of the page in
     // the file.
     size_t page_offset = offset + page_size * (page_id - 1);
@@ -365,7 +312,7 @@ public:
     buffer.resize(page_size);
     file::read(data_file, buffer, page_offset);
 
-    return persist::LoadPage(buffer);
+    return persist::LoadPage<PageType>(buffer);
   }
 
   /**
@@ -373,7 +320,7 @@ public:
    *
    * @param page reference to Page object to be written
    */
-  void Write(Page &page) override {
+  void Write(PageType &page) override {
     // The block ID and blockSize is used to compute the offset of the block
     // in the file.
     size_t page_offset = offset + page_size * (page.GetId() - 1);
@@ -387,28 +334,6 @@ public:
     ByteBuffer buffer(page_size);
     persist::DumpPage(page, buffer);
     file::write(data_file, buffer, page_offset);
-  }
-
-  /**
-   * @brief Allocate a new page in storage. The identifier of the newly created
-   * page is returned.
-   *
-   * @returns identifier of the newly allocated page
-   */
-  PageId Allocate() override {
-    // Increase page count by 1. No need to write an empty page to storage since
-    // it will be automatically handled by buffer manager.
-    page_count += 1;
-    return page_count;
-  }
-
-  /**
-   * @brief Deallocate page with given identifier.
-   *
-   * @param page_id identifier of the page to deallocate
-   */
-  void Deallocate(PageId page_id) override {
-    // TODO: No operation performed for now
   }
 };
 

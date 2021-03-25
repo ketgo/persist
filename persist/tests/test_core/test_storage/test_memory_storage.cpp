@@ -32,7 +32,6 @@
 #include <string>
 #include <vector>
 
-#include <persist/core/exceptions.hpp>
 #include <persist/core/page/creator.hpp>
 #include <persist/core/storage/memory_storage.hpp>
 
@@ -44,10 +43,10 @@ using namespace persist::test;
 class MemoryStorageTestFixture : public ::testing::Test {
 protected:
   const uint64_t page_size = 512;
-  std::unique_ptr<MemoryStorage> storage;
+  std::unique_ptr<MemoryStorage<SimplePage>> storage;
 
   void SetUp() override {
-    storage = std::make_unique<MemoryStorage>(page_size);
+    storage = std::make_unique<MemoryStorage<SimplePage>>(page_size);
     storage->Open();
   }
 
@@ -55,14 +54,7 @@ protected:
 };
 
 TEST_F(MemoryStorageTestFixture, TestReadPageError) {
-  try {
-    auto page = storage->Read(1);
-    FAIL() << "Expected PageNotFoundError Exception.";
-  } catch (PageNotFoundError &err) {
-    SUCCEED();
-  } catch (...) {
-    FAIL() << "Expected PageNotFoundError Exception.";
-  }
+  ASSERT_THROW(storage->Read(1), PageNotFoundError);
 }
 
 TEST_F(MemoryStorageTestFixture, TestReadWritePage) {
@@ -74,20 +66,9 @@ TEST_F(MemoryStorageTestFixture, TestReadWritePage) {
   auto _page = storage->Read(1);
 
   ASSERT_EQ(page->GetId(), _page->GetId());
-  ASSERT_EQ(page->GetRecord(),
-            static_cast<SimplePage *>(_page.get())->GetRecord());
+  ASSERT_EQ(page->GetRecord(), _page->GetRecord());
 }
 
 TEST_F(MemoryStorageTestFixture, TestAllocate) {
   ASSERT_EQ(storage->Allocate(), 1);
-}
-
-TEST_F(MemoryStorageTestFixture, TestReadWriteFSL) {
-  FSL fsl;
-  fsl.freePages = {1, 2, 3};
-  storage->Write(fsl);
-
-  std::unique_ptr<FSL> _fsl = storage->Read();
-
-  ASSERT_EQ(fsl.freePages, _fsl->freePages);
 }

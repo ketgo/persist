@@ -28,8 +28,10 @@
 #include <memory>
 #include <unordered_map>
 
-#include <persist/core/exceptions.hpp>
+#include <persist/core/exceptions/page.hpp>
 #include <persist/core/page/base.hpp>
+
+#include <persist/utility/serializer.hpp>
 
 namespace persist {
 namespace test {
@@ -48,24 +50,7 @@ public:
    *
    * The header contains page ID information.
    */
-  class Header {
-    PERSIST_PRIVATE
-    /**
-     * @brief Computes checksum for record block.
-     */
-    Checksum _checksum() {
-
-      // Implemented hash function based on comment in
-      // https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
-
-      Checksum seed = GetSize();
-
-      seed =
-          std::hash<PageId>()(page_id) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-
-      return seed;
-    }
-
+  class Header : public Storable {
   public:
     /**
      * @brief Page unique identifer
@@ -78,11 +63,6 @@ public:
     size_t page_size;
 
     /**
-     * @brief Checksum to detect page corruption
-     */
-    Checksum checksum;
-
-    /**
      * @brief Construct a new Header object
      *
      */
@@ -93,28 +73,19 @@ public:
      * @brief Get storage size of header
      *
      */
-    size_t GetSize() const { return sizeof(PageId) + sizeof(Checksum); }
+    size_t GetStorageSize() const override { return sizeof(PageId); }
 
     /**
      * Load object from byte string
      *
      * @param input input buffer span to load
      */
-    void Load(Span input) {
-      if (input.size < GetSize()) {
+    void Load(Span input) override {
+      if (input.size < GetStorageSize()) {
         throw PageParseError();
       }
-
       // Load bytes
-      Byte *pos = input.start;
-      std::memcpy((void *)&page_id, (const void *)pos, sizeof(PageId));
-      pos += sizeof(PageId);
-      std::memcpy((void *)&checksum, (const void *)pos, sizeof(Checksum));
-
-      // Check for corruption by matching checksum
-      if (_checksum() != checksum) {
-        throw PageCorruptError();
-      }
+      persist::load(input, page_id);
     }
 
     /**
@@ -122,19 +93,12 @@ public:
      *
      * @param output output buffer span to dump
      */
-    void Dump(Span output) {
-      if (output.size < GetSize()) {
+    void Dump(Span output) override {
+      if (output.size < GetStorageSize()) {
         throw PageParseError();
       }
-
-      // Compute and set checksum
-      checksum = _checksum();
-
       // Dump bytes
-      Byte *pos = output.start;
-      std::memcpy((void *)pos, (const void *)&page_id, sizeof(PageId));
-      pos += sizeof(PageId);
-      std::memcpy((void *)pos, (const void *)&checksum, sizeof(Checksum));
+      persist::dump(output, page_id);
     }
 
 #ifdef __PERSIST_DEBUG__
@@ -170,13 +134,6 @@ public:
       : header(page_id, page_size) {}
 
   /**
-   * @brief Get the page type identifer.
-   *
-   * @returns The page type identifier
-   */
-  PageTypeId GetTypeId() const override { return 0; }
-
-  /**
    * Get page ID.
    *
    * @returns page identifier
@@ -190,7 +147,7 @@ public:
    * @returns Free space in bytes
    */
   size_t GetFreeSpaceSize(Operation operation) const override {
-    size_t data_size = header.GetSize() + record.size() +
+    size_t data_size = header.GetStorageSize() + record.size() +
                        sizeof(size_t); // The record size is stored in the
                                        // backend storage thus added here
     // If stored data size greater than page size then return 0
@@ -229,27 +186,26 @@ public:
   }
 
   /**
+   * @brief Get the page storage size.
+   *
+   */
+  size_t GetStorageSize() const override { return header.page_size; }
+
+  /**
    * Load Block object from byte string.
    *
    * @param input input buffer span to load
    */
   void Load(Span input) override {
-    if (input.size < header.page_size) {
+    if (input.size < GetStorageSize()) {
       throw PageParseError();
     }
     record.clear(); //<- clears data in case it is loaded
 
     // Load Page header
     header.Load(input);
-
-    Byte *pos = input.start + header.GetSize();
-    // Load record size
-    size_t recordSize = 0;
-    std::memcpy((void *)&recordSize, (const void *)pos, sizeof(size_t));
-    pos += sizeof(size_t);
-    // Load data
-    record.resize(recordSize);
-    std::memcpy((void *)record.data(), (const void *)(pos), recordSize);
+    input += header.GetStorageSize();
+    persist::load(input, record);
   }
 
   /**
@@ -258,20 +214,16 @@ public:
    * @param output output buffer span to dump
    */
   void Dump(Span output) override {
-    if (output.size < header.page_size) {
+    if (output.size < GetStorageSize()) {
       throw PageParseError();
     }
-
     // Dump header
     header.Dump(output);
-
-    Byte *pos = output.start + header.GetSize();
+    output += header.GetStorageSize();
     // Dump record size
-    size_t recordSize = record.size();
-    std::memcpy((void *)pos, (const void *)&recordSize, sizeof(size_t));
-    pos += sizeof(size_t);
-    // Dump record
-    std::memcpy((void *)(pos), (const void *)record.data(), record.size());
+    persist::dump(output, record);
+    // Dump free space
+    std::memset((void *)output.start, 0, output.size);
   }
 
 #ifdef __PERSIST_DEBUG__

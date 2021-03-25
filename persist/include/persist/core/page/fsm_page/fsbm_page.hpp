@@ -1,5 +1,5 @@
 /**
- * tests/common.hpp - Persist
+ * fsbm_page.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,30 +22,7 @@
  * SOFTWARE.
  */
 
-/**
- * @brief The header file contains common definitions and methods used for
- * testing.
- *
- */
-#ifndef TESTS_COMMON_HPP
-#define TESTS_COMMON_HPP
+#ifndef PERSIST_CORE_PAGE_FSMPAGE_FSBMPAGE_HPP
+#define PERSIST_CORE_PAGE_FSMPAGE_FSBMPAGE_HPP
 
-#include <gtest/gtest.h>
-
-/**
- * @brief Location of the test data.
- */
-#define DATA_PATH "@DATA_PATH@"
-
-/**
- * @brief Global testing environment setup.
- *
- */
-class Environment : public ::testing::Environment {
-public:
-  void SetUp() override {}
-
-  void TearDown() override {}
-};
-
-#endif /* TESTS_COMMON_HPP */
+#endif /* PERSIST_CORE_PAGE_FSMPAGE_FSBMPAGE_HPP */

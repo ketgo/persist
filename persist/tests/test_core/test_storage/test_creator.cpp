@@ -40,16 +40,17 @@ using namespace persist;
 using namespace persist::test;
 
 TEST(StorageFactoryTest, TestCreateMemoryStorage) {
-  std::unique_ptr<Storage> storage = CreateStorage("memory://");
-  Storage *ptr = storage.get();
+  auto storage = CreateStorage<SimplePage>("memory://");
+  Storage<SimplePage> *ptr = storage.get();
   std::string className = typeid(*ptr).name();
   ASSERT_TRUE(className.find("MemoryStorage") != std::string::npos);
 }
 
 TEST(StorageFactoryTest, TestCreateFileStorage) {
-  std::unique_ptr<Storage> storage = CreateStorage("file://storage.db");
-  Storage *ptr = storage.get();
+  auto storage = CreateStorage<SimplePage>("file://storage.db");
+  Storage<SimplePage> *ptr = storage.get();
   std::string className = typeid(*ptr).name();
   ASSERT_TRUE(className.find("FileStorage") != std::string::npos);
-  ASSERT_EQ(static_cast<FileStorage *>(ptr)->GetPath(), "storage.db");
+  ASSERT_EQ(static_cast<FileStorage<SimplePage> *>(ptr)->GetPath(),
+            "storage.db");
 }

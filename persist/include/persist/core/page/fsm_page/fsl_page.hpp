@@ -22,12 +22,12 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_CORE_PAGE_FSL_PAGE_HPP
-#define PERSIST_CORE_PAGE_FSL_PAGE_HPP
+#ifndef PERSIST_CORE_PAGE_FSMPAGE_FSLPAGE_HPP
+#define PERSIST_CORE_PAGE_FSMPAGE_FSLPAGE_HPP
 
 #include <set>
 
-#include <persist/core/exceptions.hpp>
+#include <persist/core/exceptions/page.hpp>
 #include <persist/core/page/base.hpp>
 
 #include <persist/utility/serializer.hpp>
@@ -45,6 +45,10 @@ class FSLPage : public Page {
   PageId page_id;   //<- Page identifier
   size_t page_size; //<- Page size
 
+  size_t max_free_space; //<- Maximum free space in page
+  PageId max_page_id;    //<- Maximum page ID value stored in page.
+  PageId min_page_id;    //<- Minimum page ID value stored in page.
+
 public:
   PageId next_page_id; //<- ID of linked next page
   PageId prev_page_id; //<- ID of linked previous page. This is set to the last
@@ -61,14 +65,11 @@ public:
    * @param page_size Page size
    */
   FSLPage(PageId page_id = 0, size_t page_size = DEFAULT_PAGE_SIZE)
-      : page_id(page_id), page_size(page_size) {}
-
-  /**
-   * @brief Get the page type identifer.
-   *
-   * @returns The page type identifier
-   */
-  PageTypeId GetTypeId() const override { return FSL_PAGE_TYPE_ID; }
+      : page_id(page_id), page_size(page_size),
+        max_free_space(page_size - 3 * sizeof(PageId) - sizeof(size_t)),
+        max_page_id(page_id * (max_free_space / sizeof(PageId))),
+        min_page_id((page_id - 1) * (max_free_space / sizeof(PageId)) + 1),
+        next_page_id(0), prev_page_id(0) {}
 
   /**
    * Get page identifier.
@@ -85,8 +86,7 @@ public:
    * @returns Free space in bytes
    */
   size_t GetFreeSpaceSize(Operation operation) const override {
-    size_t free_space = page_size - 3 * sizeof(PageId) - sizeof(size_t) -
-                        sizeof(PageId) * free_pages.size();
+    size_t free_space = max_free_space - sizeof(PageId) * free_pages.size();
     // Checks if the page has the minimum space required to insert a page
     // identifier
     if (free_space < sizeof(PageId)) {
@@ -94,6 +94,34 @@ public:
     }
     return free_space;
   }
+
+  /**
+   * @brief Get the storage size of page.
+   *
+   * @returns Storage size of page.
+   */
+  size_t GetStorageSize() const override { return page_size; }
+
+  /**
+   * @brief Get the maximum page ID value storable in the page.
+   *
+   * @returns Maximum page ID value storable in the page.
+   */
+  PageId GetMaxPageId() const { return max_page_id; }
+
+  /**
+   * @brief Get the minimum page ID value storable in the page.
+   *
+   * @returns Minimum page ID value storable in the page.
+   */
+  PageId GetMinPageId() const { return min_page_id; }
+
+  /**
+   * @brief Get the maximum amount of free space in the page.
+   *
+   * @returns Maximum free space in bytes in the page.
+   */
+  size_t GetMaxFreeSpace() const { return max_free_space; }
 
   /**
    * Load page object from byte string.
@@ -107,6 +135,9 @@ public:
     free_pages.clear(); //<- clears free pages in case they are loaded
     // Load bytes
     persist::load(input, page_id, next_page_id, prev_page_id, free_pages);
+    // Re-calculate max and min page ID
+    max_page_id = page_id * (max_free_space / sizeof(PageId));
+    min_page_id = (page_id - 1) * (max_free_space / sizeof(PageId)) + 1;
   }
 
   /**
@@ -127,4 +158,4 @@ public:
 
 } // namespace persist
 
-#endif /* PERSIST_CORE_PAGE_FSL_PAGE_HPP */
+#endif /* PERSIST_CORE_PAGE_FSMPAGE_FSLPAGE_HPP */

@@ -28,7 +28,7 @@
 #include <set>
 
 #include <persist/core/defs.hpp>
-#include <persist/core/log/log_manager.hpp>
+#include <persist/core/wal/log_manager.hpp>
 
 namespace persist {
 
@@ -110,8 +110,8 @@ public:
    * @param location location where record is inserted
    * @param page_slot page slot inserted
    */
-  void LogInsertOp(SlottedPageSlot::Location &location,
-                   SlottedPageSlot &page_slot) {
+  void LogInsertOp(RecordPageSlot::Location &location,
+                   RecordPageSlot &page_slot) {
     // Stage Page ID
     staged.insert(location.page_id);
     // Log record for insert operation
@@ -127,9 +127,9 @@ public:
    * @param old_page_slot old page slot
    * @param new_page_slot new page slot
    */
-  void LogUpdateOp(SlottedPageSlot::Location &location,
-                   SlottedPageSlot &old_page_slot,
-                   SlottedPageSlot &new_page_slot) {
+  void LogUpdateOp(RecordPageSlot::Location &location,
+                   RecordPageSlot &old_page_slot,
+                   RecordPageSlot &new_page_slot) {
     // Stage Page ID
     staged.insert(location.page_id);
     // Log record for update operation
@@ -144,8 +144,8 @@ public:
    * @param location location where record is located
    * @param page_slot page slot deleted
    */
-  void LogDeleteOp(SlottedPageSlot::Location &location,
-                   SlottedPageSlot &page_slot) {
+  void LogDeleteOp(RecordPageSlot::Location &location,
+                   RecordPageSlot &page_slot) {
     // Stage Page ID
     staged.insert(location.page_id);
     // Log record for delete operation

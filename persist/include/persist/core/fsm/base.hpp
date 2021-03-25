@@ -34,13 +34,23 @@ namespace persist {
  * @brief Free Space Manager Base Class
  *
  */
-class FreeSpaceManager {
+class FreeSpaceManager : public virtual PageObserver {
 public:
   /**
    * @brief Destroy the Free Space Manager object
    *
    */
   virtual ~FreeSpaceManager() = default;
+
+  /**
+   * @brief The method handles modified pages by checking the contained free
+   * space.
+   *
+   * @thread_safe
+   *
+   * @param page Constant reference to modified page.
+   */
+  void HandleModifiedPage(const Page &page) override { Manage(page); }
 
   /**
    * @brief Start free space manager.
@@ -70,6 +80,14 @@ public:
    * @param page Constant reference to a Page object.
    */
   virtual void Manage(const Page &page) = 0;
+
+  /**
+   * @brief Flush all free space page information to storage. This method is
+   * used by transaction manager when a transaction is committed.
+   *
+   * @thread_safe
+   */
+  virtual void Flush() = 0;
 };
 
 } // namespace persist

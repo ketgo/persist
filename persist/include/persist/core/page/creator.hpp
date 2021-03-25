@@ -1,5 +1,5 @@
 /**
- * page/creator.hpp - Persist
+ * creator.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -27,11 +27,12 @@
 
 #include <memory>
 
-#include <persist/core/defs.hpp>
-#include <persist/core/exceptions.hpp>
-#include <persist/core/page/type_header.hpp>
+#include <persist/core/common.hpp>
+#include <persist/core/exceptions/page.hpp>
+#include <persist/core/page/base.hpp>
 
 namespace persist {
+
 /**
  * @brief Create an empty page object of specified type.
  *
@@ -42,14 +43,17 @@ namespace persist {
  */
 template <class PageType>
 static std::unique_ptr<PageType> CreatePage(PageId page_id, size_t page_size) {
+  static_assert(std::is_base_of<Page, PageType>::value,
+                "Page must be derived from persist::Page");
+
   // Check page size greater than minimum size
   if (page_size < MINIMUM_PAGE_SIZE) {
     throw PageSizeError(page_size);
   }
-  // The page size is adjusted to incorporate the type header.
-  return std::make_unique<PageType>(page_id,
-                                    page_size - PageTypeHeader::GetSize());
+  // The page size is adjusted to incorporate checksum.
+  return std::make_unique<PageType>(page_id, page_size - sizeof(Checksum));
 }
+
 } // namespace persist
 
 #endif /* PERSIST_CORE_PAGE_CREATOR_HPP */

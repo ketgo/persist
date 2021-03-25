@@ -1,5 +1,5 @@
 /**
- * tests/common.hpp - Persist
+ * wal.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -23,29 +23,36 @@
  */
 
 /**
- * @brief The header file contains common definitions and methods used for
- * testing.
+ * @brief The header file contains write ahead logging (WAL) related exceptions.
  *
  */
-#ifndef TESTS_COMMON_HPP
-#define TESTS_COMMON_HPP
 
-#include <gtest/gtest.h>
+#ifndef PERSIST_CORE_EXCEPTIONS_WAL_HPP
+#define PERSIST_CORE_EXCEPTIONS_WAL_HPP
+
+#include <string>
+
+#include <persist/core/exceptions/base.hpp>
+
+namespace persist {
 
 /**
- * @brief Location of the test data.
- */
-#define DATA_PATH "@DATA_PATH@"
-
-/**
- * @brief Global testing environment setup.
+ * Log Record Parsing Error
  *
+ * This error is thrown if unable to parse log record.
  */
-class Environment : public ::testing::Environment {
+class LogRecordParseError : public ParseException {
+private:
+  std::string msg;
+
 public:
-  void SetUp() override {}
+  LogRecordParseError() : msg("Log record parsing error.") {}
+  LogRecordParseError(const char *msg) : msg(msg) {}
+  LogRecordParseError(std::string &msg) : msg(msg) {}
 
-  void TearDown() override {}
+  const char *what() const throw() { return msg.c_str(); }
 };
 
-#endif /* TESTS_COMMON_HPP */
+} // namespace persist
+
+#endif /* PERSIST_CORE_EXCEPTIONS_WAL_HPP */

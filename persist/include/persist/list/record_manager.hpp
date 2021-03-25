@@ -1,5 +1,5 @@
 /**
- * tests/common.hpp - Persist
+ * record_manager.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,30 +22,25 @@
  * SOFTWARE.
  */
 
+#ifndef PERSIST_LIST_RECORD_MANAGER_HPP
+#define PERSIST_LIST_RECORD_MANAGER_HPP
+
+#include <persist/core/common.hpp>
+
+namespace persist {
+
 /**
- * @brief The header file contains common definitions and methods used for
- * testing.
+ * @brief List record manager.
  *
+ * @tparam RecordType Record type stored in list.
  */
-#ifndef TESTS_COMMON_HPP
-#define TESTS_COMMON_HPP
-
-#include <gtest/gtest.h>
-
-/**
- * @brief Location of the test data.
- */
-#define DATA_PATH "@DATA_PATH@"
-
-/**
- * @brief Global testing environment setup.
- *
- */
-class Environment : public ::testing::Environment {
-public:
-  void SetUp() override {}
-
-  void TearDown() override {}
+template<class RecordType>
+class ListRecordManager {
+    // Record should be storage
+  static_assert(std::is_base_of<Storable, RecordType>::value,
+                "Record must be derived from persist::Storable");
 };
 
-#endif /* TESTS_COMMON_HPP */
+} // namespace persist
+
+#endif /* PERSIST_LIST_RECORD_MANAGER_HPP */

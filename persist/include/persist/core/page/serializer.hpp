@@ -27,35 +27,41 @@
 
 #include <memory>
 
-#include <persist/core/page/factory.hpp>
-#include <persist/core/page/type_header.hpp>
+#include <persist/core/page/base.hpp>
+#include <persist/core/page/creator.hpp>
 
 #include <persist/utility/checksum.hpp>
+#include <persist/utility/serializer.hpp>
 
 namespace persist {
 
 /**
  * @brief The method loads a page from byte buffer.
  *
+ * @tparam PageType Type of page to load.
  * @param input Input buffer span to load.
  * @returns Unique pointer of base type to the created page object. The user
  * should cast the pointer to that of the desired page type.
  */
-static std::unique_ptr<Page> LoadPage(Span input) {
-  if (input.size < PageTypeHeader::GetSize()) {
+template <class PageType>
+static std::unique_ptr<PageType> LoadPage(Span input) {
+  static_assert(std::is_base_of<Page, PageType>::value,
+                "Page must be derived from persist::Page");
+
+  if (input.size < sizeof(Checksum)) {
     throw PageParseError();
   }
-  // Load type header
-  PageTypeHeader type_header;
-  type_header.Load(input);
-  // Load page
-  Span span = input + PageTypeHeader::GetSize();
-  auto page = PageFactory::GetPage(type_header.GetTypeId(), 0, input.size);
-  page->Load(span);
+  // Create empty page
+  auto page = persist::CreatePage<PageType>(0, input.size);
+  // Load checksum
+  Checksum _checksum;
+  persist::load(input, _checksum);
   // Validate checksum
-  if (checksum(span) != type_header.GetChecksum()) {
+  if (checksum(input) != _checksum) {
     throw PageCorruptError();
   }
+  // Load page
+  page->Load(input);
 
   return page;
 }
@@ -67,15 +73,15 @@ static std::unique_ptr<Page> LoadPage(Span input) {
  * @param output Output buffer span to dump.
  */
 static void DumpPage(Page &page, Span output) {
-  if (output.size < PageTypeHeader::GetSize()) {
+  if (output.size < sizeof(Checksum)) {
     throw PageParseError();
   }
-
-  Span span = output + PageTypeHeader::GetSize();
+  // Dump page
+  Span span = output + sizeof(Checksum);
   page.Dump(span);
-
-  PageTypeHeader type_header(page.GetTypeId(), checksum(span));
-  type_header.Dump(output);
+  // Dump checksum
+  Checksum _checksum = checksum(span);
+  persist::dump(output, _checksum);
 }
 
 } // namespace persist

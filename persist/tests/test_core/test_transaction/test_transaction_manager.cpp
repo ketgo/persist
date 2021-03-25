@@ -31,10 +31,6 @@
 
 #include <memory>
 
-#include <persist/core/buffer/buffer_manager.hpp>
-#include <persist/core/buffer/replacer/lru_replacer.hpp>
-#include <persist/core/page/log_page/log_page.hpp>
-#include <persist/core/page/slotted_page/slotted_page.hpp>
 #include <persist/core/storage/creator.hpp>
 #include <persist/core/transaction/transaction_manager.hpp>
 
@@ -45,21 +41,21 @@ protected:
   const uint64_t page_size = DEFAULT_PAGE_SIZE;
   const uint64_t max_size = 2;
   const std::string path = "test_transaction_manager";
-  SlottedPageSlot::Location location;
-  std::unique_ptr<BufferManager> buffer_manager;
-  std::unique_ptr<Storage> data_storage;
-  std::unique_ptr<Storage> log_storage;
+  RecordPageSlot::Location location;
+  std::unique_ptr<BufferManager<RecordPage>> buffer_manager;
+  std::unique_ptr<Storage<RecordPage>> data_storage;
+  std::unique_ptr<Storage<LogPage>> log_storage;
   std::unique_ptr<LogManager> log_manager;
   std::unique_ptr<TransactionManager> txn_manager;
 
   void SetUp() override {
     // Setting up storage
-    data_storage = persist::CreateStorage("file://" + path);
-    log_storage = persist::CreateStorage("file://" + path + "_log");
+    data_storage = persist::CreateStorage<RecordPage>("file://" + path);
+    log_storage = persist::CreateStorage<LogPage>("file://" + path + "_log");
 
     // Setting up buffer manager
-    buffer_manager =
-        std::make_unique<BufferManager>(data_storage.get(), max_size);
+    buffer_manager = std::make_unique<BufferManager<RecordPage>>(
+        data_storage.get(), max_size);
     buffer_manager->Start();
 
     // Setting up log manager
@@ -89,12 +85,12 @@ protected:
    * @param log_records reference to vector of log records type
    */
   void RetriveLogRecord(Transaction &txn, std::vector<LogRecord> &log_records) {
-    std::unique_ptr<LogRecord> logRecord =
+    std::unique_ptr<LogRecord> log_record =
         log_manager->Get(txn.GetLogLocation());
-    log_records.push_back(*logRecord);
-    while (!logRecord->GetPrevLogRecordLocation().IsNull()) {
-      logRecord = log_manager->Get(logRecord->GetPrevLogRecordLocation());
-      log_records.push_back(*logRecord);
+    log_records.push_back(*log_record);
+    while (!log_record->GetPrevLocation().IsNull()) {
+      log_record = log_manager->Get(log_record->GetPrevLocation());
+      log_records.push_back(*log_record);
     }
   }
 
@@ -105,9 +101,9 @@ protected:
    * @param slot reference to the page lost to insert
    * @returns location where page slot is inserted
    */
-  SlottedPageSlot::Location Insert(Transaction &txn, SlottedPageSlot &slot) {
-    SlottedPageSlot::Location _location;
-    auto page = buffer_manager->GetNew<SlottedPage>();
+  RecordPageSlot::Location Insert(Transaction &txn, RecordPageSlot &slot) {
+    RecordPageSlot::Location _location;
+    auto page = buffer_manager->GetNew();
     auto inserted = page->InsertPageSlot(slot, txn);
     _location.page_id = page->GetId();
     _location.slot_id = inserted.first;
@@ -122,9 +118,9 @@ protected:
    * @param location reference to the location to update
    * @param slot reference to the page lost to insert
    */
-  void Update(Transaction &txn, SlottedPageSlot::Location &location,
-              SlottedPageSlot &slot) {
-    auto page = buffer_manager->Get<SlottedPage>(location.page_id);
+  void Update(Transaction &txn, RecordPageSlot::Location &location,
+              RecordPageSlot &slot) {
+    auto page = buffer_manager->Get(location.page_id);
     page->UpdatePageSlot(location.slot_id, slot, txn);
   }
 
@@ -134,8 +130,8 @@ protected:
    * @param txn reference to the transaction
    * @param location reference to the location to remove
    */
-  void Remove(Transaction &txn, SlottedPageSlot::Location &location) {
-    auto page = buffer_manager->Get<SlottedPage>(location.page_id);
+  void Remove(Transaction &txn, RecordPageSlot::Location &location) {
+    auto page = buffer_manager->Get(location.page_id);
     page->RemovePageSlot(location.slot_id, txn);
   }
 
@@ -145,7 +141,7 @@ private:
    *
    */
   void Insert() {
-    SlottedPageSlot slot("testing"_bb);
+    RecordPageSlot slot("testing"_bb);
     Transaction txn = txn_manager->Begin();
     location = Insert(txn, slot);
     txn_manager->Commit(txn, true);
@@ -167,8 +163,8 @@ TEST_F(TransactionManagerTestFixture, TestBegin) {
 }
 
 TEST_F(TransactionManagerTestFixture, TestCommitForce) {
-  SlottedPageSlot::Location _location;
-  SlottedPageSlot slot("testing-commit-force"_bb);
+  RecordPageSlot::Location _location;
+  RecordPageSlot slot("testing-commit-force"_bb);
 
   // Insert page slot as part of transaction
   Transaction txn = txn_manager->Begin();
@@ -178,9 +174,7 @@ TEST_F(TransactionManagerTestFixture, TestCommitForce) {
   Transaction _txn = txn_manager->Begin();
   // Assert page flushed
   auto page = data_storage->Read(_location.page_id);
-  ASSERT_EQ(static_cast<SlottedPage *>(page.get())
-                ->GetPageSlot(_location.slot_id, _txn),
-            slot);
+  ASSERT_EQ(page->GetPageSlot(_location.slot_id, _txn), slot);
   txn_manager->Commit(_txn);
 
   // Retrive all log records for transaction
@@ -197,8 +191,8 @@ TEST_F(TransactionManagerTestFixture, TestCommitForce) {
 }
 
 TEST_F(TransactionManagerTestFixture, TestCommitNoForce) {
-  SlottedPageSlot::Location _location;
-  SlottedPageSlot slot("testing-commit-no-force"_bb);
+  RecordPageSlot::Location _location;
+  RecordPageSlot slot("testing-commit-no-force"_bb);
 
   // Insert page slot as part of transaction
   Transaction txn = txn_manager->Begin();
@@ -222,8 +216,8 @@ TEST_F(TransactionManagerTestFixture, TestCommitNoForce) {
 }
 
 TEST_F(TransactionManagerTestFixture, TestInsertAbort) {
-  SlottedPageSlot::Location _location;
-  SlottedPageSlot slot("testing-insert-abort"_bb);
+  RecordPageSlot::Location _location;
+  RecordPageSlot slot("testing-insert-abort"_bb);
 
   // Insert page slot as part of transaction
   Transaction txn = txn_manager->Begin();
@@ -232,7 +226,7 @@ TEST_F(TransactionManagerTestFixture, TestInsertAbort) {
 
   Transaction _txn = txn_manager->Begin();
   // Assert slot not inserted due to aborted transaction
-  auto page = buffer_manager->Get<SlottedPage>(_location.page_id);
+  auto page = buffer_manager->Get(_location.page_id);
   ASSERT_THROW(page->GetPageSlot(_location.slot_id, _txn),
                PageSlotNotFoundError);
   txn_manager->Commit(_txn);
@@ -254,7 +248,7 @@ TEST_F(TransactionManagerTestFixture, TestInsertAbort) {
 }
 
 TEST_F(TransactionManagerTestFixture, TestUpdateAbort) {
-  SlottedPageSlot slot("testing-update-abort"_bb);
+  RecordPageSlot slot("testing-update-abort"_bb);
 
   // Update page slot as part of transaction
   Transaction txn = txn_manager->Begin();
@@ -263,7 +257,7 @@ TEST_F(TransactionManagerTestFixture, TestUpdateAbort) {
 
   Transaction _txn = txn_manager->Begin();
   // Assert slot not updated due to aborted transaction
-  auto page = buffer_manager->Get<SlottedPage>(location.page_id);
+  auto page = buffer_manager->Get(location.page_id);
   ASSERT_EQ(page->GetPageSlot(location.slot_id, _txn).data, "testing"_bb);
   txn_manager->Commit(_txn);
 
@@ -293,7 +287,7 @@ TEST_F(TransactionManagerTestFixture, TestRemoveAbort) {
 
   Transaction _txn = txn_manager->Begin();
   // Assert slot not removed due to aborted transaction
-  auto page = buffer_manager->Get<SlottedPage>(location.page_id);
+  auto page = buffer_manager->Get(location.page_id);
   ASSERT_EQ(page->GetPageSlot(location.slot_id, _txn).data, "testing"_bb);
   txn_manager->Commit(_txn);
 

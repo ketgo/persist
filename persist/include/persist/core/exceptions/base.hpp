@@ -1,5 +1,5 @@
 /**
- * tests/common.hpp - Persist
+ * base.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,30 +22,41 @@
  * SOFTWARE.
  */
 
+#ifndef PERSIST_CORE_EXCEPTIONS_BASE_HPP
+#define PERSIST_CORE_EXCEPTIONS_BASE_HPP
+
+#include <persist/core/common.hpp>
+
+namespace persist {
+
 /**
- * @brief The header file contains common definitions and methods used for
- * testing.
+ * @brief Persist package base exception class
  *
+ * Use this to capture all package excpetions.
  */
-#ifndef TESTS_COMMON_HPP
-#define TESTS_COMMON_HPP
-
-#include <gtest/gtest.h>
+class PersistException : public std::exception {};
 
 /**
- * @brief Location of the test data.
- */
-#define DATA_PATH "@DATA_PATH@"
-
-/**
- * @brief Global testing environment setup.
+ * @brief Data corruption base exception class
  *
+ * Use this to capture all corruption exceptions.
  */
-class Environment : public ::testing::Environment {
-public:
-  void SetUp() override {}
+class CorruptException : public PersistException {};
 
-  void TearDown() override {}
-};
+/**
+ * @brief Data parsing base exception class
+ *
+ * Use this to capture all parsing exceptions.
+ */
+class ParseException : public PersistException {};
 
-#endif /* TESTS_COMMON_HPP */
+/**
+ * @brief Not found error base excpetion class
+ *
+ * Use this to capture all not found exceptions.
+ */
+class NotFoundException : public PersistException {};
+
+} // namespace persist
+
+#endif /* PERSIST_CORE_EXCEPTIONS_BASE_HPP */

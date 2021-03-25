@@ -22,11 +22,11 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_CORE_PAGE_LOG_PAGE_SLOT_HPP
-#define PERSIST_CORE_PAGE_LOG_PAGE_SLOT_HPP
+#ifndef PERSIST_CORE_PAGE_LOGPAGE_SLOT_HPP
+#define PERSIST_CORE_PAGE_LOGPAGE_SLOT_HPP
 
-#include <persist/core/defs.hpp>
-#include <persist/core/exceptions.hpp>
+#include <persist/core/common.hpp>
+#include <persist/core/exceptions/page.hpp>
 
 #include <persist/utility/serializer.hpp>
 
@@ -37,7 +37,7 @@ namespace persist {
  * The class implements a page slot used by log pages. In case a log record
  * does not fit in a pge, it is split accross multiple slots.
  */
-class LogPageSlot {
+class LogPageSlot : public Storable {
 public:
   /**
    * LogPageSlot Location Class
@@ -109,7 +109,7 @@ public:
    * The class represents header of a plog age slot. It contains the metadata
    * information required for facilitating read write operations of log records.
    */
-  class Header {
+  class Header : public Storable {
   public:
     /**
      * @brief Log record sequence number
@@ -133,16 +133,16 @@ public:
      * @brief Get the storage size of header
      *
      */
-    size_t GetSize() const { return sizeof(Header); }
+    size_t GetStorageSize() const override { return sizeof(Header); }
 
     /**
      * Load slot header from byte string.
      *
      * @param input input buffer span to load
      */
-    void Load(Span input) {
-      if (input.size < GetSize()) {
-        throw PageSlotParseError();
+    void Load(Span input) override {
+      if (input.size < GetStorageSize()) {
+        throw PageParseError();
       }
       persist::load(input, seq_number, next_location);
     }
@@ -152,9 +152,9 @@ public:
      *
      * @param output output buffer span to dump
      */
-    void Dump(Span output) {
-      if (output.size < GetSize()) {
-        throw PageSlotParseError();
+    void Dump(Span output) override {
+      if (output.size < GetStorageSize()) {
+        throw PageParseError();
       }
       persist::dump(output, seq_number, next_location);
     }
@@ -209,14 +209,6 @@ public:
       : header(seq_number, next_location) {}
 
   /**
-   * Get storage size of page slot.
-   * 
-   */
-  size_t GetSize() const {
-    return header.GetSize() + sizeof(size_t) + data.size();
-  }
-
-  /**
    * @brief Get the sequence number of the stored log record
    *
    * @return sequence number of the stored log record
@@ -245,17 +237,25 @@ public:
   void SetNextLocation(Location &location) { header.next_location = location; }
 
   /**
+   * Get storage size of page slot.
+   *
+   */
+  size_t GetStorageSize() const override {
+    return header.GetStorageSize() + sizeof(size_t) + data.size();
+  }
+
+  /**
    * Load page slot object from byte string.
    *
    * @param input input buffer span to load
    */
-  void Load(Span input) {
-    if (input.size < GetSize()) {
-      throw PageSlotParseError();
+  void Load(Span input) override {
+    if (input.size < GetStorageSize()) {
+      throw PageParseError();
     }
     // Load header
     header.Load(input);
-    input += header.GetSize();
+    input += header.GetStorageSize();
     // Load bytes
     persist::load(input, data);
   }
@@ -265,13 +265,13 @@ public:
    *
    * @param output output buffer span to dump
    */
-  void Dump(Span output) {
-    if (output.size < GetSize()) {
-      throw PageSlotParseError();
+  void Dump(Span output) override {
+    if (output.size < GetStorageSize()) {
+      throw PageParseError();
     }
     // Dump header
     header.Dump(output);
-    output += header.GetSize();
+    output += header.GetStorageSize();
     // Dump bytes
     persist::dump(output, data);
   }
@@ -306,4 +306,4 @@ public:
 
 } // namespace persist
 
-#endif /* PERSIST_CORE_PAGE_LOG_PAGE_SLOT_HPP */
+#endif /* PERSIST_CORE_PAGE_LOGPAGE_SLOT_HPP */

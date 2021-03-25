@@ -26,10 +26,10 @@
 #define PERSIST_CORE_TRANSACTION_MANAGER_HPP
 
 #include <persist/core/buffer/buffer_manager.hpp>
-#include <persist/core/buffer/replacer/base.hpp>
-#include <persist/core/log/log_manager.hpp>
-#include <persist/core/page/slotted_page/slotted_page.hpp>
+#include <persist/core/page/record_page/page.hpp>
 #include <persist/core/transaction/transaction.hpp>
+#include <persist/core/wal/log_manager.hpp>
+
 #include <persist/utility/uid.hpp>
 
 namespace persist {
@@ -49,7 +49,7 @@ class TransactionManager {
    * @brief Pointer to Buffer Manager
    *
    */
-  BufferManager *buffer_manager;
+  BufferManager<RecordPage> *buffer_manager;
 
   /**
    * @brief Pointer to Log Manager
@@ -105,21 +105,18 @@ class TransactionManager {
   void Undo(Transaction &txn, LogRecord &log_record) {
     switch (log_record.GetLogType()) {
     case LogRecord::Type::INSERT: {
-      auto page =
-          buffer_manager->Get<SlottedPage>(log_record.GetLocation().page_id);
+      auto page = buffer_manager->Get(log_record.GetLocation().page_id);
       page->RemovePageSlot(log_record.GetLocation().slot_id, txn);
       break;
     }
     case LogRecord::Type::DELETE: {
-      auto page =
-          buffer_manager->Get<SlottedPage>(log_record.GetLocation().page_id);
+      auto page = buffer_manager->Get(log_record.GetLocation().page_id);
       page->UndoRemovePageSlot(log_record.GetLocation().slot_id,
                                log_record.GetPageSlotA(), txn);
       break;
     }
     case LogRecord::Type::UPDATE: {
-      auto page =
-          buffer_manager->Get<SlottedPage>(log_record.GetLocation().page_id);
+      auto page = buffer_manager->Get(log_record.GetLocation().page_id);
       // NOTE: The value from log record object is being moved
       page->UpdatePageSlot(log_record.GetLocation().slot_id,
                            log_record.GetPageSlotA(), txn);
@@ -138,7 +135,8 @@ public:
    * are to be managed
    * @param log_manager transaction log manager
    */
-  TransactionManager(BufferManager *buffer_manager, LogManager *log_manager)
+  TransactionManager(BufferManager<RecordPage> *buffer_manager,
+                     LogManager *log_manager)
       : buffer_manager(buffer_manager), log_manager(log_manager) {}
 
   /**
@@ -167,11 +165,10 @@ public:
     if (txn.GetState() != Transaction::State::COMMITED &&
         txn.GetState() != Transaction::State::ABORTED) {
       // Undo all operations performed as part of the transaction
-      std::unique_ptr<LogRecord> log_record =
-          log_manager->Get(txn.GetLogLocation());
+      auto log_record = log_manager->Get(txn.GetLogLocation());
       Undo(txn, *log_record);
-      while (!log_record->GetPrevLogRecordLocation().IsNull()) {
-        log_record = log_manager->Get(log_record->GetPrevLogRecordLocation());
+      while (!log_record->GetPrevLocation().IsNull()) {
+        log_record = log_manager->Get(log_record->GetPrevLocation());
         Undo(txn, *log_record);
       }
 

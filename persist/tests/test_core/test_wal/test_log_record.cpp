@@ -30,15 +30,15 @@
 
 #include <memory>
 
-#include <persist/core/log/log_record.hpp>
+#include <persist/core/wal/log_record.hpp>
 
 using namespace persist;
 
 class LogRecordTestFixture : public ::testing::Test {
 protected:
-  SlottedPageSlot page_slot_a, page_slot_b;
+  RecordPageSlot page_slot_a, page_slot_b;
   const TransactionId txn_id = 432;
-  const SlottedPageSlot::Location location = {10, 1};
+  const RecordPageSlot::Location location = {10, 1};
   const SeqNumber seq_number = 5;
   const LogRecord::Location prev_log_record_location = {1, 3};
   std::unique_ptr<LogRecord> log_record;
@@ -52,16 +52,18 @@ protected:
                                              page_slot_a, page_slot_b);
     log_record->SetSeqNumber(seq_number);
 
-    input = {5,   0,   0,   0,   0,  0, 0, 0, 1,   0, 0, 0, 0,   0,   0,   0,
-             3,   0,   0,   0,   0,  0, 0, 0, 176, 1, 0, 0, 0,   0,   0,   0,
-             2,   0,   0,   0,   10, 0, 0, 0, 0,   0, 0, 0, 1,   0,   0,   0,
-             0,   0,   0,   0,   0,  0, 0, 0, 0,   0, 0, 0, 0,   0,   0,   0,
-             0,   0,   0,   0,   0,  0, 0, 0, 0,   0, 0, 0, 0,   0,   0,   0,
-             0,   0,   0,   0,   9,  0, 0, 0, 0,   0, 0, 0, 116, 101, 115, 116,
-             105, 110, 103, 45,  65, 0, 0, 0, 0,   0, 0, 0, 0,   0,   0,   0,
-             0,   0,   0,   0,   0,  0, 0, 0, 0,   0, 0, 0, 0,   0,   0,   0,
-             0,   0,   0,   0,   0,  9, 0, 0, 0,   0, 0, 0, 0,   116, 101, 115,
-             116, 105, 110, 103, 45, 66};
+    input = {5,   0,   0,   0,   0,   0,   0,   0,   1,   0,   0,  0,  0, 0, 0,
+             0,   3,   0,   0,   0,   0,   0,   0,   0,   176, 1,  0,  0, 0, 0,
+             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   2,  0,  0, 0, 10,
+             0,   0,   0,   0,   0,   0,   0,   1,   0,   0,   0,  0,  0, 0, 0,
+             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  0,  0, 0, 0,
+             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  0,  0, 0, 0,
+             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   9,  0,  0, 0, 0,
+             0,   0,   0,   116, 101, 115, 116, 105, 110, 103, 45, 65, 0, 0, 0,
+             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  0,  0, 0, 0,
+             0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  0,  0, 0, 0,
+             0,   0,   0,   0,   0,   0,   0,   9,   0,   0,   0,  0,  0, 0, 0,
+             116, 101, 115, 116, 105, 110, 103, 45,  66};
   }
 };
 
@@ -73,20 +75,14 @@ TEST_F(LogRecordTestFixture, TestLoad) {
 }
 
 TEST_F(LogRecordTestFixture, TestLoadParseError) {
-  try {
-    ByteBuffer _input;
-    LogRecord _log_record;
-    _log_record.Load(_input);
-    FAIL() << "Expected LogRecordParseError Exception.";
-  } catch (LogRecordParseError &err) {
-    SUCCEED();
-  } catch (...) {
-    FAIL() << "Expected LogRecordParseError Exception.";
-  }
+  ByteBuffer _input;
+  LogRecord _log_record;
+
+  ASSERT_THROW(_log_record.Load(_input), LogRecordParseError);
 }
 
 TEST_F(LogRecordTestFixture, TestDump) {
-  ByteBuffer output(log_record->GetSize());
+  ByteBuffer output(log_record->GetStorageSize());
   log_record->Dump(output);
 
   ASSERT_EQ(input, output);

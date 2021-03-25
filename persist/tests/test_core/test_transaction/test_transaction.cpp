@@ -34,7 +34,10 @@
 #include <persist/core/storage/creator.hpp>
 #include <persist/core/transaction/transaction.hpp>
 
+#include "persist/test/simple_page.hpp"
+
 using namespace persist;
+using namespace persist::test;
 
 class TransactionTestFixture : public ::testing::Test {
 protected:
@@ -42,14 +45,14 @@ protected:
   const uint64_t max_size = 2;
   const TransactionId txn_id = 10;
   const std::string path = "test_transaction_log";
-  SlottedPageSlot::Location location;
-  std::unique_ptr<Storage> storage;
+  RecordPageSlot::Location location;
+  std::unique_ptr<Storage<LogPage>> storage;
   std::unique_ptr<LogManager> log_manager;
   std::unique_ptr<Transaction> txn;
 
   void SetUp() override {
     // Setting up storage
-    storage = persist::CreateStorage("file://" + path);
+    storage = persist::CreateStorage<LogPage>("file://" + path);
 
     // Setting up log manager
     log_manager = std::make_unique<LogManager>(storage.get(), max_size);

@@ -32,7 +32,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <vector>
 
 #ifdef __PERSIST_DEBUG__
 #include <ostream>
@@ -68,15 +67,12 @@
 
 // Default log page size in bytes
 #define DEFAULT_LOG_PAGE_SIZE 1024
-// Default log buffer size. This is the maximum number of log pages the log
-// buffer can load in-memory.
+// Default log buffer size. This is the default maximum number of log pages the
+// log buffer can load in-memory.
 #define DEFAULT_LOG_BUFFER_SIZE 8
-
-// Identifers for different page types
-#define LOG_PAGE_TYPE_ID 1
-#define SLOTTED_PAGE_TYPE_ID 2
-#define FSL_PAGE_TYPE_ID 3
-
+// Default FSL buffer size. This is the default maximum number of FSL pages the
+// FSLManager can load in-memory.
+#define DEFAULT_FSL_BUFFER_SIZE 8
 
 namespace persist {
 
@@ -85,12 +81,6 @@ namespace persist {
  *
  */
 enum class Operation { READ, INSERT, UPDATE, DELETE };
-
-/**
- * Page type identifier type
- *
- */
-typedef uint8_t PageTypeId;
 
 /**
  * Page identifier type
@@ -118,78 +108,6 @@ typedef uint64_t TransactionId;
  * @brief Log Sequence Number Type
  */
 typedef uint64_t SeqNumber;
-
-/**
- * @brief Byte buffer type
- */
-typedef uint8_t Byte;
-typedef std::vector<Byte> ByteBuffer;
-typedef struct Span {
-  Byte *start;
-  size_t size;
-
-  Span() {}
-  Span(Byte *start, size_t size) : start(start), size(size) {}
-  Span(ByteBuffer &buffer) : start(buffer.data()), size(buffer.size()) {}
-
-  /**
-   * @brief Assignment operator
-   *
-   */
-  inline void operator=(const Span &span) {
-    this->start = span.start;
-    this->size = span.size;
-  }
-
-  /**
-   * @brief Shift the span by specifed size. It is left to the user to make sure
-   * the specified shift is valid. An invalid size would be one which cases the
-   * span to point at invalid memory address.
-   *
-   * @param size The size by which to shift the span.
-   */
-  inline void operator+=(const size_t &size) {
-    this->start += size;
-    this->size -= size;
-  }
-
-  /**
-   * @brief Shift the span by specifed size. It is left to the user to make
-   * sure the specified shift is valid. An invalid size would be one which
-   * cases the span to point at invalid memory address.
-   *
-   * @param size The size by which to shift the span.
-   */
-  inline Span operator+(const size_t &size) {
-    Span span;
-    span.start = this->start + size;
-    span.size = this->size - size;
-    return span;
-  }
-} Span;
-
-/**
- * @brief ByteBuffer literal `_bb`
- */
-inline ByteBuffer operator"" _bb(const char *string, size_t size) {
-  ByteBuffer buffer(size);
-  for (int i = 0; i < size; i++) {
-    buffer[i] = static_cast<Byte>(string[i]);
-  }
-  return buffer;
-}
-
-#ifdef __PERSIST_DEBUG__
-/**
- * @brief Write byte buffer to output stream
- */
-inline std::ostream &operator<<(std::ostream &os, const ByteBuffer &buffer) {
-  for (auto c : buffer) {
-    os << c;
-  }
-  return os;
-}
-#endif
 
 } // namespace persist
 

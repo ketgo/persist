@@ -1,5 +1,5 @@
 /**
- * tests/common.hpp - Persist
+ * storage.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -23,29 +23,53 @@
  */
 
 /**
- * @brief The header file contains common definitions and methods used for
- * testing.
+ * @brief The header file contains storage related exceptions.
  *
  */
-#ifndef TESTS_COMMON_HPP
-#define TESTS_COMMON_HPP
 
-#include <gtest/gtest.h>
+#ifndef PERSIST_CORE_EXCEPTIONS_STORAGE_HPP
+#define PERSIST_CORE_EXCEPTIONS_STORAGE_HPP
+
+#include <string>
+
+#include <persist/core/exceptions/base.hpp>
+
+namespace persist {
 
 /**
- * @brief Location of the test data.
- */
-#define DATA_PATH "@DATA_PATH@"
-
-/**
- * @brief Global testing environment setup.
+ * Page Not Found Error
  *
+ * This error is thrown if page is not found.
  */
-class Environment : public ::testing::Environment {
+class PageNotFoundError : public NotFoundException {
+private:
+  std::string msg;
+
 public:
-  void SetUp() override {}
+  PageNotFoundError(PageId &page_id)
+      : msg(std::string("Page with ID '") + std::to_string(page_id) +
+            std::string("' not found.")) {}
 
-  void TearDown() override {}
+  const char *what() const throw() { return msg.c_str(); }
 };
 
-#endif /* TESTS_COMMON_HPP */
+/**
+ * Storage Error
+ *
+ * This error is thrown by backend storage.
+ */
+class StorageError : public PersistException {
+private:
+  std::string msg;
+
+public:
+  StorageError() : msg("Unable to open Storage.") {}
+  StorageError(const char *msg) : msg(msg) {}
+  StorageError(std::string &msg) : msg(msg) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+} // namespace persist
+
+#endif /* PERSIST_CORE_EXCEPTIONS_STORAGE_HPP */

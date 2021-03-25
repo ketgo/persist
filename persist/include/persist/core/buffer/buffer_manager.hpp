@@ -25,36 +25,29 @@
 #ifndef PERSIST_CORE_BUFFER_MANAGER_HPP
 #define PERSIST_CORE_BUFFER_MANAGER_HPP
 
-#include <list>
-#include <memory>
-#include <set>
-#include <unordered_map>
-
 #include <persist/core/buffer/page_handle.hpp>
 #include <persist/core/buffer/replacer/creator.hpp>
-#include <persist/core/defs.hpp>
-#include <persist/core/exceptions.hpp>
-#include <persist/core/fsm/creator.hpp>
+#include <persist/core/exceptions/buffer.hpp>
 #include <persist/core/page/creator.hpp>
 #include <persist/core/storage/base.hpp>
+
 #include <persist/utility/mutex.hpp>
 
 // At the minimum 2 pages are needed in memory by record manager.
 #define MINIMUM_BUFFER_SIZE 2
 
 namespace persist {
-
-// TODO: Read-write lock for page.
-
 /**
- * @brief Buffer Manager
+ * @brief The buffer manager handles buffer of pages loaded in memory from a
+ * backend storage. The reading of pages while wrting of modifed pages are
+ * perfromed in compliance with the page repleacement policy.
  *
- * The buffer manager handles buffer of pages loaded in memory from a backend
- * storage. The reading of pages while wrting of modifed pages are perfromed in
- * compliance with the page repleacement policy.
- *
+ * @tparam PageType The type of page managed.
  */
-class BufferManager : public PageObserver {
+template <class PageType> class BufferManager : public PageObserver {
+  static_assert(std::is_base_of<Page, PageType>::value,
+                "PageType must be derived from Page class.");
+
   PERSIST_PRIVATE
   /**
    * @brief Recursive lock for thread safety
@@ -66,29 +59,28 @@ class BufferManager : public PageObserver {
   typedef typename persist::LockGuard<Mutex> LockGuard;
 
   /**
-   * Page Slot Struct
+   * Frame Struct
    *
    * The data structure contains page pointer and status information. A
-   * collection of slots make up the memory buffer of a page table.
+   * collection of frames make up the memory buffer.
    */
-  struct PageSlot {
-    std::unique_ptr<Page> page;
+  struct Frame {
+    std::unique_ptr<PageType> page;
     bool modified;
 
     /**
-     * @brief Construct a new Page Slot object
+     * @brief Construct a new Frame object
      *
      */
-    PageSlot() : page(nullptr), modified(false) {}
+    Frame() : page(nullptr), modified(false) {}
   };
 
-  Storage *storage;                      //<- opened backend storage
-  std::unique_ptr<FreeSpaceManager> fsm; //<- free space manager
-  std::unique_ptr<Replacer> replacer;    //<- page replacer
+  Storage<PageType> *storage;         //<- opened backend storage
+  std::unique_ptr<Replacer> replacer; //<- page replacer
 
   size_t max_size GUARDED_BY(lock); //<- maximum size of buffer
-  typedef typename std::unordered_map<PageId, PageSlot> Buffer;
-  Buffer buffer GUARDED_BY(lock); //<- buffer of page slots
+  typedef typename std::unordered_map<PageId, Frame> Buffer;
+  Buffer buffer GUARDED_BY(lock); //<- buffer of page frames
   bool started GUARDED_BY(lock);  //<- flag indicating buffer manager started
 
   /**
@@ -96,7 +88,7 @@ class BufferManager : public PageObserver {
    *
    * @param page pointer reference to page
    */
-  void Put(std::unique_ptr<Page> &page) {
+  void Put(std::unique_ptr<PageType> &page) {
     LockGuard guard(lock);
 
     // If buffer is full then remove the victum page
@@ -127,52 +119,32 @@ public:
    * @param storage Pointer to backend storage.
    * @param max_size Maximum buffer size. If set to 0, no maximum limit is set.
    * @param replacer_type Type of page replacer to be used by buffer manager.
-   * @param fsm_type Type of free space manager to be used by buffer manager.
    *
    */
-  BufferManager(Storage *storage, size_t max_size = DEFAULT_BUFFER_SIZE,
-                ReplacerType replacer_type = ReplacerType::LRU,
-                FSMType fsm_type = FSMType::FSL)
-      : storage(storage), max_size(max_size), started(false) {
+  BufferManager(Storage<PageType> *storage,
+                size_t max_size = DEFAULT_BUFFER_SIZE,
+                ReplacerType replacer_type = ReplacerType::LRU)
+      : storage(storage), replacer(persist::CreateReplacer(replacer_type)),
+        max_size(max_size), started(false) {
     // Check buffer size value
     if (max_size != 0 && max_size < MINIMUM_BUFFER_SIZE) {
       throw BufferManagerError("Invalid value for max buffer size. The max "
                                "size can be 0 or greater than 2.");
     }
-    replacer = persist::CreateReplacer(replacer_type);
-    fsm = persist::CreateFSM(fsm_type, storage);
-  }
-
-  /**
-   * @brief Destroy the Buffer Manager object
-   *
-   */
-  ~BufferManager() {}
-
-  /**
-   * @brief Handle page modification.
-   *
-   * @param page_id ID of the page modified
-   */
-  void HandleModifiedPage(PageId page_id) NO_THREAD_SAFETY_ANALYSIS override {
-    Mark(page_id);
   }
 
   /**
    * @brief Start buffer manager.
    *
-   * @thread_unsafe The method is not thread safe as it is expected that the
-   * user starts the buffer manager before spawning any threads.
+   * @thread_safe
    *
    */
-  void Start() NO_THREAD_SAFETY_ANALYSIS {
+  void Start() {
     LockGuard guard(lock);
 
     if (!started) {
       // Start backend storage
       storage->Open();
-      // Start free space manager
-      fsm->Start();
       // Set state to started
       started = true;
     }
@@ -184,15 +156,13 @@ public:
    * All the modified pages loaded onto the buffer are flushed to backend
    * storage before stopping the manager.
    *
-   * @thread_unsafe The method is not thread safe as it is expected that the
-   * user stops the buffer manager after joining all the threads.
+   * @thread_safe
+   *
    */
-  void Stop() NO_THREAD_SAFETY_ANALYSIS {
+  void Stop() {
     LockGuard guard(lock);
 
     if (started) {
-      // Stop free space manager
-      fsm->Stop();
       // Flush all loaded pages
       FlushAll();
       // Close backend storage
@@ -203,82 +173,53 @@ public:
   }
 
   /**
-   * Get a new page. The method creates a new page and loads it into buffer.
-   * The `numPage` attribute in the storage metadata is increased by one.
-   *
-   * @thread_safe
-   *
-   * @tparam PageType Type of Page
-   * @returns page handle object
-   */
-  template <class PageType> PageHandle<PageType> GetNew() {
-    LockGuard guard(lock);
-
-    // Allocate space for new page
-    PageId page_id = storage->Allocate();
-    // Create an empty page
-    std::unique_ptr<Page> page =
-        persist::CreatePage<PageType>(page_id, storage->GetPageSize());
-    // Manage free space
-    fsm->Manage(*page);
-    // Load the new page in buffer
-    Put(page);
-
-    // Return loaded page
-    return Get<PageType>(page_id);
-  }
-
-  /**
-   * Get a page with free space. If no such page is available then a new page
-   * is loaded into the buffer and its handle returned.
-   *
-   * @thread_safe
-   *
-   * @tparam PageType Type of Page
-   * @returns page handle object
-   */
-  template <class PageType> PageHandle<PageType> GetFreeOrNew() {
-    LockGuard guard(lock);
-
-    // Get ID of page with free space from FSL. Currently the last ID in free
-    // space list is used.
-    // TODO: Implement a smart free space manager instead of just using the last
-    // page in FSL
-    PageId page_id = fsm->GetPageId(0);
-
-    // Create new page if no page with free space is available
-    if (!page_id) {
-      return GetNew<PageType>();
-    }
-
-    return Get<PageType>(page_id);
-  }
-
-  /**
    * Get page with given ID. The page is loaded from the backend storage if it
    * is not already found in the buffer. In case the page is not found in the
    * backend storage a PageNotFoundError exception is raised.
    *
    * @thread_safe
    *
-   * @tparam PageType Type of Page
    * @param page_id page ID
    * @returns page handle object
    */
-  template <class PageType> PageHandle<PageType> Get(PageId page_id) {
+  PageHandle<PageType> Get(PageId page_id) {
     LockGuard guard(lock);
 
     // Check if page not present in buffer
     if (buffer.find(page_id) == buffer.end()) {
       // Load page from storage
-      std::unique_ptr<Page> page = storage->Read(page_id);
+      std::unique_ptr<PageType> page = storage->Read(page_id);
       // Insert page in buffer in accordance with LRU strategy
       Put(page);
     }
 
     // Create and return page handle object
-    PageType *page_ptr = static_cast<PageType *>(buffer.at(page_id).page.get());
+    PageType *page_ptr = buffer.at(page_id).page.get();
     return PageHandle<PageType>(page_ptr, replacer.get());
+  }
+
+  /**
+   * Get a new page. The method creates a new page by allocating space in
+   * backend storage and loads it into buffer.
+   *
+   * @thread_safe
+   *
+   * @tparam PageType Type of Page
+   * @returns page handle object
+   */
+  PageHandle<PageType> GetNew() {
+    LockGuard guard(lock);
+
+    // Allocate space for new page
+    PageId page_id = storage->Allocate();
+    // Create an empty page
+    std::unique_ptr<PageType> page =
+        persist::CreatePage<PageType>(page_id, storage->GetPageSize());
+    // Load the new page in buffer
+    Put(page);
+
+    // Return loaded page
+    return Get(page_id);
   }
 
   /**
@@ -325,21 +266,19 @@ public:
   }
 
   /**
-   * @brief This method marks the page slot for given page ID as modified and
-   * updates the free space list.
+   * @brief The method handles modified pages by marking the corresponding frame
+   * as modified.
    *
    * @thread_safe
    *
-   * @param page_id page identifier
+   * @param page Constant reference to the modified page.
    */
-  void Mark(PageId page_id) {
+  void HandleModifiedPage(const Page &page) override {
     LockGuard guard(lock);
 
-    auto &slot = buffer.at(page_id);
-    // Mark slot as modified
-    slot.modified = true;
-    // Manage free space
-    fsm->Manage(*slot.page);
+    auto &frame = buffer.at(page.GetId());
+    // Mark frame as modified
+    frame.modified = true;
   }
 
 #ifdef __PERSIST_DEBUG__

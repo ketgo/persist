@@ -1,5 +1,5 @@
 /**
- * tests/common.hpp - Persist
+ * test_collection.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -23,29 +23,21 @@
  */
 
 /**
- * @brief The header file contains common definitions and methods used for
- * testing.
+ * @brief Uint Test List Collection
  *
  */
-#ifndef TESTS_COMMON_HPP
-#define TESTS_COMMON_HPP
 
 #include <gtest/gtest.h>
 
-/**
- * @brief Location of the test data.
- */
-#define DATA_PATH "@DATA_PATH@"
+#include <persist/list/collection.hpp>
 
-/**
- * @brief Global testing environment setup.
- *
- */
-class Environment : public ::testing::Environment {
-public:
+using namespace persist;
+
+class ListCollectionTestFixture : public ::testing::Test {
+protected:
   void SetUp() override {}
 
   void TearDown() override {}
 };
 
-#endif /* TESTS_COMMON_HPP */
+TEST_F(ListCollectionTestFixture, TestIterator) {}

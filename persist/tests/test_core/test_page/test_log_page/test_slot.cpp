@@ -31,7 +31,7 @@
 
 #include <memory>
 
-#include <persist/core/page/log_page/page_slot.hpp>
+#include <persist/core/page/log_page/slot.hpp>
 
 using namespace persist;
 
@@ -57,8 +57,8 @@ protected:
     header->next_location.page_id = next_page_id;
     header->next_location.seq_number = next_seq_number;
 
-    input = {0, 0, 0, 0, 0,   0, 0, 0, 10, 0, 0, 0,
-             0, 0, 0, 0, 100, 0, 0, 0, 0,  0, 0, 0};
+    input = {0,   0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0,
+             100, 0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0};
     extra = {41, 0, 6, 0, 21, 48, 4};
   }
 };
@@ -76,20 +76,14 @@ TEST_F(LogPageSlotHeaderTestFixture, TestLoad) {
 }
 
 TEST_F(LogPageSlotHeaderTestFixture, TestLoadError) {
-  try {
-    ByteBuffer _input;
-    LogPageSlot::Header _header;
-    _header.Load(_input);
-    FAIL() << "Expected PageSlotParseError Exception.";
-  } catch (PageSlotParseError &err) {
-    SUCCEED();
-  } catch (...) {
-    FAIL() << "Expected PageSlotParseError Exception.";
-  }
+  ByteBuffer _input;
+  LogPageSlot::Header _header;
+
+  ASSERT_THROW(_header.Load(_input), PageParseError);
 }
 
 TEST_F(LogPageSlotHeaderTestFixture, TestDump) {
-  ByteBuffer output(sizeof(LogPageSlot::Header));
+  ByteBuffer output(header->GetStorageSize());
   header->Dump(output);
 
   ASSERT_EQ(input, output);
@@ -112,9 +106,9 @@ protected:
     slot = std::make_unique<LogPageSlot>(seq_number, location);
     slot->data = data;
 
-    input = {0, 0, 0, 0,   0, 0, 0,   0,   10,  0,   0,   0,   0,
-             0, 0, 0, 100, 0, 0, 0,   0,   0,   0,   0,   7,   0,
-             0, 0, 0, 0,   0, 0, 116, 101, 115, 116, 105, 110, 103};
+    input = {0,   0, 0, 0, 0, 0, 0, 0, 10,  0,   0,   0,   0,   0,   0,  0,
+             100, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,  0,
+             7,   0, 0, 0, 0, 0, 0, 0, 116, 101, 115, 116, 105, 110, 103};
   }
 };
 
@@ -126,20 +120,14 @@ TEST_F(LogPageSlotTestFixture, TestLoad) {
 }
 
 TEST_F(LogPageSlotTestFixture, TestLoadParseError) {
-  try {
-    ByteBuffer _input;
-    LogPageSlot _block;
-    _block.Load(_input);
-    FAIL() << "Expected PageSlotParseError Exception.";
-  } catch (PageSlotParseError &err) {
-    SUCCEED();
-  } catch (...) {
-    FAIL() << "Expected PageSlotParseError Exception.";
-  }
+  ByteBuffer _input;
+  LogPageSlot _block;
+
+  ASSERT_THROW(_block.Load(_input), PageParseError);
 }
 
 TEST_F(LogPageSlotTestFixture, TestDump) {
-  ByteBuffer output(data.size() + sizeof(size_t) + sizeof(LogPageSlot::Header));
+  ByteBuffer output(slot->GetStorageSize());
   slot->Dump(output);
 
   ASSERT_EQ(input, output);
@@ -153,8 +141,8 @@ TEST_F(LogPageSlotTestFixture, TestMoveLogPageSlot) {
   ASSERT_EQ(_block.data, data);
 }
 
-TEST_F(LogPageSlotTestFixture, TestGetSize) {
-  ASSERT_EQ(slot->GetSize(),
+TEST_F(LogPageSlotTestFixture, TestGetStorageSize) {
+  ASSERT_EQ(slot->GetStorageSize(),
             data.size() + sizeof(size_t) + sizeof(LogPageSlot::Header));
 }
 

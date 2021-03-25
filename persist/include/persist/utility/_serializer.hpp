@@ -38,7 +38,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <persist/core/defs.hpp>
+#include <persist/core/common.hpp>
 
 namespace persist {
 

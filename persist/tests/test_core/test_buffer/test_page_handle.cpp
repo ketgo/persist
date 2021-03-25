@@ -75,9 +75,9 @@ TEST_F(PageHandleTestFixture, TestLifeCycle) {
   ASSERT_TRUE(!replacer->IsPinned(page_id_1));
 
   {
-    PageHandle pageHandle = GetPageHandle(page_id_1);
+    PageHandle page_handle = GetPageHandle(page_id_1);
     ASSERT_TRUE(replacer->IsPinned(page_id_1));
-    ASSERT_EQ(pageHandle->GetId(), page_id_1);
+    ASSERT_EQ(page_handle->GetId(), page_id_1);
   }
 
   ASSERT_TRUE(!replacer->IsPinned(page_id_1));
@@ -87,9 +87,9 @@ TEST_F(PageHandleTestFixture, TestMoveConstructor) {
   ASSERT_TRUE(!replacer->IsPinned(page_id_1));
 
   {
-    PageHandle pageHandle(std::move(GetPageHandle(page_id_1)));
+    PageHandle page_handle(std::move(GetPageHandle(page_id_1)));
     ASSERT_TRUE(replacer->IsPinned(page_id_1));
-    ASSERT_EQ(pageHandle->GetId(), page_id_1);
+    ASSERT_EQ(page_handle->GetId(), page_id_1);
   }
 
   ASSERT_TRUE(!replacer->IsPinned(page_id_1));
@@ -100,15 +100,15 @@ TEST_F(PageHandleTestFixture, TestMoveAssignment) {
   ASSERT_TRUE(!replacer->IsPinned(page_id_2));
 
   {
-    PageHandle pageHandle = GetPageHandle(page_id_1);
+    PageHandle page_handle = GetPageHandle(page_id_1);
     ASSERT_TRUE(replacer->IsPinned(page_id_1));
-    ASSERT_EQ(pageHandle->GetId(), page_id_1);
+    ASSERT_EQ(page_handle->GetId(), page_id_1);
 
     // Move assignment
-    pageHandle = std::move(GetPageHandle(page_id_2));
+    page_handle = std::move(GetPageHandle(page_id_2));
     ASSERT_TRUE(!replacer->IsPinned(page_id_1));
     ASSERT_TRUE(replacer->IsPinned(page_id_2));
-    ASSERT_EQ(pageHandle->GetId(), page_id_2);
+    ASSERT_EQ(page_handle->GetId(), page_id_2);
   }
 
   ASSERT_TRUE(!replacer->IsPinned(page_id_1));

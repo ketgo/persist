@@ -1,5 +1,5 @@
 /**
- * slotted_page/slotted_page.hpp - Persist
+ * page.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,15 +22,15 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_CORE_PAGE_SLOTTED_PAGE_HPP
-#define PERSIST_CORE_PAGE_SLOTTED_PAGE_HPP
+#ifndef PERSIST_CORE_PAGE_RECORDPAGE_PAGE_HPP
+#define PERSIST_CORE_PAGE_RECORDPAGE_PAGE_HPP
 
 #include <map>
 #include <unordered_map>
 
-#include <persist/core/exceptions.hpp>
+#include <persist/core/exceptions/page.hpp>
 #include <persist/core/page/base.hpp>
-#include <persist/core/page/slotted_page/page_slot.hpp>
+#include <persist/core/page/record_page/slot.hpp>
 #include <persist/core/transaction/transaction.hpp>
 
 #include <persist/utility/serializer.hpp>
@@ -48,7 +48,7 @@ namespace persist {
 // 3. Use move operations for writing page slots in page.
 
 /**
- * @brief Slotted Page
+ * @brief Record Page
  *
  * Slotted page stores data records in slots of variable lengths where each
  * slot may contain a full or partial record. The page can be used in
@@ -70,7 +70,7 @@ namespace persist {
  * in its header. The rest of the slot stores the record data.
  *
  */
-class SlottedPage : public Page {
+class RecordPage : public Page {
 public:
   /**
    * Page Header Class
@@ -80,7 +80,7 @@ public:
    * entries of offset values indicating where each record-block in the page is
    * located.
    */
-  class Header {
+  class Header : public Storable {
   public:
     /**
      * @brief Page unique identifer
@@ -130,7 +130,7 @@ public:
      *
      * NOTE: Page size is not stored as its part of the metadata.
      */
-    size_t GetSize() const {
+    size_t GetStorageSize() const override {
       return 3 * sizeof(PageId) + sizeof(size_t) +
              (sizeof(SlotSpan) + sizeof(PageSlotId)) * slots.size();
     }
@@ -230,8 +230,8 @@ public:
      *
      * @param input input buffer span to load
      */
-    void Load(Span input) {
-      if (input.size < GetSize()) {
+    void Load(Span input) override {
+      if (input.size < GetStorageSize()) {
         throw PageParseError();
       }
       slots.clear(); //<- clears slots in case they are loaded
@@ -244,8 +244,8 @@ public:
      *
      * @param output output buffer span to dump
      */
-    void Dump(Span output) {
-      if (output.size < GetSize()) {
+    void Dump(Span output) override {
+      if (output.size < GetStorageSize()) {
         throw PageParseError();
       }
       // Dump bytes
@@ -282,25 +282,18 @@ public:
   /**
    * @brief Collection of page slots mapped to their slot_ids in page header
    */
-  typedef typename std::unordered_map<PageSlotId, SlottedPageSlot> PageSlotMap;
+  typedef typename std::unordered_map<PageSlotId, RecordPageSlot> PageSlotMap;
   PageSlotMap page_slots;
 
 public:
   /**
-   * @brief Construct a new SlottedPage object
+   * @brief Construct a new RecordPage object
    *
    * @param page_id page identifer
    * @param page_size page storage size
    */
-  SlottedPage(PageId page_id = 0, size_t page_size = DEFAULT_PAGE_SIZE)
+  RecordPage(PageId page_id = 0, size_t page_size = DEFAULT_PAGE_SIZE)
       : header(page_id, page_size) {}
-
-  /**
-   * @brief Get the page type identifer.
-   *
-   * @returns The page type identifier
-   */
-  PageTypeId GetTypeId() const override { return SLOTTED_PAGE_TYPE_ID; }
 
   /**
    * Get page ID.
@@ -317,7 +310,7 @@ public:
    * @returns free space available in page
    */
   size_t GetFreeSpaceSize(Operation operation) const override {
-    size_t size = header.GetTail() - header.GetSize();
+    size_t size = header.GetTail() - header.GetStorageSize();
     // Compute size for INSERT operation
     if (operation == Operation::INSERT) {
       const size_t single_slot_span_size =
@@ -381,8 +374,8 @@ public:
    * @returns Constant reference to the PageSlot object if found
    * @throws PageSlotNotFoundError
    */
-  const SlottedPageSlot &GetPageSlot(PageSlotId slot_id,
-                                     Transaction &txn) const {
+  const RecordPageSlot &GetPageSlot(PageSlotId slot_id,
+                                    Transaction &txn) const {
     // Check if slot exists
     PageSlotMap::const_iterator it = page_slots.find(slot_id);
     if (it == page_slots.end()) {
@@ -398,13 +391,13 @@ public:
    * @param txn Reference to active transaction
    * @returns SlotId and pointer to the inserted PageSlot
    */
-  std::pair<PageSlotId, SlottedPageSlot *>
-  InsertPageSlot(SlottedPageSlot &page_slot, Transaction &txn) {
+  std::pair<PageSlotId, RecordPageSlot *>
+  InsertPageSlot(RecordPageSlot &page_slot, Transaction &txn) {
     // Create slot for record block
-    PageSlotId slot_id = header.CreateSlot(page_slot.GetSize());
+    PageSlotId slot_id = header.CreateSlot(page_slot.GetStorageSize());
 
     // Log insert operation
-    SlottedPageSlot::Location location(header.page_id, slot_id);
+    RecordPageSlot::Location location(header.page_id, slot_id);
     txn.LogInsertOp(location, page_slot);
 
     // Insert record block at slot
@@ -413,8 +406,8 @@ public:
     // Notify observers of modification
     NotifyObservers();
 
-    return std::pair<PageSlotId, SlottedPageSlot *>(slot_id,
-                                                    &inserted.first->second);
+    return std::pair<PageSlotId, RecordPageSlot *>(slot_id,
+                                                   &inserted.first->second);
   }
 
   /**
@@ -425,7 +418,7 @@ public:
    * @param txn Reference to active transaction
    * @throws PageSlotNotFoundError
    */
-  virtual void UpdatePageSlot(PageSlotId slot_id, SlottedPageSlot &page_slot,
+  virtual void UpdatePageSlot(PageSlotId slot_id, RecordPageSlot &page_slot,
                               Transaction &txn) {
     // Check if slot exists
     PageSlotMap::iterator it = page_slots.find(slot_id);
@@ -434,11 +427,11 @@ public:
     }
 
     // Log update operation
-    SlottedPageSlot::Location location(header.page_id, slot_id);
+    RecordPageSlot::Location location(header.page_id, slot_id);
     txn.LogUpdateOp(location, it->second, page_slot);
 
     // Update slot for record block
-    header.UpdateSlot(slot_id, page_slot.GetSize());
+    header.UpdateSlot(slot_id, page_slot.GetStorageSize());
     // Update record block at slot
     it->second = std::move(page_slot);
 
@@ -461,7 +454,7 @@ public:
     }
 
     // Log delete operation
-    SlottedPageSlot::Location location(header.page_id, slot_id);
+    RecordPageSlot::Location location(header.page_id, slot_id);
     txn.LogDeleteOp(location, page_slots.at(slot_id));
 
     // Adjusting header
@@ -480,20 +473,27 @@ public:
    * @param page_slot Reference to the slot to insert back
    * @param txn Reference to active transaction
    */
-  void UndoRemovePageSlot(PageSlotId slot_id, SlottedPageSlot &page_slot,
+  void UndoRemovePageSlot(PageSlotId slot_id, RecordPageSlot &page_slot,
                           Transaction &txn) {
     // Log insert operation
-    SlottedPageSlot::Location location(header.page_id, slot_id);
+    RecordPageSlot::Location location(header.page_id, slot_id);
     txn.LogInsertOp(location, page_slot);
 
     // Update slot for record block
-    header.CreateSlot(slot_id, page_slot.GetSize());
+    header.CreateSlot(slot_id, page_slot.GetStorageSize());
     // Update record block at slot
     page_slots.emplace(slot_id, page_slot);
 
     // Notify observers of modification
     NotifyObservers();
   }
+
+  /**
+   * @brief Get the storage size of the page.
+   *
+   * @returns Storage size.
+   */
+  size_t GetStorageSize() const override { return header.page_size; }
 
   /**
    * Load Block object from byte string.
@@ -512,7 +512,7 @@ public:
     for (auto &element : header.slots) {
       Header::SlotSpan &slot = element.second;
       Span span(input.start + slot.offset, slot.size);
-      SlottedPageSlot page_slot;
+      RecordPageSlot page_slot;
       page_slot.Load(span);
       page_slots.emplace(element.first, page_slot);
     }
@@ -531,12 +531,12 @@ public:
     header.Dump(output);
     // Dump free space
     Span span(output.start, header.GetTail());
-    span += header.GetSize();
+    span += header.GetStorageSize();
     std::memset((void *)span.start, 0, span.size);
     // Dump record blocks
     for (auto &element : header.slots) {
       Header::SlotSpan &slot = element.second;
-      SlottedPageSlot &page_slot = page_slots.at(element.first);
+      RecordPageSlot &page_slot = page_slots.at(element.first);
       Span span(output.start + slot.offset, slot.size);
       page_slot.Dump(span);
     }
@@ -546,7 +546,7 @@ public:
   /**
    * @brief Write page to output stream
    */
-  friend std::ostream &operator<<(std::ostream &os, const SlottedPage &page) {
+  friend std::ostream &operator<<(std::ostream &os, const RecordPage &page) {
     os << "--------- Page " << page.header.page_id << " ---------\n";
     os << page.header << "\n";
     for (auto element : page.page_slots) {
@@ -562,4 +562,4 @@ public:
 
 } // namespace persist
 
-#endif /* PERSIST_CORE_PAGE_SLOTTED_PAGE_HPP */
+#endif /* PERSIST_CORE_PAGE_RECORDPAGE_PAGE_HPP */

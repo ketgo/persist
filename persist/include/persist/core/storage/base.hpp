@@ -34,10 +34,8 @@
 #ifndef PERSIST_CORE_STORAGE_BASE_HPP
 #define PERSIST_CORE_STORAGE_BASE_HPP
 
-#include <list>
 #include <memory>
 
-#include <persist/core/fsm/_fsl.hpp>
 #include <persist/core/page/base.hpp>
 
 // TODO: Add interface for segmenting storage. Instead of storing all the data
@@ -49,16 +47,38 @@ namespace persist {
 /**
  * @brief Storage Abstract Class
  *
- * Exposes interface to open and close a backend storage. The backend storage
- * should provide the following concurency control:
+ * Exposes interface to open and close a backend storage.
  *
- *  - Atomic allocate and de-allocate operations.
- *
+ * @tparam PageType  The type of page stored by storage.
  */
-class Storage {
+template <class PageType> class Storage {
+  static_assert(std::is_base_of<Page, PageType>::value,
+                "PageType must be derived from Page class.");
+
+  PERSIST_PROTECTED
+  /**
+   * @brief Page size
+   *
+   */
+  size_t page_size;
+
+  /**
+   * @brief Number of pages in storage
+   *
+   */
+  size_t page_count;
+
 public:
   /**
-   * @brief Destroy the Storage object
+   * @brief Construct a new Storage object.
+   *
+   * @param page_size Page size.
+   */
+  Storage(size_t page_size = DEFAULT_PAGE_SIZE)
+      : page_size(page_size), page_count(0) {}
+
+  /**
+   * @brief Destroy the Storage object.
    *
    */
   virtual ~Storage() {} //<- Virtual destructor
@@ -84,48 +104,33 @@ public:
   virtual void Remove() = 0;
 
   /**
-   * @brief Get page size.
-   *
-   * @returns Page size used in storage
-   */
-  virtual size_t GetPageSize() = 0;
-
-  /**
-   * @brief Get page count.
-   *
-   * @returns Number of pages in storage
-   */
-  virtual uint64_t GetPageCount() = 0;
-
-  /**
-   * @brief Read free space list from storage. If no free list is found then
-   * pointer to an empty FSL object is returned.
-   *
-   * @return Unique pointer to FSL object
-   */
-  virtual std::unique_ptr<FSL> Read() = 0;
-
-  /**
-   * @brief Write FSL object to storage.
-   *
-   * @param fsl Reference to FSL object to be written
-   */
-  virtual void Write(FSL &fsl) = 0;
-
-  /**
    * @brief Read Page with given identifier from storage.
    *
    * @param page_id Page identifier
    * @returns Unique pointer to Page object
    */
-  virtual std::unique_ptr<Page> Read(PageId page_id) = 0;
+  virtual std::unique_ptr<PageType> Read(PageId page_id) = 0;
 
   /**
    * @brief Write Page object to storage.
    *
    * @param page reference to Page object to be written
    */
-  virtual void Write(Page &page) = 0;
+  virtual void Write(PageType &page) = 0;
+
+  /**
+   * @brief Get page size.
+   *
+   * @returns Page size used in storage
+   */
+  size_t GetPageSize() const { return page_size; }
+
+  /**
+   * @brief Get page count.
+   *
+   * @returns Number of pages in storage
+   */
+  size_t GetPageCount() const { return page_count; }
 
   /**
    * @brief Allocate a new page in storage. The identifier of the newly created
@@ -133,14 +138,21 @@ public:
    *
    * @returns identifier of the newly allocated page
    */
-  virtual PageId Allocate() = 0;
+  PageId Allocate() {
+    // Increase page count by 1. No need to write an empty page to storage since
+    // it will be automatically handled by buffer manager.
+    page_count += 1;
+    return page_count;
+  }
 
   /**
    * @brief Deallocate page with given identifier.
    *
    * @param page_id identifier of the page to deallocate
    */
-  virtual void Deallocate(PageId page_id) = 0;
+  void Deallocate(PageId page_id) {
+    // TODO: No operation performed for now
+  }
 };
 
 } // namespace persist

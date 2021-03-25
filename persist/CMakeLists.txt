@@ -76,6 +76,8 @@ else()
     endif()
 endif()
 
+# PoCs
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/pocs)
 # Tests
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/tests)
 # Benchmarks

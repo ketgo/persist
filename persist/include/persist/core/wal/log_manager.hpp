@@ -29,8 +29,8 @@
 #include <memory>
 
 #include <persist/core/buffer/buffer_manager.hpp>
-#include <persist/core/log/log_record.hpp>
-#include <persist/core/page/log_page/log_page.hpp>
+#include <persist/core/page/log_page/page.hpp>
+#include <persist/core/wal/log_record.hpp>
 
 #include <persist/utility/mutex.hpp>
 
@@ -52,23 +52,66 @@ class LogManager {
   Mutex lock; //<- lock for achieving thread safety via mutual exclusion
   typedef typename persist::LockGuard<Mutex> LockGuard;
 
-  std::atomic<SeqNumber>
-      seq_number; //<- Sequence number of the latest log record. This is used to
-                  // set sequence number of the next log record.
-  Storage *storage PT_GUARDED_BY(lock); //<- Pointer to backend log storage
-  BufferManager buffer_manager;         //<- Log record buffer manager
-  bool started GUARDED_BY(lock);        //<- flag indicating log manager started
+  /**
+   * @brief Sequence number of the latest log record. This is used to set
+   * sequence number of the next log record.
+   *
+   */
+  std::atomic<SeqNumber> seq_number;
+  /**
+   * @brief Identifer of the last page in the backend storage of the log.
+   *
+   */
+  PageId last_page_id GUARDED_BY(lock);
+  /**
+   * @brief Pointer to backend log storage.
+   *
+   */
+  Storage<LogPage> *storage PT_GUARDED_BY(lock);
+  /**
+   * @brief Log record buffer manager.
+   *
+   */
+  BufferManager<LogPage> buffer_manager;
+  /**
+   * @brief Flag indicating log manager started.
+   *
+   */
+  bool started GUARDED_BY(lock);
+
+  /**
+   * @brief Get a page with free space or a new page.
+   *
+   * @returns Page handle object.
+   */
+  PageHandle<LogPage> GetFreeOrNewPage() {
+    LockGuard guard(lock);
+
+    // Get last page
+    auto page = buffer_manager.Get(last_page_id);
+    // Check if last page has free space else return a new page.
+    if (!page->GetFreeSpaceSize(Operation::INSERT)) {
+      auto new_page = buffer_manager.GetNew();
+      // Set the ID of the new page as last page ID.
+      last_page_id = new_page->GetId();
+
+      return new_page;
+    }
+
+    return page;
+  }
 
 public:
   /**
    * @brief Construct a new log manager object.
    *
-   * @param storage pointer to backend log sotrage
-   * @param cacheSize log buffer cache size
+   * @param storage Pointer to backend log sotrage
+   * @param cache_size Log buffer cache size
    */
-  LogManager(Storage *storage, uint64_t cacheSize = DEFAULT_LOG_BUFFER_SIZE)
-      : seq_number(0), started(false), storage(storage),
-        buffer_manager(storage, cacheSize) {}
+  LogManager(Storage<LogPage> *storage,
+             size_t cache_size = DEFAULT_LOG_BUFFER_SIZE)
+      : seq_number(0), last_page_id(0), started(false), storage(storage),
+        buffer_manager(storage, cache_size) {}
 
   /**
    * @brief Start log manager.
@@ -84,11 +127,15 @@ public:
       // Start buffer manager
       buffer_manager.Start();
       // Load last page in buffer
-      PageId last_page_id = storage->GetPageCount();
-      // Get last sequence number if last page ID is not 0
+      last_page_id = storage->GetPageCount();
+      // Get last sequence number if last page ID is not 0 else create a new
+      // page and set its ID to the last page ID.
       if (last_page_id) {
-        auto page = buffer_manager.Get<LogPage>(last_page_id);
+        auto page = buffer_manager.Get(last_page_id);
         seq_number = page->GetLastSeqNumber();
+      } else {
+        auto new_page = buffer_manager.GetNew();
+        last_page_id = new_page->GetId();
       }
       // Set state to started
       started = true;
@@ -127,25 +174,25 @@ public:
     // Set log record sequence number
     log_record.SetSeqNumber(++seq_number);
     // Dump log record bytes
-    ByteBuffer data(log_record.GetSize());
+    ByteBuffer data(log_record.GetStorageSize());
     log_record.Dump(data);
 
-    // Check free space in page and size of log record. If log record larger
-    // than free space, then split and store it into multiple page slots. Else
-    // store is into a single page slot. Link the slots and insert it into log
-    // page.
+    // Check free space in page and size of log record. If the log record is
+    // larger than the free space, split and store it into multiple page slots.
+    // Else store it in a single page slot. Link the slots and insert it into
+    // the log page.
 
     // Null page slot representing a virtual previous from first slot
     LogPageSlot null_slot;
     // Bookkeeping variables
-    uint64_t to_write_size = data.size(), written_size = 0;
+    size_t to_write_size = data.size(), written_size = 0;
     // Pointer to previous page slot in the linked list. Begins with
     // pointing to the null slot.
     LogPageSlot *prev_slot = &null_slot;
     // Start loop to write content in linked record blocks
     while (to_write_size > 0) {
       // Get a free page
-      auto page = buffer_manager.GetFreeOrNew<LogPage>();
+      auto page = GetFreeOrNewPage();
       PageId page_id = page->GetId();
 
       // Create slot to add to page
@@ -154,8 +201,8 @@ public:
       // is utilized where all the available free space can be used to store the
       // data. The amount of data that can be stored in the page is the
       // (freeSpace of page) - (fixedSize of page slot).
-      uint64_t write_space = page->GetFreeSpaceSize(Operation::INSERT) -
-                             (slot.GetSize() - slot.data.size());
+      size_t write_space = page->GetFreeSpaceSize(Operation::INSERT) -
+                           (slot.GetStorageSize() - slot.data.size());
       if (to_write_size < write_space) {
         write_space = to_write_size;
       }
@@ -202,7 +249,7 @@ public:
     LogPageSlot::Location read_location = location;
     while (!read_location.IsNull()) {
       // Get page
-      auto page = buffer_manager.Get<LogPage>(read_location.page_id);
+      auto page = buffer_manager.Get(read_location.page_id);
       // Get page slot
       const LogPageSlot &slot = page->GetPageSlot(read_location.seq_number);
       // Append data stored in slot to output buffer

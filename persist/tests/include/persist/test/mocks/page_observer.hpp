@@ -41,7 +41,7 @@ namespace test {
  */
 class MockPageObserver : public PageObserver {
 public:
-  MOCK_METHOD(void, HandleModifiedPage, (PageId pageId), (override));
+  MOCK_METHOD(void, HandleModifiedPage, (const Page &), (override));
 };
 
 } // namespace test

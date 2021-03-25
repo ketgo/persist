@@ -28,81 +28,99 @@
 
 #include <gtest/gtest.h>
 
-#include <list>
 #include <memory>
+#include <string>
 
 #include <persist/core/fsm/fsl.hpp>
-#include <persist/core/defs.hpp>
-#include <persist/core/exceptions.hpp>
+#include <persist/core/page/creator.hpp>
+#include <persist/core/storage/creator.hpp>
+
+#include "persist/test/simple_page.hpp"
 
 using namespace persist;
+using namespace persist::test;
 
 class FSLTestFixture : public ::testing::Test {
 protected:
   ByteBuffer input;
-  std::unique_ptr<FSL> fsl;
-  const std::set<PageId> freePages = {0, 1, 2, 3};
+  const size_t cache_size = 2;
+  const std::set<PageId> free_pages = {1, 2, 3};
+  const std::string path = "test_fsl_manager";
+  const PageId fsl_page_id = 1;
+  PageId full_page_id, empty_page_id_1, empty_page_id_2;
+  std::unique_ptr<FSLManager> fsl_manager;
+  std::unique_ptr<Storage<FSLPage>> storage;
+  std::unique_ptr<FSLPage> fsl_page;
+  std::unique_ptr<SimplePage> full_page, empty_page_1, empty_page_2;
 
   void SetUp() override {
-    fsl = std::make_unique<FSL>();
-    fsl->freePages = freePages;
-    input = {4, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,  0,   0,   0,   0,
-             1, 0, 0, 0, 0, 0, 0, 0, 2,   0,   0,   0,  0,   0,   0,   0,
-             3, 0, 0, 0, 0, 0, 0, 0, 167, 212, 128, 26, 106, 183, 163, 0};
+    // Setup FSL Storage
+    storage = persist::CreateStorage<FSLPage>("file://" + path);
+
+    // Setup FSL page
+    fsl_page = persist::CreatePage<FSLPage>(1, DEFAULT_PAGE_SIZE);
+    fsl_page->free_pages = free_pages;
+    Insert();
+
+    // Setup FSL Manager
+    fsl_manager = std::make_unique<FSLManager>(storage.get(), cache_size);
+    fsl_manager->Start();
+
+    // Setup empty page
+    empty_page_id_1 = fsl_page->GetMaxPageId();
+    empty_page_1 =
+        persist::CreatePage<SimplePage>(empty_page_id_1, DEFAULT_PAGE_SIZE);
+    empty_page_id_2 = fsl_page->GetMaxPageId() + 1;
+    empty_page_2 =
+        persist::CreatePage<SimplePage>(empty_page_id_2, DEFAULT_PAGE_SIZE);
+
+    // Setup full page
+    full_page_id = 3;
+    full_page =
+        persist::CreatePage<SimplePage>(full_page_id, DEFAULT_PAGE_SIZE);
+    ByteBuffer record(full_page->GetFreeSpaceSize(Operation::INSERT), 'A');
+    full_page->SetRecord(record);
+  }
+
+  void TearDown() override {
+    storage->Remove();
+    fsl_manager->Stop();
+  }
+
+private:
+  /**
+   * @brief Insert test data
+   */
+  void Insert() {
+    storage->Open();
+    storage->Write(*fsl_page);
+    storage->Close();
   }
 };
 
-TEST_F(FSLTestFixture, TestLoad) {
-  FSL _fsl;
-  _fsl.load(Span(input));
-
-  ASSERT_EQ(_fsl.freePages, fsl->freePages);
+TEST_F(FSLTestFixture, TestManagerGetPageId) {
+  ASSERT_EQ(fsl_manager->GetPageId(0), 3);
 }
 
-TEST_F(FSLTestFixture, TestLoadError) {
-  try {
-    ByteBuffer _input;
-    FSL _fsl;
-    _fsl.load(Span(_input));
-    FAIL() << "Expected FSLParseError Exception.";
-  } catch (FSLParseError &err) {
-    SUCCEED();
-  } catch (...) {
-    FAIL() << "Expected FSLParseError Exception.";
-  }
+TEST_F(FSLTestFixture, TestManagerEmptyPage) {
+  fsl_manager->Manage(*empty_page_1);
+  ASSERT_EQ(storage->GetPageCount(), 1);
+  ASSERT_EQ(fsl_manager->GetPageId(0), empty_page_id_1);
+
+  // Test duplicate
+  fsl_manager->Manage(*empty_page_1);
+  ASSERT_EQ(storage->GetPageCount(), 1);
+  ASSERT_EQ(fsl_manager->GetPageId(0), empty_page_id_1);
+
+  // Test entry in new FSLPage
+  fsl_manager->Manage(*empty_page_2);
+  ASSERT_EQ(storage->GetPageCount(), 2);
+  ASSERT_EQ(fsl_manager->GetPageId(0), empty_page_id_2);
 }
 
-TEST_F(FSLTestFixture, TestLoadCorruptErrorInvalidChecksum) {
-  try {
-    ByteBuffer _input = input;
-    _input.back() = 10;
-    FSL _fsl;
-    _fsl.load(Span(_input));
-    FAIL() << "Expected FSLCorruptError Exception.";
-  } catch (FSLCorruptError &err) {
-    SUCCEED();
-  } catch (...) {
-    FAIL() << "Expected FSLCorruptError Exception.";
-  }
-}
+TEST_F(FSLTestFixture, TestManagerFullPage) {
+  fsl_manager->Manage(*full_page);
 
-TEST_F(FSLTestFixture, TestLoadCorruptErrorInvalidFreePagesCount) {
-  try {
-    ByteBuffer _input = input;
-    _input[16] = 9; //<- sets the free pages count located at 16th byte to 9
-    FSL _fsl;
-    _fsl.load(Span(_input));
-    FAIL() << "Expected FSLCorruptError Exception.";
-  } catch (FSLCorruptError &err) {
-    SUCCEED();
-  } catch (...) {
-    FAIL() << "Expected FSLCorruptError Exception.";
-  }
-}
-
-TEST_F(FSLTestFixture, TestDump) {
-  ByteBuffer output(fsl->size());
-  fsl->dump(Span(output));
-
-  ASSERT_EQ(input, output);
+  ASSERT_EQ(storage->GetPageCount(), 1);
+  ASSERT_EQ(fsl_manager->GetPageId(0), 2);
 }
