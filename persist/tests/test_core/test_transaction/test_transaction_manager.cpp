@@ -40,7 +40,8 @@ class TransactionManagerTestFixture : public ::testing::Test {
 protected:
   const uint64_t page_size = DEFAULT_PAGE_SIZE;
   const uint64_t max_size = 2;
-  const std::string path = "test_transaction_manager";
+  const std::string data_connection_string = "file://test_txn_manager";
+  const std::string log_connection_string = "file://test_txn_manager_log";
   RecordPageSlot::Location location;
   std::unique_ptr<BufferManager<RecordPage>> buffer_manager;
   std::unique_ptr<Storage<RecordPage>> data_storage;
@@ -50,8 +51,8 @@ protected:
 
   void SetUp() override {
     // Setting up storage
-    data_storage = persist::CreateStorage<RecordPage>("file://" + path);
-    log_storage = persist::CreateStorage<LogPage>("file://" + path + "_log");
+    data_storage = persist::CreateStorage<RecordPage>(data_connection_string);
+    log_storage = persist::CreateStorage<LogPage>(log_connection_string);
 
     // Setting up buffer manager
     buffer_manager =
@@ -65,6 +66,7 @@ protected:
     // Setup transaction manager
     txn_manager =
         std::make_unique<TransactionManager>(*buffer_manager, *log_manager);
+    txn_manager->Start();
 
     // Setup data for test
     Insert();
@@ -75,6 +77,7 @@ protected:
     buffer_manager->Stop();
     log_storage->Remove();
     log_manager->Stop();
+    txn_manager->Stop();
   }
 
   /**

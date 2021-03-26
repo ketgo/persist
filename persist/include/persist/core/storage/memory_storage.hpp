@@ -50,9 +50,11 @@ template <class PageType> class MemoryStorage : public Storage<PageType> {
 
 public:
   /**
-   * Constructor
+   * Constructor a new MemoryStorage object.
+   *
+   * @param page_size storage size of data block. Default set to 1024
    */
-  MemoryStorage() {}
+  MemoryStorage() = default;
   MemoryStorage(size_t page_size) : Storage<PageType>(page_size) {}
 
   /**

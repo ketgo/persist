@@ -26,19 +26,27 @@
 #define PERSIST_LIST_RECORD_MANAGER_HPP
 
 #include <persist/core/common.hpp>
+#include <persist/core/page_allocator.hpp>
+#include <persist/core/record_manager.hpp>
 
 namespace persist {
 
 /**
- * @brief List record manager.
+ * @brief List collection record manager.
  *
- * @tparam RecordType Record type stored in list.
+ * @tparam RecordType Record type stored in the list.
+ * @tparam PageAllocatorType Type of page allocator.
  */
-template<class RecordType>
-class ListRecordManager {
-    // Record should be storage
-  static_assert(std::is_base_of<Storable, RecordType>::value,
-                "Record must be derived from persist::Storable");
+template <class RecordType, class PageAllocatorType = PageAllocator<>>
+class ListRecordManager : public RecordManager<RecordType> {
+  PERSIST_PRIVATE
+  /**
+   * @brief Reference to page allocator.
+   *
+   */
+  PageAllocatorType &page_allocator;
+
+public:
 };
 
 } // namespace persist

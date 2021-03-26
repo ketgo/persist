@@ -37,20 +37,19 @@
 namespace persist {
 
 /**
- * Connection String Class
- *
- * The class parsers a given connection string and exposes the different
+ * @brief The class parsers a given connection string and exposes the different
  * arguments needed to construct a backens storage object. It assumes that the
  * string has the following schema:
  *
- *      <type>://<host>/<path>?<arg_1=val_1&arg_2=val_2>
+ *      <type>://<host>/<path>/<name>?<arg_1=val_1&arg_2=val_2>
  *
  * where
- * - type [required]: the type of backens storage
- * - host [optional]: hostname where the storage should be stored
- * - path [required]: path on host where the storage is located
- * - arg_1..n [optional]: additional argument names
- * - val_1..n [optional]: values of associated with the additional arguments
+ * - type [required]: Type of backens storage
+ * - host [optional]: Hostname where the storage should be stored
+ * - path [required]: Path on host where the storage is located 
+ * - name [required]: Name of the collection
+ * - arg_1..n [optional]: Additional arguments
+ * - val_1..n [optional]: Values associated with the additional arguments
  *
  * NOTE: Currently simple parser is implemented which just detects the `type`.
  *
@@ -65,8 +64,8 @@ public:
   std::string path;
 
   // Constructor
-  ConnectionString(const std::string &connectionString)
-      : raw(connectionString) {
+  ConnectionString(const std::string &connection_string)
+      : raw(connection_string) {
     std::string seperator = STORAGE_TYPE_SEPERATOR;
     std::string::size_type loc = raw.find(seperator);
     type = raw.substr(0, loc);
@@ -86,7 +85,7 @@ const std::unordered_map<std::string, StorageType> StorageTypeMap = {
 /**
  * @brief Factory method to create backend storage object
  *
- * @param connectionString url containing the type of storage backend and its
+ * @param connection_string url containing the type of storage backend and its
  * arguments. The url schema is `<type>://<host>/<path>?<args>`. For example a
  * file storage url looks like `file:///myCollection.db` where the backend
  * uses the file `myCollection.db` in the root folder `/` to store data.
@@ -95,12 +94,12 @@ const std::unordered_map<std::string, StorageType> StorageTypeMap = {
  */
 template <class PageType>
 static std::unique_ptr<Storage<PageType>>
-CreateStorage(std::string connectionString) {
-  ConnectionString _connectionString(connectionString);
+CreateStorage(std::string connection_string) {
+  ConnectionString _connection_string(connection_string);
 
-  switch (StorageTypeMap.at(_connectionString.type)) {
+  switch (StorageTypeMap.at(_connection_string.type)) {
   case StorageType::FILE:
-    return std::make_unique<FileStorage<PageType>>(_connectionString.path);
+    return std::make_unique<FileStorage<PageType>>(_connection_string.path);
     break;
   case StorageType::MEMORY:
     return std::make_unique<MemoryStorage<PageType>>();

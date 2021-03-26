@@ -182,6 +182,7 @@ protected:
   std::unique_ptr<RecordPageSlot> page_slot_1, page_slot_2;
   const ByteBuffer page_slot_date_1 = "testing_1"_bb,
                    page_slot_date_2 = "testing_2"_bb;
+  const std::string connection_string = "file://test_slotted_page_log";
   std::unique_ptr<Storage<LogPage>> storage;
   // TODO: Use Mock LogManager
   std::unique_ptr<LogManager> log_manager;
@@ -189,7 +190,7 @@ protected:
 
   void SetUp() override {
     // Setup log manager
-    storage = persist::CreateStorage<LogPage>("file://test_slotted_page_log");
+    storage = persist::CreateStorage<LogPage>(connection_string);
     log_manager = std::make_unique<LogManager>(*storage, 2);
     log_manager->Start();
 

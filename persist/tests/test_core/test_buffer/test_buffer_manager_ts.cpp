@@ -55,7 +55,7 @@ class BufferManagerThreadSafetyTestFixture : public ::testing::Test {
 protected:
   const uint64_t page_size = DEFAULT_PAGE_SIZE;
   const uint64_t max_size = 2;
-  const std::string path = "test_buffer_manager_ts";
+  const std::string connection_string = "file://test_buffer_manager_ts";
   std::unique_ptr<SimplePage> page_1, page_2, page_3;
   std::unique_ptr<BufferManager<SimplePage>> buffer_manager;
   std::unique_ptr<Storage<SimplePage>> storage;
@@ -76,7 +76,7 @@ protected:
     page_3->SetRecord("test_page_3"_bb);
 
     // setting up storage
-    storage = persist::CreateStorage<SimplePage>("file://" + path);
+    storage = persist::CreateStorage<SimplePage>(connection_string);
     insert();
 
     buffer_manager =

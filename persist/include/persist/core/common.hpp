@@ -158,67 +158,6 @@ public:
   virtual void Dump(Span output) = 0;
 };
 
-/**
- * @brief Record location object represents abstract address of a record in
- * storage. It consists of page and slot identifer.
- *
- */
-struct RecordLocation {
-  /**
-   * @brief ID of page containing slot.
-   */
-  PageId page_id;
-  /**
-   * @brief ID of the slot inside the above page.
-   */
-  PageSlotId slot_id;
-
-  /**
-   * Constructor
-   */
-  RecordLocation() : page_id(0), slot_id(0) {}
-  RecordLocation(PageId page_id, PageSlotId slot_id)
-      : page_id(page_id), slot_id(slot_id) {}
-
-  /**
-   * @brief Check if location is NULL
-   */
-  bool IsNull() const { return page_id == 0; }
-
-  /**
-   * @brief Set the record location to NULL
-   */
-  void SetNull() {
-    page_id = 0;
-    slot_id = 0;
-  }
-
-  /**
-   * @brief Equality comparision operator.
-   */
-  bool operator==(const RecordLocation &other) const {
-    return page_id == other.page_id && slot_id == other.slot_id;
-  }
-
-  /**
-   * @brief Non-equality comparision operator.
-   */
-  bool operator!=(const RecordLocation &other) const {
-    return page_id != other.page_id || slot_id != other.slot_id;
-  }
-
-#ifdef __PERSIST_DEBUG__
-  /**
-   * @brief Write record location to output stream
-   */
-  friend std::ostream &operator<<(std::ostream &os,
-                                  const RecordLocation &location) {
-    os << "[" << location.page_id << ", " << location.slot_id << "]";
-    return os;
-  }
-#endif
-};
-
 } // namespace persist
 
 #endif /* PERSIST_CORE_COMMON_HPP */

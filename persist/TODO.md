@@ -110,6 +110,8 @@
     - Use polymorphic log record to allow the logging of operations on different types of pages.
     - Add collection name as part of log record so that the transaction manager can manage multiple collections.
 
+13. Transaction Manager for a group of collections.
+
 ------------------------------------------------------------
 
 ## Collections

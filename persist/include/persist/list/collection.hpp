@@ -25,8 +25,8 @@
 #ifndef PERSIST_LIST_COLLECTION_HPP
 #define PERSIST_LIST_COLLECTION_HPP
 
-#include <persist/core/common.hpp>
 #include <persist/core/exceptions/record.hpp>
+#include <persist/list/record_manager.hpp>
 
 #include <persist/utility/serializer.hpp>
 

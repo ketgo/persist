@@ -1,5 +1,5 @@
 /**
- * allocator.hpp - Persist
+ * page_allocator.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_CORE_ALLOCATOR_HPP
-#define PERSIST_CORE_ALLOCATOR_HPP
+#ifndef PERSIST_CORE_PAGEALLOCATOR_HPP
+#define PERSIST_CORE_PAGEALLOCATOR_HPP
 
 #include <persist/core/buffer/buffer_manager.hpp>
 #include <persist/core/fsm/fsl.hpp>
@@ -43,22 +43,22 @@ namespace persist {
 template <class ReplacerType = LRUReplacer,
           class FreeSpaceManagerType = FSLManager>
 class PageAllocator {
-  static_assert(
-      std::is_base_of<FreeSpaceManager, FreeSpaceManagerType>::value,
-      "FreeSpaceManagerType must be derived from FreeSpaceManager class.");
+  static_assert(std::is_base_of<FreeSpaceManager, FreeSpaceManagerType>::value,
+                "FreeSpaceManagerType must be derived from "
+                "persist::FreeSpaceManager class.");
 
-  PERSIST_PROTECTED
+  PERSIST_PRIVATE
   /**
-   * @brief Pointer to buffer manager containing buffer of pages.
+   * @brief Reference to buffer manager containing buffer of pages.
    *
    */
-  BufferManager<RecordPage, ReplacerType> *buffer_manager;
+  BufferManager<RecordPage, ReplacerType> &buffer_manager;
 
   /**
-   * @brief Pointer to free space manager
+   * @brief Reference to free space manager
    *
    */
-  FreeSpaceManagerType *fsm;
+  FreeSpaceManagerType &fsm;
 
   /**
    * @brief Flag indicating allocator started.
@@ -70,11 +70,11 @@ public:
   /**
    * @brief Construct a new Page Allocator object
    *
-   * @param buffer_manager Pointer to buffer manager.
-   * @param fsm Pointer to free space manager.
+   * @param buffer_manager Reference to buffer manager.
+   * @param fsm Reference to free space manager.
    */
-  PageAllocator(BufferManager<RecordPage, ReplacerType> *buffer_manager,
-                FreeSpaceManagerType *fsm)
+  PageAllocator(BufferManager<RecordPage, ReplacerType> &buffer_manager,
+                FreeSpaceManagerType &fsm)
       : buffer_manager(buffer_manager), fsm(fsm) {}
 
   /**
@@ -83,7 +83,8 @@ public:
    */
   void Start() {
     if (!started) {
-      buffer_manager->Start();
+      buffer_manager.Start();
+      fsm.Start();
       started = true;
     }
   }
@@ -94,7 +95,8 @@ public:
    */
   void Stop() {
     if (started) {
-      buffer_manager->Stop();
+      buffer_manager.Stop();
+      fsm.Stop();
       started = false;
     }
   }
@@ -108,7 +110,7 @@ public:
    * @returns Page handle object
    */
   PageHandle<RecordPage> GetPage(PageId page_id) {
-    return buffer_manager->Get(page_id);
+    return buffer_manager.Get(page_id);
   }
 
   /**
@@ -117,17 +119,34 @@ public:
    *
    * @returns Page handle object
    */
-  PageHandle<RecordPage> GetNewPage() { return buffer_manager->GetNew(); }
+  PageHandle<RecordPage> GetNewPage() {
+    // Create new page
+    auto page = buffer_manager.GetNew();
+    // Manage free space in new page
+    fsm.Manage(*page);
+
+    return page;
+  }
 
   /**
    * @brief Get a page with free space. If no such page is available then a new
    * page is loaded into the buffer and its handle returned.
    *
+   * @param size_hint Desired free space size. Note that the size is treated
+   * only as a hint.
    * @returns Page handle object
    */
-  PageHandle<RecordPage> GetNewOrFreePage() = 0;
+  PageHandle<RecordPage> GetFreeOrNewPage(size_t size_hint) {
+    // Get ID of page with free space
+    PageId free_page_id = fsm.GetPageId(size_hint);
+    // If no free page found then return a new page
+    if (!free_page_id) {
+      return GetNewPage();
+    }
+    return GetPage(free_page_id);
+  }
 };
 
 } // namespace persist
 
-#endif /* PERSIST_CORE_ALLOCATOR_HPP */
+#endif /* PERSIST_CORE_PAGEALLOCATOR_HPP */

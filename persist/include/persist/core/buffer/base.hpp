@@ -38,7 +38,7 @@ namespace persist {
 template <class PageType>
 class BufferManagerBase : public virtual PageObserver {
   static_assert(std::is_base_of<Page, PageType>::value,
-                "PageType must be derived from Page class.");
+                "PageType must be derived from persist::Page class.");
 
 public:
   /**

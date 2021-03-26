@@ -48,8 +48,8 @@ class TransactionManager {
   /**
    * @brief Reference to Buffer Manager base class.
    *
-   * NOTE: The reference to the base class enables referring to buffer managers with
-   * different replacer types.
+   * NOTE: The reference to the base class enables referring to buffer managers
+   * with different replacer types.
    *
    */
   BufferManagerBase<RecordPage> &buffer_manager;
@@ -59,6 +59,12 @@ class TransactionManager {
    *
    */
   LogManager &log_manager;
+
+  /**
+   * @brief Flag indicating transaction manager started.
+   *
+   */
+  bool started;
 
   /**
    * @brief Log transaction begin.
@@ -141,7 +147,30 @@ public:
    */
   TransactionManager(BufferManager<RecordPage> &buffer_manager,
                      LogManager &log_manager)
-      : buffer_manager(buffer_manager), log_manager(log_manager) {}
+      : buffer_manager(buffer_manager), log_manager(log_manager),
+        started(false) {}
+
+  /**
+   * @brief Start transaction manager.
+   *
+   */
+  void Start() {
+    if (!started) {
+      // Start log manager.
+      log_manager.Start();
+    }
+  }
+
+  /**
+   * @brief Stop transaction manager.
+   *
+   */
+  void Stop() {
+    if (started) {
+      // Stop log manager.
+      log_manager.Stop();
+    }
+  }
 
   /**
    * @brief Begin a new transaction.

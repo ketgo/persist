@@ -48,7 +48,7 @@ namespace persist {
 template <class PageType, class ReplacerType = LRUReplacer>
 class BufferManager : public BufferManagerBase<PageType> {
   static_assert(std::is_base_of<Replacer, ReplacerType>::value,
-                "ReplacerType must be derived from Replacer class.");
+                "ReplacerType must be derived from persist::Replacer class.");
 
   PERSIST_PRIVATE
   /**

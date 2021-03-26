@@ -38,9 +38,9 @@
 #define __PERSIST_DEBUG__
 #endif
 
-#include <persist/core/wal/log_manager.hpp>
-#include <persist/core/storage/creator.hpp>
 #include <persist/core/page/creator.hpp>
+#include <persist/core/storage/creator.hpp>
+#include <persist/core/wal/log_manager.hpp>
 
 using namespace persist;
 
@@ -51,7 +51,7 @@ protected:
   const SeqNumber seq_number = 1;
   const LogRecord::Location location = {page_id, seq_number};
   const uint64_t max_size = 2;
-  const std::string path = "test_log_manager";
+  const std::string connection_string = "file://test_log_manager";
   std::unique_ptr<LogPage> page;
   std::unique_ptr<LogRecord> log_record;
   std::unique_ptr<LogManager> log_manager;
@@ -72,7 +72,7 @@ protected:
     page->SetLastSeqNumber(seq_number);
 
     // setting up storage
-    storage = persist::CreateStorage<LogPage>("file://" + path);
+    storage = persist::CreateStorage<LogPage>(connection_string);
     Insert();
 
     // Setup log manager
@@ -138,7 +138,7 @@ TEST_F(LogManagerTestFixture, TestFlush) {
   log_manager->Flush();
 
   // Create storage to test page flush
-  auto _storage = CreateStorage<LogPage>("file://" + path);
+  auto _storage = CreateStorage<LogPage>(connection_string);
   _storage->Open();
   ASSERT_TRUE(_storage->GetPageCount() > 1);
   _storage->Close();
