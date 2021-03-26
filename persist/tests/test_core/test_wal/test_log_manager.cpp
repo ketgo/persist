@@ -73,27 +73,25 @@ protected:
 
     // setting up storage
     storage = persist::CreateStorage<LogPage>(connection_string);
+    storage->Open();
     Insert();
 
     // Setup log manager
-    log_manager = std::make_unique<LogManager>(*storage, max_size);
+    log_manager = std::make_unique<LogManager>(connection_string, max_size);
     log_manager->Start();
   }
 
   void TearDown() override {
-    storage->Remove();
     log_manager->Stop();
+    storage->Remove();
+    storage->Close();
   }
 
 private:
   /**
    * @brief Insert test data
    */
-  void Insert() {
-    storage->Open();
-    storage->Write(*page);
-    storage->Close();
-  }
+  void Insert() { storage->Write(*page); }
 };
 
 TEST_F(LogManagerTestFixture, TestOpen) {

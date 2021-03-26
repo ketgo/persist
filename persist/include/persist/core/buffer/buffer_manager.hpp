@@ -29,7 +29,7 @@
 #include <persist/core/buffer/replacer/lru_replacer.hpp>
 #include <persist/core/exceptions/buffer.hpp>
 #include <persist/core/page/creator.hpp>
-#include <persist/core/storage/base.hpp>
+#include <persist/core/storage/creator.hpp>
 
 #include <persist/utility/mutex.hpp>
 
@@ -77,9 +77,10 @@ class BufferManager : public BufferManagerBase<PageType> {
     Frame() : page(nullptr), modified(false) {}
   };
 
-  ReplacerType replacer;                       //<- Page replacer
-  Storage<PageType> &storage GUARDED_BY(lock); //<- Reference to backend storage
-  size_t max_size GUARDED_BY(lock);            //<- Maximum size of buffer
+  ReplacerType replacer; //<- Page replacer
+  std::unique_ptr<Storage<PageType>>
+      storage GUARDED_BY(lock);     //<- Unique pointer to backend storage.
+  size_t max_size GUARDED_BY(lock); //<- Maximum size of buffer
   typedef typename std::unordered_map<PageId, Frame> Buffer;
   Buffer buffer GUARDED_BY(lock); //<- Buffer of page frames
   bool started GUARDED_BY(lock);  //<- Flag indicating buffer manager started
@@ -117,14 +118,15 @@ public:
   /**
    * Construct a new BufferManager object.
    *
-   * @param storage Reference to backend storage.
+   * @param connection_string Constant reference to connection string for
+   * backend storage.
    * @param max_size Maximum buffer size. If set to 0, no maximum limit is set.
-   * @param replacer_type Type of page replacer to be used by buffer manager.
    *
    */
-  BufferManager(Storage<PageType> &storage,
+  BufferManager(const std::string &connection_string,
                 size_t max_size = DEFAULT_BUFFER_SIZE)
-      : storage(storage), max_size(max_size), started(false) {
+      : storage(persist::CreateStorage<PageType>(connection_string)),
+        max_size(max_size), started(false) {
     // Check buffer size value
     if (max_size != 0 && max_size < MINIMUM_BUFFER_SIZE) {
       throw BufferManagerError("Invalid value for max buffer size. The max "
@@ -143,7 +145,7 @@ public:
 
     if (!started) {
       // Start backend storage
-      storage.Open();
+      storage->Open();
       // Set state to started
       started = true;
     }
@@ -165,7 +167,7 @@ public:
       // Flush all loaded pages
       FlushAll();
       // Close backend storage
-      storage.Close();
+      storage->Close();
       // Set state to stopped
       started = false;
     }
@@ -187,7 +189,7 @@ public:
     // Check if page not present in buffer
     if (buffer.find(page_id) == buffer.end()) {
       // Load page from storage
-      std::unique_ptr<PageType> page = storage.Read(page_id);
+      std::unique_ptr<PageType> page = storage->Read(page_id);
       // Insert page in buffer in accordance with LRU strategy
       Put(page);
     }
@@ -209,15 +211,55 @@ public:
     LockGuard guard(lock);
 
     // Allocate space for new page
-    PageId page_id = storage.Allocate();
+    PageId page_id = storage->Allocate();
     // Create an empty page
     std::unique_ptr<PageType> page =
-        persist::CreatePage<PageType>(page_id, storage.GetPageSize());
+        persist::CreatePage<PageType>(page_id, storage->GetPageSize());
     // Load the new page in buffer
     Put(page);
 
     // Return loaded page
     return Get(page_id);
+  }
+
+  /**
+   * @brief Get first page in backend storage. A null page handle is returned
+   * if no page found.
+   *
+   * @thread_safe
+   *
+   * @returns Page handle object.
+   */
+  PageHandle<PageType> First() override {
+    LockGuard guard(lock);
+
+    // Check page count greater than 0.
+    PageId last_page_id = storage->GetPageCount();
+    if (!last_page_id) {
+      return PageHandle<PageType>(nullptr, &replacer);
+    }
+    // Return first page.
+    return Get(1);
+  }
+
+  /**
+   * @brief Get last page in backend storage. A null page handle is returned if
+   * no page found.
+   *
+   * @thread_safe
+   *
+   * @returns Page handle object.
+   */
+  virtual PageHandle<PageType> Last() override {
+    LockGuard guard(lock);
+
+    // Check page count greater than 0.
+    PageId last_page_id = storage->GetPageCount();
+    if (!last_page_id) {
+      return PageHandle<PageType>(nullptr, &replacer);
+    }
+    // Return last page.
+    return Get(last_page_id);
   }
 
   /**
@@ -239,7 +281,7 @@ public:
     if (it != buffer.end() && it->second.modified &&
         !replacer.IsPinned(page_id)) {
       // Persist page on backend storage
-      storage.Write(*(it->second.page));
+      storage->Write(*(it->second.page));
       // Since the page has been saved it is now considered as un-modified
       it->second.modified = false;
       // Page successfully flushed

@@ -44,7 +44,7 @@ protected:
   const uint64_t page_size = DEFAULT_PAGE_SIZE;
   const uint64_t max_size = 2;
   const TransactionId txn_id = 10;
-  const std::string path = "test_transaction_log";
+  const std::string connection_string = "file://test_transaction_log";
   RecordPageSlot::Location location;
   std::unique_ptr<Storage<LogPage>> storage;
   std::unique_ptr<LogManager> log_manager;
@@ -52,10 +52,11 @@ protected:
 
   void SetUp() override {
     // Setting up storage
-    storage = persist::CreateStorage<LogPage>("file://" + path);
+    storage = persist::CreateStorage<LogPage>(connection_string);
+    storage->Open();
 
     // Setting up log manager
-    log_manager = std::make_unique<LogManager>(*storage, max_size);
+    log_manager = std::make_unique<LogManager>(connection_string, max_size);
     log_manager->Start();
 
     // Setup transaction
@@ -63,8 +64,9 @@ protected:
   }
 
   void TearDown() override {
-    storage->Remove();
     log_manager->Stop();
+    storage->Remove();
+    storage->Close();
   }
 };
 

@@ -65,11 +65,6 @@ class LogManager {
    */
   PageId last_page_id GUARDED_BY(lock);
   /**
-   * @brief Reference to backend log storage.
-   *
-   */
-  Storage<LogPage> &storage GUARDED_BY(lock);
-  /**
    * @brief Log record buffer manager.
    *
    */
@@ -104,15 +99,16 @@ class LogManager {
 
 public:
   /**
-   * @brief Construct a new log manager object.
+   * @brief Construct a new Log Manager object
    *
-   * @param storage Reference to backend log storage
-   * @param cache_size Log buffer cache size
+   * @param connection_string Constant reference to connection string for log
+   * storage.
+   * @param cache_size Log buffer cache size.
    */
-  LogManager(Storage<LogPage> &storage,
+  LogManager(const std::string &connection_string,
              size_t cache_size = DEFAULT_LOG_BUFFER_SIZE)
-      : seq_number(0), last_page_id(0), started(false), storage(storage),
-        buffer_manager(storage, cache_size) {}
+      : seq_number(0), last_page_id(0), started(false),
+        buffer_manager(connection_string, cache_size) {}
 
   /**
    * @brief Start log manager.
@@ -128,12 +124,12 @@ public:
       // Start buffer manager
       buffer_manager.Start();
       // Load last page in buffer
-      last_page_id = storage.GetPageCount();
+      auto last_page = buffer_manager.Last();
       // Get last sequence number if last page ID is not 0 else create a new
       // page and set its ID to the last page ID.
-      if (last_page_id) {
-        auto page = buffer_manager.Get(last_page_id);
-        seq_number = page->GetLastSeqNumber();
+      if (last_page) {
+        last_page_id = last_page->GetId();
+        seq_number = last_page->GetLastSeqNumber();
       } else {
         auto new_page = buffer_manager.GetNew();
         last_page_id = new_page->GetId();

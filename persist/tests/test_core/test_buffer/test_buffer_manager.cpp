@@ -62,16 +62,18 @@ protected:
 
     // setting up storage
     storage = persist::CreateStorage<SimplePage>(connection_string);
+    storage->Open();
     Insert();
 
-    buffer_manager =
-        std::make_unique<BufferManager<SimplePage>>(*storage, max_size);
+    buffer_manager = std::make_unique<BufferManager<SimplePage>>(
+        connection_string, max_size);
     buffer_manager->Start();
   }
 
   void TearDown() override {
-    storage->Remove();
     buffer_manager->Stop();
+    storage->Remove();
+    storage->Close();
   }
 
 private:
@@ -79,16 +81,14 @@ private:
    * @brief Insert test data
    */
   void Insert() {
-    storage->Open();
     storage->Write(*page_1);
     storage->Write(*page_2);
     storage->Write(*page_3);
-    storage->Close();
   }
 };
 
 TEST_F(BufferManagerTestFixture, TestBufferManagerError) {
-  ASSERT_THROW(BufferManager<SimplePage> manager(*storage, 1),
+  ASSERT_THROW(BufferManager<SimplePage> manager(connection_string, 1),
                BufferManagerError);
 }
 
@@ -110,6 +110,18 @@ TEST_F(BufferManagerTestFixture, TestGetNew) {
 
   // A new page with ID 4 should be created
   ASSERT_EQ(page->GetId(), 4);
+}
+
+TEST_F(BufferManagerTestFixture, TestFirst) {
+  auto page = buffer_manager->First();
+
+  ASSERT_EQ(page->GetId(), 1);
+}
+
+TEST_F(BufferManagerTestFixture, TestLast) {
+  auto page = buffer_manager->Last();
+
+  ASSERT_EQ(page->GetId(), 3);
 }
 
 TEST_F(BufferManagerTestFixture, TestFlush) {

@@ -46,7 +46,7 @@ namespace persist {
  * where
  * - type [required]: Type of backens storage
  * - host [optional]: Hostname where the storage should be stored
- * - path [required]: Path on host where the storage is located 
+ * - path [required]: Path on host where the storage is located
  * - name [required]: Name of the collection
  * - arg_1..n [optional]: Additional arguments
  * - val_1..n [optional]: Values associated with the additional arguments
@@ -63,9 +63,25 @@ public:
   std::string type;
   std::string path;
 
-  // Constructor
+  /**
+   * @brief Construct a new Connection String object
+   *
+   * @param connection_string Connection string as string type.
+   */
   ConnectionString(const std::string &connection_string)
       : raw(connection_string) {
+    std::string seperator = STORAGE_TYPE_SEPERATOR;
+    std::string::size_type loc = raw.find(seperator);
+    type = raw.substr(0, loc);
+    path = raw.substr(loc + seperator.size());
+  }
+
+  /**
+   * @brief Construct a new Connection String object
+   *
+   * @param connection_string Connection string as constant char array.
+   */
+  ConnectionString(const char *connection_string) : raw(connection_string) {
     std::string seperator = STORAGE_TYPE_SEPERATOR;
     std::string::size_type loc = raw.find(seperator);
     type = raw.substr(0, loc);
@@ -83,18 +99,18 @@ const std::unordered_map<std::string, StorageType> StorageTypeMap = {
     {"file", StorageType::FILE}, {"memory", StorageType::MEMORY}};
 
 /**
- * @brief Factory method to create backend storage object
+ * @brief Method to create backend storage object
  *
- * @param connection_string url containing the type of storage backend and its
+ * @param connection_string Url containing the type of storage backend and its
  * arguments. The url schema is `<type>://<host>/<path>?<args>`. For example a
  * file storage url looks like `file:///myCollection.db` where the backend
  * uses the file `myCollection.db` in the root folder `/` to store data.
  *
- * @tparam PageType The type of page stored by the created storage.
+ * @tparam PageType The type of page stored by the storage.
  */
 template <class PageType>
-static std::unique_ptr<Storage<PageType>>
-CreateStorage(std::string connection_string) {
+std::unique_ptr<Storage<PageType>>
+CreateStorage(const std::string &connection_string) {
   ConnectionString _connection_string(connection_string);
 
   switch (StorageTypeMap.at(_connection_string.type)) {
@@ -106,5 +122,67 @@ CreateStorage(std::string connection_string) {
   }
 }
 
+/**
+ * @brief Method to create backend storage object
+ *
+ * @param connection_string Url containing the type of storage backend and its
+ * arguments. The url schema is `<type>://<host>/<path>?<args>`. For example a
+ * file storage url looks like `file:///myCollection.db` where the backend
+ * uses the file `myCollection.db` in the root folder `/` to store data.
+ *
+ * @tparam PageType The type of page stored by the storage.
+ */
+template <class PageType>
+std::unique_ptr<Storage<PageType>>
+CreateStorage(const char *connection_string) {
+  ConnectionString _connection_string(connection_string);
+
+  switch (StorageTypeMap.at(_connection_string.type)) {
+  case StorageType::FILE:
+    return std::make_unique<FileStorage<PageType>>(_connection_string.path);
+    break;
+  case StorageType::MEMORY:
+    return std::make_unique<MemoryStorage<PageType>>();
+  }
+}
+
+/**
+ * @brief Method to remove backend storage object
+ *
+ * @param connection_string Url containing the type of storage backend and its
+ * arguments. The url schema is `<type>://<host>/<path>?<args>`. For example a
+ * file storage url looks like `file:///myCollection.db` where the backend
+ * uses the file `myCollection.db` in the root folder `/` to store data.
+ *
+ * @tparam PageType The type of page stored by the storage.
+ */
+template <class PageType>
+void RemoveStorage(const std::string &connection_string) {
+  std::unique_ptr<Storage<PageType>> storage =
+      CreateStorage<PageType>(connection_string);
+  storage->Open();
+  storage->Remove();
+  storage->Close();
+}
+
+/**
+ * @brief Method to remove backend storage object
+ *
+ * @param connection_string Url containing the type of storage backend and its
+ * arguments. The url schema is `<type>://<host>/<path>?<args>`. For example a
+ * file storage url looks like `file:///myCollection.db` where the backend
+ * uses the file `myCollection.db` in the root folder `/` to store data.
+ *
+ * @tparam PageType The type of page stored by the storage.
+ */
+template <class PageType> void RemoveStorage(const char *connection_string) {
+  std::unique_ptr<Storage<PageType>> storage =
+      CreateStorage<PageType>(connection_string);
+  storage->Open();
+  storage->Remove();
+  storage->Close();
+}
+
 } // namespace persist
+
 #endif /* PERSIST_CORE_STORAGE_CREATOR_HPP */

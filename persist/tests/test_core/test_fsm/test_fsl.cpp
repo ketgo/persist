@@ -31,6 +31,11 @@
 #include <memory>
 #include <string>
 
+/**
+ * Enabled intrusive testing
+ */
+#define PERSIST_INTRUSIVE_TESTING
+
 #include <persist/core/fsm/fsl.hpp>
 #include <persist/core/page/creator.hpp>
 #include <persist/core/storage/creator.hpp>
@@ -45,7 +50,7 @@ protected:
   ByteBuffer input;
   const size_t cache_size = 2;
   const std::set<PageId> free_pages = {1, 2, 3};
-  const std::string path = "test_fsl_manager";
+  const std::string connection_string = "file://test_fsl_manager";
   const PageId fsl_page_id = 1;
   PageId full_page_id, empty_page_id_1, empty_page_id_2;
   std::unique_ptr<FSLManager> fsl_manager;
@@ -55,7 +60,8 @@ protected:
 
   void SetUp() override {
     // Setup FSL Storage
-    storage = persist::CreateStorage<FSLPage>("file://" + path);
+    storage = persist::CreateStorage<FSLPage>(connection_string);
+    storage->Open();
 
     // Setup FSL page
     fsl_page = persist::CreatePage<FSLPage>(1, DEFAULT_PAGE_SIZE);
@@ -63,7 +69,7 @@ protected:
     Insert();
 
     // Setup FSL Manager
-    fsl_manager = std::make_unique<FSLManager>(*storage, cache_size);
+    fsl_manager = std::make_unique<FSLManager>(connection_string, cache_size);
     fsl_manager->Start();
 
     // Setup empty page
@@ -83,19 +89,16 @@ protected:
   }
 
   void TearDown() override {
-    storage->Remove();
     fsl_manager->Stop();
+    storage->Remove();
+    storage->Close();
   }
 
 private:
   /**
    * @brief Insert test data
    */
-  void Insert() {
-    storage->Open();
-    storage->Write(*fsl_page);
-    storage->Close();
-  }
+  void Insert() { storage->Write(*fsl_page); }
 };
 
 TEST_F(FSLTestFixture, TestManagerGetPageId) {
@@ -104,23 +107,34 @@ TEST_F(FSLTestFixture, TestManagerGetPageId) {
 
 TEST_F(FSLTestFixture, TestManagerEmptyPage) {
   fsl_manager->Manage(*empty_page_1);
+  fsl_manager->Flush();
+
+  storage->ReOpen();
   ASSERT_EQ(storage->GetPageCount(), 1);
   ASSERT_EQ(fsl_manager->GetPageId(0), empty_page_id_1);
 
   // Test duplicate
   fsl_manager->Manage(*empty_page_1);
+  fsl_manager->Flush();
+
+  storage->ReOpen();
   ASSERT_EQ(storage->GetPageCount(), 1);
   ASSERT_EQ(fsl_manager->GetPageId(0), empty_page_id_1);
 
   // Test entry in new FSLPage
   fsl_manager->Manage(*empty_page_2);
+  fsl_manager->Flush();
+
+  storage->ReOpen();
   ASSERT_EQ(storage->GetPageCount(), 2);
   ASSERT_EQ(fsl_manager->GetPageId(0), empty_page_id_2);
 }
 
 TEST_F(FSLTestFixture, TestManagerFullPage) {
   fsl_manager->Manage(*full_page);
+  fsl_manager->Flush();
 
+  storage->ReOpen();
   ASSERT_EQ(storage->GetPageCount(), 1);
   ASSERT_EQ(fsl_manager->GetPageId(0), 2);
 }

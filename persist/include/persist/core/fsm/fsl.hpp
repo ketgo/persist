@@ -56,11 +56,6 @@ class FSLManager : public FreeSpaceManager {
   typedef typename persist::LockGuard<Mutex> LockGuard;
 
   /**
-   * @brief Reference to backend storage.
-   *
-   */
-  Storage<FSLPage> &storage GUARDED_BY(lock);
-  /**
    * @brief Log record buffer manager.
    *
    */
@@ -117,14 +112,15 @@ public:
   /**
    * @brief Construct a new FSL object
    *
-   * @param storage Reference to backend FSL sotrage
-   * @param cache_size FSL buffer cache
+   * @param connection_string Constant reference to connection string for
+   * backend FSL sotrage.
+   * @param cache_size FSL buffer cache.
    *
    */
-  explicit FSLManager(Storage<FSLPage> &storage,
+  explicit FSLManager(const std::string &connection_string,
                       size_t cache_size = DEFAULT_FSL_BUFFER_SIZE)
-      : started(false), last_page_id(0), storage(storage),
-        buffer_manager(storage, cache_size) {}
+      : started(false), last_page_id(0),
+        buffer_manager(connection_string, cache_size) {}
 
   /**
    * @brief Start free space manager.
@@ -136,10 +132,12 @@ public:
     if (!started) {
       // Start buffer manager.
       buffer_manager.Start();
-      // Get last page ID
-      last_page_id = storage.GetPageCount();
+      // Get last page
+      auto last_page = buffer_manager.Last();
       // Create a new page if no last page found
-      if (!last_page_id) {
+      if (last_page) {
+        last_page_id = last_page->GetId();
+      } else {
         auto new_page = buffer_manager.GetNew();
         last_page_id = new_page->GetId();
       }
@@ -175,10 +173,10 @@ public:
     LockGuard guard(lock);
 
     auto last_page = buffer_manager.Get(last_page_id);
-    if (last_page->free_pages.empty()) {
+    if (last_page->IsEmpty()) {
       return 0;
     }
-    return *std::prev(last_page->free_pages.end());
+    return last_page->Last();
   }
 
   /**
@@ -197,9 +195,9 @@ public:
     // that since FSL is used to get pages with free space for INSERT page
     // operation, free space for only INSERT is checked.
     if (page.GetFreeSpaceSize(Operation::INSERT) > 0) {
-      _page->free_pages.insert(page_id);
+      _page->Insert(page_id);
     } else {
-      _page->free_pages.erase(page_id);
+      _page->Remove(page_id);
     }
   }
 

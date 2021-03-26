@@ -85,7 +85,9 @@ template <class PageType> class PageHandle {
    */
   void Acquire() {
     // Pin page
-    replacer->Pin(page->GetId());
+    if (page) {
+      replacer->Pin(page->GetId());
+    }
   }
 
   /**
@@ -93,7 +95,7 @@ template <class PageType> class PageHandle {
    *
    */
   void Release() {
-    if (is_owner) {
+    if (page && is_owner) {
       // Unpin page
       replacer->Unpin(page->GetId());
     }
@@ -153,6 +155,12 @@ public:
     // Release access ownership of page
     Release();
   }
+
+  /**
+   * @brief Check if handle is null.
+   *
+   */
+  operator bool() const { return bool(page); }
 };
 
 } // namespace persist

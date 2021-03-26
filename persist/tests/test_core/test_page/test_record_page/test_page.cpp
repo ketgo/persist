@@ -189,9 +189,12 @@ protected:
   MockPageObserver observer;
 
   void SetUp() override {
-    // Setup log manager
+    // Setup log storage
     storage = persist::CreateStorage<LogPage>(connection_string);
-    log_manager = std::make_unique<LogManager>(*storage, 2);
+    storage->Open();
+
+    // Setup log manager
+    log_manager = std::make_unique<LogManager>(connection_string, 2);
     log_manager->Start();
 
     // Setup valid page
@@ -279,8 +282,9 @@ protected:
   }
 
   void TearDown() override {
-    storage->Remove();
     log_manager->Stop();
+    storage->Remove();
+    storage->Close();
   }
 };
 

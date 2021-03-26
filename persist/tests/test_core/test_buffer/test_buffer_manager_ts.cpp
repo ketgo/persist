@@ -77,28 +77,28 @@ protected:
 
     // setting up storage
     storage = persist::CreateStorage<SimplePage>(connection_string);
-    insert();
+    storage->Open();
+    Insert();
 
-    buffer_manager =
-        std::make_unique<BufferManager<SimplePage>>(*storage, max_size);
+    buffer_manager = std::make_unique<BufferManager<SimplePage>>(
+        connection_string, max_size);
     buffer_manager->Start();
   }
 
   void TearDown() override {
-    storage->Remove();
     buffer_manager->Stop();
+    storage->Remove();
+    storage->Close();
   }
 
 private:
   /**
    * @brief Insert test data
    */
-  void insert() {
-    storage->Open();
+  void Insert() {
     storage->Write(*page_1);
     storage->Write(*page_2);
     storage->Write(*page_3);
-    storage->Close();
   }
 };
 
