@@ -25,71 +25,13 @@
 #ifndef PERSIST_CORE_STORAGE_CREATOR_HPP
 #define PERSIST_CORE_STORAGE_CREATOR_HPP
 
+#include <persist/core/config.hpp>
+
 #include <persist/core/storage/base.hpp>
 #include <persist/core/storage/file_storage.hpp>
 #include <persist/core/storage/memory_storage.hpp>
 
-/**
- * Storage type seperator in connection string
- */
-#define STORAGE_TYPE_SEPERATOR "://"
-
 namespace persist {
-
-/**
- * @brief The class parsers a given connection string and exposes the different
- * arguments needed to construct a backens storage object. It assumes that the
- * string has the following schema:
- *
- *      <type>://<host>/<path>/<name>?<arg_1=val_1&arg_2=val_2>
- *
- * where
- * - type [required]: Type of backens storage
- * - host [optional]: Hostname where the storage should be stored
- * - path [required]: Path on host where the storage is located
- * - name [required]: Name of the collection
- * - arg_1..n [optional]: Additional arguments
- * - val_1..n [optional]: Values associated with the additional arguments
- *
- * NOTE: Currently simple parser is implemented which just detects the `type`.
- *
- * TODO:
- *  - Prase arguments like `pageSize`.
- *  - Exception for incorrectly formated connection string.
- */
-class ConnectionString {
-public:
-  std::string raw;
-  std::string type;
-  std::string path;
-
-  /**
-   * @brief Construct a new Connection String object
-   *
-   * @param connection_string Connection string as string type.
-   */
-  ConnectionString(const std::string &connection_string)
-      : raw(connection_string) {
-    std::string seperator = STORAGE_TYPE_SEPERATOR;
-    std::string::size_type loc = raw.find(seperator);
-    type = raw.substr(0, loc);
-    path = raw.substr(loc + seperator.size());
-  }
-
-  /**
-   * @brief Construct a new Connection String object
-   *
-   * @param connection_string Connection string as constant char array.
-   */
-  ConnectionString(const char *connection_string) : raw(connection_string) {
-    std::string seperator = STORAGE_TYPE_SEPERATOR;
-    std::string::size_type loc = raw.find(seperator);
-    type = raw.substr(0, loc);
-    path = raw.substr(loc + seperator.size());
-  }
-};
-
-/************************************************************************/
 
 /**
  * @brief Supported Backend Storages

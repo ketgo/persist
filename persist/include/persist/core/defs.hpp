@@ -74,6 +74,11 @@
 // FSLManager can load in-memory.
 #define DEFAULT_FSL_BUFFER_SIZE 8
 
+// Backend data storage extension
+#define DATA_STORAGE_EXTENTION ".stg"
+// Backend free space manager storage extension
+#define FSM_STORAGE_EXTENTION ".fsm"
+
 namespace persist {
 
 /**

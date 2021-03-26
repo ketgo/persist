@@ -47,10 +47,9 @@ TEST(StorageFactoryTest, TestCreateMemoryStorage) {
 }
 
 TEST(StorageFactoryTest, TestCreateFileStorage) {
-  auto storage = CreateStorage<SimplePage>("file://storage.db");
+  auto storage = CreateStorage<SimplePage>("file://storage");
   Storage<SimplePage> *ptr = storage.get();
   std::string className = typeid(*ptr).name();
   ASSERT_TRUE(className.find("FileStorage") != std::string::npos);
-  ASSERT_EQ(static_cast<FileStorage<SimplePage> *>(ptr)->GetPath(),
-            "storage.db");
+  ASSERT_EQ(static_cast<FileStorage<SimplePage> *>(ptr)->GetPath(), "storage");
 }
