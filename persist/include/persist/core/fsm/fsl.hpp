@@ -32,7 +32,7 @@
 #include <persist/core/buffer/buffer_manager.hpp>
 #include <persist/core/fsm/base.hpp>
 #include <persist/core/page/fsm_page/fsl_page.hpp>
-#include <persist/core/storage/base.hpp>
+#include <persist/core/storage/creator.hpp>
 
 #include <persist/utility/mutex.hpp>
 
@@ -55,6 +55,11 @@ class FSLManager : public FreeSpaceManager {
   Mutex lock; //<- lock for achieving thread safety via mutual exclusion
   typedef typename persist::LockGuard<Mutex> LockGuard;
 
+  /**
+   * @brief Unique pointer to FSL storage.
+   *
+   */
+  std::unique_ptr<Storage<FSLPage>> storage;
   /**
    * @brief Log record buffer manager.
    *
@@ -120,7 +125,8 @@ public:
   explicit FSLManager(const std::string &connection_string,
                       size_t cache_size = DEFAULT_FSL_BUFFER_SIZE)
       : started(false), last_page_id(0),
-        buffer_manager(connection_string, cache_size) {}
+        storage(CreateStorage<FSLPage>(connection_string)),
+        buffer_manager(storage.get(), cache_size) {}
 
   /**
    * @brief Start free space manager.

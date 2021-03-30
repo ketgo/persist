@@ -26,6 +26,7 @@
 #define PERSIST_CORE_RECORDMANAGER_HPP
 
 #include <persist/core/page/record_page/slot.hpp>
+#include <persist/core/page_manager.hpp>
 #include <persist/core/transaction/transaction.hpp>
 
 namespace persist {
@@ -40,13 +41,42 @@ typedef RecordPageSlot::Location RecordLocation;
  * the interfaces defined in the base class.
  *
  * @tparam RecordType Data record type.
+ * @tparam ReplacerType The type of page replacer to be used by buffer manager.
+ * Default set to LRUReplacer.
+ * @tparam FreeSpaceManagerType The type of free space manager. Default set to
+ * FSLManager.
  */
-template <class RecordType> class RecordManager {
+template <class RecordType, class ReplacerType = LRUReplacer,
+          class FreeSpaceManagerType = FSLManager>
+class RecordManager {
   // Record should be storage
   static_assert(std::is_base_of<Storable, RecordType>::value,
                 "RecordType must be derived from persist::Storable");
 
+  PERSIST_PROTECTED
+  /**
+   * @brief Page Allocator
+   *
+   */
+  PageManager<ReplacerType, FreeSpaceManagerType> page_manager;
+
+  /**
+   * @brief Flag indicating manager started.
+   *
+   */
+  bool started;
+
 public:
+  /**
+   * @brief Construct a new Record Manager object
+   *
+   * @param buffer_manager Reference to buffer manager.
+   * @param fsm Reference to free space manager.
+   */
+  RecordManager(BufferManager<RecordPage, ReplacerType> &buffer_manager,
+                FreeSpaceManagerType &fsm)
+      : page_manager(buffer_manager, fsm) {}
+
   /**
    * @brief Destroy the RecordManager object.
    *
@@ -57,13 +87,23 @@ public:
    * @brief Start record manager.
    *
    */
-  virtual void Start() = 0;
+  void Start() {
+    if (!started) {
+      // Start page manager
+      page_manager.Start();
+    }
+  }
 
   /**
    * @brief Stop record manager.
    *
    */
-  virtual void Stop() = 0;
+  void Stop() {
+    if (started) {
+      // Start page manager
+      page_manager.Stop();
+    }
+  }
 
   /**
    * @brief Get record stored at given location.

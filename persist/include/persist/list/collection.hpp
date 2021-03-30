@@ -26,6 +26,7 @@
 #define PERSIST_LIST_COLLECTION_HPP
 
 #include <persist/core/exceptions/record.hpp>
+
 #include <persist/list/record_manager.hpp>
 
 #include <persist/utility/serializer.hpp>
@@ -44,6 +45,12 @@ template <class RecordType> class List {
                 "Record must be derived from persist::Storable");
 
   PERSIST_PRIVATE
+  /**
+   * @brief Record manager.
+   *
+   */
+  ListRecordManager<RecordType> record_manager;
+
   /**
    * @brief Linked List Node
    *

@@ -30,6 +30,7 @@
 
 #include <persist/core/buffer/buffer_manager.hpp>
 #include <persist/core/page/log_page/page.hpp>
+#include <persist/core/storage/creator.hpp>
 #include <persist/core/wal/log_record.hpp>
 
 #include <persist/utility/mutex.hpp>
@@ -64,6 +65,11 @@ class LogManager {
    *
    */
   PageId last_page_id GUARDED_BY(lock);
+  /**
+   * @brief Unique pointer to log storage.
+   *
+   */
+  std::unique_ptr<Storage<LogPage>> storage;
   /**
    * @brief Log record buffer manager.
    *
@@ -108,7 +114,8 @@ public:
   LogManager(const std::string &connection_string,
              size_t cache_size = DEFAULT_LOG_BUFFER_SIZE)
       : seq_number(0), last_page_id(0), started(false),
-        buffer_manager(connection_string, cache_size) {}
+        storage(CreateStorage<LogPage>(connection_string)),
+        buffer_manager(storage.get(), cache_size) {}
 
   /**
    * @brief Start log manager.

@@ -62,7 +62,7 @@ protected:
 
     // Setting up buffer manager
     buffer_manager = std::make_unique<BufferManager<RecordPage>>(
-        data_connection_string, max_size);
+        data_storage.get(), max_size);
     buffer_manager->Start();
 
     // Setup transaction manager

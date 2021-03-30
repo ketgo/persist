@@ -27,6 +27,8 @@
 
 #include <string>
 
+#include <persist/core/defs.hpp>
+
 /**
  * Storage type seperator in connection string
  */
@@ -52,7 +54,7 @@ namespace persist {
  * NOTE: Currently simple parser is implemented which just detects the `type`.
  *
  * TODO:
- *  - Prase arguments like `pageSize`.
+ *  - Prase arguments like `page_size`.
  *  - Exception for incorrectly formated connection string.
  */
 class ConnectionString {
@@ -61,6 +63,8 @@ public:
   std::string type;
   std::string path;
   std::string extension;
+  std::string collection_name;
+  size_t page_size;
 
   /**
    * @brief Construct a new Connection String object
@@ -68,7 +72,7 @@ public:
    * @param connection_string Connection string as string type.
    */
   ConnectionString(const std::string &connection_string)
-      : raw(connection_string) {
+      : raw(connection_string), page_size(DEFAULT_PAGE_SIZE) {
     std::string seperator = STORAGE_TYPE_SEPERATOR;
     std::string::size_type loc = raw.find(seperator);
     type = raw.substr(0, loc);
@@ -80,7 +84,8 @@ public:
    *
    * @param connection_string Connection string as constant char array.
    */
-  ConnectionString(const char *connection_string) : raw(connection_string) {
+  ConnectionString(const char *connection_string)
+      : raw(connection_string), page_size(DEFAULT_PAGE_SIZE) {
     std::string seperator = STORAGE_TYPE_SEPERATOR;
     std::string::size_type loc = raw.find(seperator);
     type = raw.substr(0, loc);
@@ -94,7 +99,8 @@ public:
    * @param extension Storage extension string.
    */
   ConnectionString(const std::string &connection_string, const char *extension)
-      : raw(connection_string), extension(extension) {
+      : raw(connection_string), extension(extension),
+        page_size(DEFAULT_PAGE_SIZE) {
     std::string seperator = STORAGE_TYPE_SEPERATOR;
     std::string::size_type loc = raw.find(seperator);
     type = raw.substr(0, loc);
@@ -108,7 +114,8 @@ public:
    * @param extension Storage extension string.
    */
   ConnectionString(const char *connection_string, const char *extension)
-      : raw(connection_string), extension(extension) {
+      : raw(connection_string), extension(extension),
+        page_size(DEFAULT_PAGE_SIZE) {
     std::string seperator = STORAGE_TYPE_SEPERATOR;
     std::string::size_type loc = raw.find(seperator);
     type = raw.substr(0, loc);

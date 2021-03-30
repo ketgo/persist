@@ -62,18 +62,16 @@ protected:
 
     // setting up storage
     storage = persist::CreateStorage<SimplePage>(connection_string);
-    storage->Open();
     Insert();
 
-    buffer_manager = std::make_unique<BufferManager<SimplePage>>(
-        connection_string, max_size);
+    buffer_manager =
+        std::make_unique<BufferManager<SimplePage>>(storage.get(), max_size);
     buffer_manager->Start();
   }
 
   void TearDown() override {
     buffer_manager->Stop();
     storage->Remove();
-    storage->Close();
   }
 
 private:
@@ -81,14 +79,16 @@ private:
    * @brief Insert test data
    */
   void Insert() {
+    storage->Open();
     storage->Write(*page_1);
     storage->Write(*page_2);
     storage->Write(*page_3);
+    storage->Close();
   }
 };
 
 TEST_F(BufferManagerTestFixture, TestBufferManagerError) {
-  ASSERT_THROW(BufferManager<SimplePage> manager(connection_string, 1),
+  ASSERT_THROW(BufferManager<SimplePage> manager(storage.get(), 1),
                BufferManagerError);
 }
 

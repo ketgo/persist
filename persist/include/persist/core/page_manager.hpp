@@ -1,5 +1,5 @@
 /**
- * page_allocator.hpp - Persist
+ * page_manager.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_CORE_PAGEALLOCATOR_HPP
-#define PERSIST_CORE_PAGEALLOCATOR_HPP
+#ifndef PERSIST_CORE_PAGEMANAGER_HPP
+#define PERSIST_CORE_PAGEMANAGER_HPP
 
 #include <persist/core/buffer/buffer_manager.hpp>
 #include <persist/core/fsm/fsl.hpp>
@@ -32,8 +32,8 @@
 namespace persist {
 
 /**
- * @brief The page allocator allocates and de-allocates pages for storage of
- * records.
+ * @brief The page manager handles pages for storage of data records. It
+ * comprises of buffer manager and free space manager.
  *
  * @tparam ReplacerType The type of page replacer to be used by buffer manager.
  * Default set to LRUReplacer.
@@ -42,7 +42,7 @@ namespace persist {
  */
 template <class ReplacerType = LRUReplacer,
           class FreeSpaceManagerType = FSLManager>
-class PageAllocator {
+class PageManager {
   static_assert(std::is_base_of<FreeSpaceManager, FreeSpaceManagerType>::value,
                 "FreeSpaceManagerType must be derived from "
                 "persist::FreeSpaceManager class.");
@@ -73,8 +73,8 @@ public:
    * @param buffer_manager Reference to buffer manager.
    * @param fsm Reference to free space manager.
    */
-  PageAllocator(BufferManager<RecordPage, ReplacerType> &buffer_manager,
-                FreeSpaceManagerType &fsm)
+  PageManager(BufferManager<RecordPage, ReplacerType> &buffer_manager,
+              FreeSpaceManagerType &fsm)
       : buffer_manager(buffer_manager), fsm(fsm) {}
 
   /**
@@ -149,4 +149,4 @@ public:
 
 } // namespace persist
 
-#endif /* PERSIST_CORE_PAGEALLOCATOR_HPP */
+#endif /* PERSIST_CORE_PAGEMANAGER_HPP */

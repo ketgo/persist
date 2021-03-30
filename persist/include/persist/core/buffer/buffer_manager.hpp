@@ -29,7 +29,7 @@
 #include <persist/core/buffer/replacer/lru_replacer.hpp>
 #include <persist/core/exceptions/buffer.hpp>
 #include <persist/core/page/creator.hpp>
-#include <persist/core/storage/creator.hpp>
+#include <persist/core/storage/base.hpp>
 
 #include <persist/utility/mutex.hpp>
 
@@ -78,8 +78,8 @@ class BufferManager : public BufferManagerBase<PageType> {
   };
 
   ReplacerType replacer; //<- Page replacer
-  std::unique_ptr<Storage<PageType>>
-      storage GUARDED_BY(lock);     //<- Unique pointer to backend storage.
+  Storage<PageType> *
+      storage PT_GUARDED_BY(lock);  //<- Pointer to backend storage.
   size_t max_size GUARDED_BY(lock); //<- Maximum size of buffer
   typedef typename std::unordered_map<PageId, Frame> Buffer;
   Buffer buffer GUARDED_BY(lock); //<- Buffer of page frames
@@ -118,15 +118,13 @@ public:
   /**
    * Construct a new BufferManager object.
    *
-   * @param connection_string Constant reference to connection string for
-   * backend storage.
+   * @param storage Pointer to backend storage.
    * @param max_size Maximum buffer size. If set to 0, no maximum limit is set.
    *
    */
-  BufferManager(const std::string &connection_string,
+  BufferManager(Storage<PageType> *storage,
                 size_t max_size = DEFAULT_BUFFER_SIZE)
-      : storage(persist::CreateStorage<PageType>(connection_string)),
-        max_size(max_size), started(false) {
+      : storage(storage), max_size(max_size), started(false) {
     // Check buffer size value
     if (max_size != 0 && max_size < MINIMUM_BUFFER_SIZE) {
       throw BufferManagerError("Invalid value for max buffer size. The max "

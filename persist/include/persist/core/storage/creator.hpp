@@ -43,81 +43,33 @@ const std::unordered_map<std::string, StorageType> StorageTypeMap = {
 /**
  * @brief Method to create backend storage object
  *
- * @param connection_string Url containing the type of storage backend and its
- * arguments. The url schema is `<type>://<host>/<path>?<args>`. For example a
- * file storage url looks like `file:///myCollection.db` where the backend
- * uses the file `myCollection.db` in the root folder `/` to store data.
+ * @param connection_string Constant reference to connection string object.
  *
  * @tparam PageType The type of page stored by the storage.
  */
 template <class PageType>
 std::unique_ptr<Storage<PageType>>
-CreateStorage(const std::string &connection_string) {
-  ConnectionString _connection_string(connection_string);
-
-  switch (StorageTypeMap.at(_connection_string.type)) {
+CreateStorage(const ConnectionString &connection_string) {
+  switch (StorageTypeMap.at(connection_string.type)) {
   case StorageType::FILE:
-    return std::make_unique<FileStorage<PageType>>(_connection_string.path);
+    return std::make_unique<FileStorage<PageType>>(connection_string.path,
+                                                   connection_string.page_size);
     break;
   case StorageType::MEMORY:
-    return std::make_unique<MemoryStorage<PageType>>();
-  }
-}
-
-/**
- * @brief Method to create backend storage object
- *
- * @param connection_string Url containing the type of storage backend and its
- * arguments. The url schema is `<type>://<host>/<path>?<args>`. For example a
- * file storage url looks like `file:///myCollection.db` where the backend
- * uses the file `myCollection.db` in the root folder `/` to store data.
- *
- * @tparam PageType The type of page stored by the storage.
- */
-template <class PageType>
-std::unique_ptr<Storage<PageType>>
-CreateStorage(const char *connection_string) {
-  ConnectionString _connection_string(connection_string);
-
-  switch (StorageTypeMap.at(_connection_string.type)) {
-  case StorageType::FILE:
-    return std::make_unique<FileStorage<PageType>>(_connection_string.path);
-    break;
-  case StorageType::MEMORY:
-    return std::make_unique<MemoryStorage<PageType>>();
+    return std::make_unique<MemoryStorage<PageType>>(
+        connection_string.page_size);
   }
 }
 
 /**
  * @brief Method to remove backend storage object
  *
- * @param connection_string Url containing the type of storage backend and its
- * arguments. The url schema is `<type>://<host>/<path>?<args>`. For example a
- * file storage url looks like `file:///myCollection.db` where the backend
- * uses the file `myCollection.db` in the root folder `/` to store data.
+ * @param connection_string Constant referene to connection string object.
  *
  * @tparam PageType The type of page stored by the storage.
  */
 template <class PageType>
-void RemoveStorage(const std::string &connection_string) {
-  std::unique_ptr<Storage<PageType>> storage =
-      CreateStorage<PageType>(connection_string);
-  storage->Open();
-  storage->Remove();
-  storage->Close();
-}
-
-/**
- * @brief Method to remove backend storage object
- *
- * @param connection_string Url containing the type of storage backend and its
- * arguments. The url schema is `<type>://<host>/<path>?<args>`. For example a
- * file storage url looks like `file:///myCollection.db` where the backend
- * uses the file `myCollection.db` in the root folder `/` to store data.
- *
- * @tparam PageType The type of page stored by the storage.
- */
-template <class PageType> void RemoveStorage(const char *connection_string) {
+void RemoveStorage(const ConnectionString &connection_string) {
   std::unique_ptr<Storage<PageType>> storage =
       CreateStorage<PageType>(connection_string);
   storage->Open();
