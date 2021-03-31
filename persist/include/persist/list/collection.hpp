@@ -26,6 +26,7 @@
 #define PERSIST_LIST_COLLECTION_HPP
 
 #include <persist/core/exceptions/record.hpp>
+#include <persist/core/fsm/fsl.hpp>
 
 #include <persist/list/record_manager.hpp>
 
@@ -37,14 +38,35 @@ namespace persist {
  * @brief List collection.
  *
  * @tparam RecordType Record type stored in list.
+ * @tparam ReplacerType The type of page replacer to be used by buffer manager.
+ * Default set to LRUReplacer.
+ * @tparam FreeSpaceManagerType The type of free space manager. Default set to
+ * FSLManager.
  *
  */
-template <class RecordType> class List {
+template <class RecordType, class ReplacerType = LRUReplacer,
+          class FreeSpaceManagerType = FSLManager>
+class List {
   // Record should be storage
   static_assert(std::is_base_of<Storable, RecordType>::value,
                 "Record must be derived from persist::Storable");
 
   PERSIST_PRIVATE
+  /**
+   * @brief Unique pointer to data storage.
+   *
+   */
+  std::unique_ptr<Storage<RecordPage>> storage;
+  /**
+   * @brief Buffer manager.
+   *
+   */
+  BufferManager<RecordPage, ReplacerType> buffer_manager;
+  /**
+   * @brief Free space manager.
+   *
+   */
+  FreeSpaceManagerType fsm;
   /**
    * @brief Record manager.
    *
@@ -224,9 +246,16 @@ public:
    * file storage url looks like `file:///myCollection.db` where the backend
    * uses the file `myCollection.db` in the root folder `/` to store data.
    * @param cache_size Amount of memory in bytes to use for internal cache.
+   * @param fsm_cache_size Amount of memory in bytes to use for internal FSM
+   * cache.
    */
-  List(std::string connection_string) {}
-  List(std::string connection_string, uint64_t cache_size) {}
+  List(const std::string &connection_string,
+       size_t cache_size = DEFAULT_BUFFER_SIZE,
+       size_t fsm_cache_size = DEFAULT_FSM_BUFFER_SIZE)
+      : storage(CreateStorage<RecordPage>(connection_string)),
+        buffer_manager(storage.get(), cache_size),
+        fsm(connection_string, fsm_cache_size),
+        record_manager(buffer_manager, fsm) {}
 
   /**
    * @brief Insert record at specified postion in the collection.

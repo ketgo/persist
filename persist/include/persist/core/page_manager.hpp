@@ -26,7 +26,7 @@
 #define PERSIST_CORE_PAGEMANAGER_HPP
 
 #include <persist/core/buffer/buffer_manager.hpp>
-#include <persist/core/fsm/fsl.hpp>
+#include <persist/core/fsm/base.hpp>
 #include <persist/core/page/record_page/page.hpp>
 
 namespace persist {
@@ -36,13 +36,9 @@ namespace persist {
  * comprises of buffer manager and free space manager.
  *
  * @tparam ReplacerType The type of page replacer to be used by buffer manager.
- * Default set to LRUReplacer.
- * @tparam FreeSpaceManagerType The type of free space manager. Default set to
- * FSLManager.
+ * @tparam FreeSpaceManagerType The type of free space manager.
  */
-template <class ReplacerType = LRUReplacer,
-          class FreeSpaceManagerType = FSLManager>
-class PageManager {
+template <class ReplacerType, class FreeSpaceManagerType> class PageManager {
   static_assert(std::is_base_of<FreeSpaceManager, FreeSpaceManagerType>::value,
                 "FreeSpaceManagerType must be derived from "
                 "persist::FreeSpaceManager class.");

@@ -25,6 +25,8 @@
 #ifndef PERSIST_CORE_RECORDMANAGER_HPP
 #define PERSIST_CORE_RECORDMANAGER_HPP
 
+#include <memory>
+
 #include <persist/core/page/record_page/slot.hpp>
 #include <persist/core/page_manager.hpp>
 #include <persist/core/transaction/transaction.hpp>
@@ -42,12 +44,9 @@ typedef RecordPageSlot::Location RecordLocation;
  *
  * @tparam RecordType Data record type.
  * @tparam ReplacerType The type of page replacer to be used by buffer manager.
- * Default set to LRUReplacer.
- * @tparam FreeSpaceManagerType The type of free space manager. Default set to
- * FSLManager.
+ * @tparam FreeSpaceManagerType The type of free space manager.
  */
-template <class RecordType, class ReplacerType = LRUReplacer,
-          class FreeSpaceManagerType = FSLManager>
+template <class RecordType, class ReplacerType, class FreeSpaceManagerType>
 class RecordManager {
   // Record should be storage
   static_assert(std::is_base_of<Storable, RecordType>::value,

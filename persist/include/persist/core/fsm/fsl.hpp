@@ -123,9 +123,10 @@ public:
    *
    */
   explicit FSLManager(const std::string &connection_string,
-                      size_t cache_size = DEFAULT_FSL_BUFFER_SIZE)
+                      size_t cache_size = DEFAULT_FSM_BUFFER_SIZE)
       : started(false), last_page_id(0),
-        storage(CreateStorage<FSLPage>(connection_string)),
+        storage(CreateStorage<FSLPage>(
+            ConnectionString(connection_string, FSM_STORAGE_EXTENTION))),
         buffer_manager(storage.get(), cache_size) {}
 
   /**

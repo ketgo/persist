@@ -60,7 +60,7 @@ protected:
 
   void SetUp() override {
     // Setup FSL Storage
-    storage = persist::CreateStorage<FSLPage>(connection_string);
+    storage = persist::CreateStorage<FSLPage>(ConnectionString(connection_string, FSM_STORAGE_EXTENTION));
     storage->Open();
 
     // Setup FSL page
@@ -91,7 +91,6 @@ protected:
   void TearDown() override {
     fsl_manager->Stop();
     storage->Remove();
-    storage->Close();
   }
 
 private:
