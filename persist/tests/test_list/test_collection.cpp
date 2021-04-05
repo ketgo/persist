@@ -29,12 +29,29 @@
 
 #include <gtest/gtest.h>
 
+#include <memory>
+#include <string>
+
 #include <persist/list/collection.hpp>
+#include <persist/utility/serializer.hpp>
 
 using namespace persist;
 
 class ListCollectionTestFixture : public ::testing::Test {
 protected:
+  /**
+   * @brief Record stored by the collection.
+   *
+   */
+  struct Record : public Storable {
+    std::string data;
+
+    size_t GetStorageSize() const override { return data.size(); }
+    void Load(Span input) override { load(input, data); }
+    void Dump(Span output) override { dump(output, data); }
+  };
+  std::unique_ptr<List<Record>> list;
+
   void SetUp() override {}
 
   void TearDown() override {}

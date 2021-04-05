@@ -1,5 +1,5 @@
 /**
- * record.hpp - Persist
+ * test_record_manager.cpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -23,51 +23,39 @@
  */
 
 /**
- * @brief The header file contains record related exceptions.
+ * @brief Unit Test ListRecordManager
  *
  */
 
-#ifndef PERSIST_CORE_EXCEPTIONS_RECORD_HPP
-#define PERSIST_CORE_EXCEPTIONS_RECORD_HPP
+#include <gtest/gtest.h>
 
+#include <memory>
 #include <string>
 
-#include <persist/core/exceptions/base.hpp>
+#include <persist/core/fsm/fsl.hpp>
+#include <persist/list/record_manager.hpp>
+#include <persist/utility/serializer.hpp>
 
-namespace persist {
+using namespace persist;
 
-/**
- * Record Parse Error
- *
- * This error is thrown while parsing a record.
- */
-class RecordParseError : public ParseException {
-private:
-  std::string msg;
+class ListRecordManagerTestFixture : public ::testing::Test {
+protected:
+  /**
+   * @brief Record stored by the collection.
+   *
+   */
+  struct Record : public Storable {
+    std::string data;
 
-public:
-  RecordParseError() : msg("Record parse error.") {}
+    size_t GetStorageSize() const override { return data.size(); }
+    void Load(Span input) override { load(input, data); }
+    void Dump(Span output) override { dump(output, data); }
+  };
+  std::unique_ptr<ListRecordManager<Record, LRUReplacer, FSLManager>> record_manager;
 
-  const char *what() const throw() { return msg.c_str(); }
+  void SetUp() override {}
+
+  void TearDown() override {}
 };
 
-/**
- * Record Not Found Error
- *
- * This error is thrown when a page slot does not exists inside
- * a page.
- */
-class RecordNotFoundError : public NotFoundException {
-private:
-  std::string msg;
-
-public:
-  RecordNotFoundError() : msg("Record not found.") {}
-  RecordNotFoundError(const std::string &msg) : msg(msg) {}
-
-  const char *what() const throw() { return msg.c_str(); }
-};
-
-} // namespace persist
-
-#endif /* PERSIST_CORE_EXCEPTIONS_RECORD_HPP */
+TEST_F(ListRecordManagerTestFixture, TestIterator) {}

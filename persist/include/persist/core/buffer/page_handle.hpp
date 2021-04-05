@@ -122,6 +122,13 @@ public:
   }
 
   /**
+   * @brief Get handled pointer to page.
+   *
+   * @returns Pointer to page.
+   */
+  PageType *Get() const { return page; }
+
+  /**
    * @brief Move assignment operator. This will relese access ownership of the
    * currently owned page.
    */

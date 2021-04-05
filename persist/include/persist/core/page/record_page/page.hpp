@@ -338,9 +338,9 @@ public:
    * Set next page ID. This is the ID for the next linked page when there is
    * data overflow. A value of `0` means there is no next page.
    *
-   * @param page_id next page ID value to set
+   * @param page_id Constant reference to the next page ID value to set
    */
-  void SetNextPageId(PageId page_id) {
+  void SetNextPageId(const PageId &page_id) {
     header.next_page_id = page_id;
     // Notify observers of modification
     NotifyObservers();
@@ -358,9 +358,9 @@ public:
    * Set previous page ID. This is the ID for the previous linked page when
    * there is data overflow. A value of 0 means there is no previous page.
    *
-   * @param page_id previous page ID value to set
+   * @param page_id Constant reference to the previous page ID value to set
    */
-  void SetPrevPageId(PageId page_id) {
+  void SetPrevPageId(const PageId &page_id) {
     header.prev_page_id = page_id;
     // Notify observers of modification
     NotifyObservers();

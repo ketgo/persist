@@ -103,7 +103,7 @@ class FSLManager : public FreeSpaceManager {
       // Loop through rest of the FSLPages
       while (rvalue > 0) {
         auto page = buffer_manager.Get(rvalue);
-        if (page_id > page->GetMinPageId()) {
+        if (page_id >= page->GetMinPageId()) {
           break;
         }
         --rvalue;

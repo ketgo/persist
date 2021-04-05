@@ -249,7 +249,7 @@ public:
 
     // Byte buffer to read
     ByteBuffer read;
-    // Start reading record blocks
+    // Start reading slots
     LogPageSlot::Location read_location = location;
     while (!read_location.IsNull()) {
       // Get page

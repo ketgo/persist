@@ -27,7 +27,8 @@
 
 #include <persist/core/buffer/buffer_manager.hpp>
 #include <persist/core/fsm/base.hpp>
-#include <persist/core/page/record_page/page.hpp>
+
+#include <persist/utility/mutex.hpp>
 
 namespace persist {
 
@@ -35,32 +36,43 @@ namespace persist {
  * @brief The page manager handles pages for storage of data records. It
  * comprises of buffer manager and free space manager.
  *
+ * @tparam PageType The type of page.
  * @tparam ReplacerType The type of page replacer to be used by buffer manager.
  * @tparam FreeSpaceManagerType The type of free space manager.
  */
-template <class ReplacerType, class FreeSpaceManagerType> class PageManager {
+template <class PageType, class ReplacerType, class FreeSpaceManagerType>
+class PageManager {
   static_assert(std::is_base_of<FreeSpaceManager, FreeSpaceManagerType>::value,
                 "FreeSpaceManagerType must be derived from "
                 "persist::FreeSpaceManager class.");
 
   PERSIST_PRIVATE
   /**
+   * @brief Recursive lock for thread safety
+   *
+   */
+  // TODO: Need granular locking
+  typedef typename persist::Mutex<std::recursive_mutex> Mutex;
+  Mutex lock; //<- lock for achieving thread safety via mutual exclusion
+  typedef typename persist::LockGuard<Mutex> LockGuard;
+
+  /**
    * @brief Reference to buffer manager containing buffer of pages.
    *
    */
-  BufferManager<RecordPage, ReplacerType> &buffer_manager;
+  BufferManager<PageType, ReplacerType> &buffer_manager GUARDED_BY(lock);
 
   /**
    * @brief Reference to free space manager
    *
    */
-  FreeSpaceManagerType &fsm;
+  FreeSpaceManagerType &fsm GUARDED_BY(lock);
 
   /**
    * @brief Flag indicating allocator started.
    *
    */
-  bool started;
+  bool started GUARDED_BY(lock);
 
 public:
   /**
@@ -69,15 +81,19 @@ public:
    * @param buffer_manager Reference to buffer manager.
    * @param fsm Reference to free space manager.
    */
-  PageManager(BufferManager<RecordPage, ReplacerType> &buffer_manager,
+  PageManager(BufferManager<PageType, ReplacerType> &buffer_manager,
               FreeSpaceManagerType &fsm)
-      : buffer_manager(buffer_manager), fsm(fsm) {}
+      : buffer_manager(buffer_manager), fsm(fsm), started(false) {}
 
   /**
    * @brief Start page allocator.
    *
+   * @thread_safe
+   *
    */
   void Start() {
+    LockGuard guard(lock);
+
     if (!started) {
       buffer_manager.Start();
       fsm.Start();
@@ -88,8 +104,11 @@ public:
   /**
    * @brief Stop page allocator.
    *
+   * @thread_safe
    */
   void Stop() {
+    LockGuard guard(lock);
+
     if (started) {
       buffer_manager.Stop();
       fsm.Stop();
@@ -102,24 +121,40 @@ public:
    * is not already found in the buffer. In case the page is not found in the
    * backend storage a PageNotFoundError exception is raised.
    *
+   * @thread_safe
+   *
    * @param page_id Page identifer
    * @returns Page handle object
    */
-  PageHandle<RecordPage> GetPage(PageId page_id) {
-    return buffer_manager.Get(page_id);
+  PageHandle<PageType> GetPage(PageId page_id) {
+    LockGuard guard(lock);
+
+    // Get page from buffer manager
+    auto page = buffer_manager.Get(page_id);
+    // TODO: This is inefficient since for every GetPage the fsm is getting
+    // registered.
+    page->RegisterObserver(&fsm);
+
+    return page;
   }
 
   /**
    * @brief Get a new page. The method creates a new page and loads it into the
    * internal buffer.
    *
+   * @thread_safe
+   *
    * @returns Page handle object
    */
-  PageHandle<RecordPage> GetNewPage() {
+  PageHandle<PageType> GetNewPage() {
+    LockGuard guard(lock);
+
     // Create new page
     auto page = buffer_manager.GetNew();
+    // Register fsm with page
+    page->RegisterObserver(&fsm);
     // Manage free space in new page
-    fsm.Manage(*page);
+    fsm.Manage(*page.Get());
 
     return page;
   }
@@ -128,11 +163,15 @@ public:
    * @brief Get a page with free space. If no such page is available then a new
    * page is loaded into the buffer and its handle returned.
    *
+   * @thread_safe
+   *
    * @param size_hint Desired free space size. Note that the size is treated
    * only as a hint.
    * @returns Page handle object
    */
-  PageHandle<RecordPage> GetFreeOrNewPage(size_t size_hint) {
+  PageHandle<PageType> GetFreeOrNewPage(size_t size_hint) {
+    LockGuard guard(lock);
+
     // Get ID of page with free space
     PageId free_page_id = fsm.GetPageId(size_hint);
     // If no free page found then return a new page

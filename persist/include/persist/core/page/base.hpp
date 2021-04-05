@@ -25,7 +25,7 @@
 #ifndef PERSIST_CORE_PAGE_BASE_HPP
 #define PERSIST_CORE_PAGE_BASE_HPP
 
-#include <list>
+#include <set>
 
 #include <persist/core/common.hpp>
 
@@ -62,9 +62,9 @@ public:
 class Page : public virtual Storable {
   PERSIST_PROTECTED
   /**
-   * @brief List of registered page modification observers
+   * @brief Set of registered page modification observers.
    */
-  std::list<PageObserver *> observers;
+  std::set<PageObserver *> observers;
 
   /**
    * @brief Notify all registered observers of page modification.
@@ -87,9 +87,7 @@ public:
    *
    * @param observer pointer to page modication observer
    */
-  void RegisterObserver(PageObserver *observer) {
-    observers.insert(observers.end(), observer);
-  }
+  void RegisterObserver(PageObserver *observer) { observers.insert(observer); }
 
   /**
    * Get page identifier.

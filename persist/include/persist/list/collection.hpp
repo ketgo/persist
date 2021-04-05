@@ -47,31 +47,24 @@ namespace persist {
 template <class RecordType, class ReplacerType = LRUReplacer,
           class FreeSpaceManagerType = FSLManager>
 class List {
-  // Record should be storage
-  static_assert(std::is_base_of<Storable, RecordType>::value,
-                "Record must be derived from persist::Storable");
-
   PERSIST_PRIVATE
   /**
    * @brief Unique pointer to data storage.
    *
    */
   std::unique_ptr<Storage<RecordPage>> storage;
+
   /**
    * @brief Buffer manager.
    *
    */
   BufferManager<RecordPage, ReplacerType> buffer_manager;
+
   /**
    * @brief Free space manager.
    *
    */
   FreeSpaceManagerType fsm;
-  /**
-   * @brief Record manager.
-   *
-   */
-  ListRecordManager<RecordType> record_manager;
 
   /**
    * @brief Linked List Node
@@ -109,7 +102,7 @@ class List {
      *
      * @param input input buffer span to load
      */
-    void Load(Span input) {
+    void Load(Span input) override {
       if (input.size < GetStorageSize()) {
         throw RecordParseError();
       }
@@ -123,7 +116,7 @@ class List {
      *
      * @param output output buffer span to dump
      */
-    void Dump(Span output) {
+    void Dump(Span output) override {
       if (output.size < GetStorageSize()) {
         throw RecordParseError();
       }
@@ -132,6 +125,20 @@ class List {
       record.Dump(output);
     }
   };
+
+  /**
+   * @brief Record manager storing linked list of nodes.
+   *
+   */
+  typedef ListRecordManager<Node, ReplacerType, FreeSpaceManagerType>
+      RecordManager;
+  RecordManager record_manager;
+
+  /**
+   * @brief Flag indicating collection is openned.
+   *
+   */
+  bool openned;
 
 public:
   /**
@@ -143,9 +150,9 @@ public:
   class Iterator {
     PERSIST_PRIVATE
     /**
-     * @brief Pointer to the underlying collection
+     * @brief Reference to the record manager.
      */
-    List<RecordType> *list;
+    RecordManager &record_manager;
 
     /**
      * @brief Record location
@@ -171,10 +178,15 @@ public:
     typedef std::ptrdiff_t difference_type;
 
     /**
-     * @brief Construct a new Iterator object
+     * @brief Construct a new Iterator object.
+     *
+     * @param record_manager Constant reference to record manager.
+     * @param location Constant reference to the starting location.
      */
-    Iterator() {}
-    Iterator(List *list, RecordLocation location);
+    Iterator() = default;
+    Iterator(const RecordManager &record_manager,
+             const RecordLocation &location)
+        : record_manager(record_manager), location(location) {}
 
     /**
      * @brief PREFIX increment operator
@@ -225,17 +237,21 @@ public:
     /**
      * @brief Equality comparision operator
      */
-    bool operator==(const self_type &rhs) { return location == rhs.location; }
+    bool operator==(const self_type &rhs) const {
+      return location == rhs.location;
+    }
 
     /**
      * @brief Non-equality comparision operator
      */
-    bool operator!=(const self_type &rhs) { return location != rhs.location; }
+    bool operator!=(const self_type &rhs) const {
+      return location != rhs.location;
+    }
 
     /**
      * @brief Get record location on backend storage.
      */
-    const RecordLocation &GetLocation() { return location; }
+    const RecordLocation &GetRecordLocation() const { return location; }
   };
 
   /**
@@ -252,22 +268,42 @@ public:
   List(const std::string &connection_string,
        size_t cache_size = DEFAULT_BUFFER_SIZE,
        size_t fsm_cache_size = DEFAULT_FSM_BUFFER_SIZE)
-      : storage(CreateStorage<RecordPage>(connection_string)),
+      : storage(CreateStorage<RecordPage>(
+            ConnectionString(connection_string, DATA_STORAGE_EXTENTION))),
         buffer_manager(storage.get(), cache_size),
         fsm(connection_string, fsm_cache_size),
-        record_manager(buffer_manager, fsm) {}
+        record_manager(buffer_manager, fsm), openned(false) {}
 
   /**
-   * @brief Insert record at specified postion in the collection.
+   * @brief Open collection.
    *
-   * TODO: Use constant iterator when passing position to the method.
+   */
+  void Open() {
+    if (!openned) {
+      record_manager.Start();
+    }
+  }
+
+  /**
+   * @brief Close collection.
    *
-   * @param postion Iterator pointing to the position in the container
-   * where the new elements are inserted.
+   */
+  void Close() {
+    if (openned) {
+      record_manager.Stop();
+    }
+  }
+
+  /**
+   * @brief Insert record at specified postion in the collection. This increase
+   * the size of the collection by 1.
+   *
+   * @param postion Constant reference to iterator pointing at the
+   * position in the container where the new elements is to be inserted.
    * @param record Constant reference to the record to insert.
    * @returns Iterator pointing to the inserted element.
    */
-  Iterator Insert(Iterator postion, const RecordType &record);
+  Iterator Insert(const Iterator &postion, const RecordType &record);
 };
 
 } // namespace persist

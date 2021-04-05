@@ -27,6 +27,7 @@
 
 #include <memory>
 
+#include <persist/core/page/record_page/page.hpp>
 #include <persist/core/page/record_page/slot.hpp>
 #include <persist/core/page_manager.hpp>
 #include <persist/core/transaction/transaction.hpp>
@@ -57,7 +58,7 @@ class RecordManager {
    * @brief Page Allocator
    *
    */
-  PageManager<ReplacerType, FreeSpaceManagerType> page_manager;
+  PageManager<RecordPage, ReplacerType, FreeSpaceManagerType> page_manager;
 
   /**
    * @brief Flag indicating manager started.
@@ -108,10 +109,10 @@ public:
    * @brief Get record stored at given location.
    *
    * @param record Reference to the record to get.
-   * @param location Location of the stored record.
+   * @param location Constant reference to the location of the stored record.
    * @param txn Reference to an active transaction.
    */
-  virtual void Get(RecordType &record, RecordLocation location,
+  virtual void Get(RecordType &record, const RecordLocation &location,
                    Transaction &txn) = 0;
 
   /**
@@ -128,19 +129,19 @@ public:
    * @brief Update record stored at given location.
    *
    * @param record Reference to the updated record.
-   * @param location Location of the record.
+   * @param location Constant reference to the location of the record.
    * @param txn Reference to an active transaction.
    */
-  virtual void Update(RecordType &record, RecordLocation location,
+  virtual void Update(RecordType &record, const RecordLocation &location,
                       Transaction &txn) = 0;
 
   /**
    * @brief Delete record stored at given location.
    *
-   * @param location Location of the record to delete.
+   * @param location Constant reference to the location of the record to delete.
    * @param txn Reference to an active transaction.
    */
-  virtual void Delete(RecordLocation location, Transaction &txn) = 0;
+  virtual void Delete(const RecordLocation &location, Transaction &txn) = 0;
 };
 
 } // namespace persist

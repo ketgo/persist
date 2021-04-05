@@ -218,9 +218,12 @@ public:
   /**
    * @brief Set the sequence number of the stored log record
    *
-   * @param seq_number sequence number of the stored log record
+   * @param seq_number Constant reference to the sequence number of the stored
+   * log record
    */
-  void SetSeqNumber(SeqNumber &seq_number) { header.seq_number = seq_number; }
+  void SetSeqNumber(const SeqNumber &seq_number) {
+    header.seq_number = seq_number;
+  }
 
   /**
    * @brief Get the next page slot location
@@ -232,9 +235,12 @@ public:
   /**
    * @brief Set the next page slot location
    *
-   * @param location Location of the next linked page slot
+   * @param location Constant reference to the location of the next linked page
+   * slot
    */
-  void SetNextLocation(Location &location) { header.next_location = location; }
+  void SetNextLocation(const Location &location) {
+    header.next_location = location;
+  }
 
   /**
    * Get storage size of page slot.
