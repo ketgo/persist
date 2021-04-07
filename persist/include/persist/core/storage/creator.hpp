@@ -58,6 +58,10 @@ CreateStorage(const ConnectionString &connection_string) {
   case StorageType::MEMORY:
     return std::make_unique<MemoryStorage<PageType>>(
         connection_string.page_size);
+        break;
+  default:
+    return std::make_unique<MemoryStorage<PageType>>(
+        connection_string.page_size);
   }
 }
 

@@ -45,7 +45,7 @@ protected:
   const uint64_t page_size = DEFAULT_PAGE_SIZE;
   std::unique_ptr<SimplePage> page_1, page_2;
   std::unique_ptr<LRUReplacer> replacer;
-  typedef PageHandle<SimplePage> PageHandle;
+  typedef PageHandle<SimplePage> PageHandleType;
 
   void SetUp() override {
     // setting up pages
@@ -63,11 +63,11 @@ protected:
   /**
    * @brief Helper function to get page handle
    */
-  PageHandle GetPageHandle(PageId page_id) {
+  PageHandleType GetPageHandle(PageId page_id) {
     if (page_id == page_id_1) {
-      return PageHandle(page_1.get(), replacer.get());
+      return PageHandleType(page_1.get(), replacer.get());
     }
-    return PageHandle(page_2.get(), replacer.get());
+    return PageHandleType(page_2.get(), replacer.get());
   }
 };
 
@@ -75,7 +75,7 @@ TEST_F(PageHandleTestFixture, TestLifeCycle) {
   ASSERT_TRUE(!replacer->IsPinned(page_id_1));
 
   {
-    PageHandle page_handle = GetPageHandle(page_id_1);
+    PageHandleType page_handle = GetPageHandle(page_id_1);
     ASSERT_TRUE(replacer->IsPinned(page_id_1));
     ASSERT_EQ(page_handle->GetId(), page_id_1);
   }
@@ -87,7 +87,7 @@ TEST_F(PageHandleTestFixture, TestMoveConstructor) {
   ASSERT_TRUE(!replacer->IsPinned(page_id_1));
 
   {
-    PageHandle page_handle(std::move(GetPageHandle(page_id_1)));
+    PageHandleType page_handle(std::move(GetPageHandle(page_id_1)));
     ASSERT_TRUE(replacer->IsPinned(page_id_1));
     ASSERT_EQ(page_handle->GetId(), page_id_1);
   }
@@ -100,7 +100,7 @@ TEST_F(PageHandleTestFixture, TestMoveAssignment) {
   ASSERT_TRUE(!replacer->IsPinned(page_id_2));
 
   {
-    PageHandle page_handle = GetPageHandle(page_id_1);
+    PageHandleType page_handle = GetPageHandle(page_id_1);
     ASSERT_TRUE(replacer->IsPinned(page_id_1));
     ASSERT_EQ(page_handle->GetId(), page_id_1);
 
