@@ -35,6 +35,7 @@
 #include <list>
 #include <map>
 #include <set>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -49,6 +50,16 @@ template <class T> inline void _copy(Span &input, T &data) {
   std::memcpy((void *)&data, (const void *)input.start, sizeof(T));
   // Updated span
   input += sizeof(T);
+}
+
+// Internal method to copy content from memory location specified by span object
+// to a data variable.
+template <> inline void _copy(Span &input, std::string &data) {
+  // Copy number of elements in the container
+  size_t size;
+  _copy(input, size);
+  // Set string
+  data = std::string(reinterpret_cast<char const *>(input.start), size);
 }
 
 // Internal method to copy content from memory location specified by span object
@@ -141,6 +152,17 @@ template <class T> inline void _copy(const T &data, Span &output) {
   std::memcpy((void *)output.start, (const void *)&data, sizeof(T));
   // Updated span
   output += sizeof(T);
+}
+
+// Internal method to copy content from data variable to memory location
+// specified by span object
+template <> inline void _copy(const std::string &data, Span &output) {
+  // Dump size of string
+  size_t size = data.size();
+  _copy(size, output);
+  // Dump each element in the string
+  std::memcpy((void *)output.start, (const void *)data.c_str(), size);
+  output += sizeof(char) * size;
 }
 
 // Internal method to copy content from data variable to memory location

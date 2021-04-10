@@ -43,8 +43,12 @@ namespace persist {
 template <class RecordType, class ReplacerType, class FreeSpaceManagerType>
 class ListRecordManager
     : public RecordManager<RecordType, ReplacerType, FreeSpaceManagerType> {
+  // Page manager defined in base class
   using RecordManager<RecordType, ReplacerType,
                       FreeSpaceManagerType>::page_manager;
+  // Inherit constructor
+  using RecordManager<RecordType, ReplacerType,
+                      FreeSpaceManagerType>::RecordManager;
 
   PERSIST_PRIVATE
   /**
@@ -170,7 +174,7 @@ public:
    */
   RecordLocation Insert(RecordType &record, Transaction &txn) override {
     // Byte buffer to write
-    ByteBuffer write_buffer;
+    ByteBuffer write_buffer(record.GetStorageSize());
     // Dump record to byte buffer
     record.Dump(write_buffer);
     // Insert byte buffer.
