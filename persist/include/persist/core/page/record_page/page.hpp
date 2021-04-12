@@ -303,7 +303,8 @@ public:
   const PageId &GetId() const override { return header.page_id; }
 
   /**
-   * Get free space in bytes available in the page.
+   * Get free space in bytes available in the page. The method takes the log
+   * page slot fixed size into account when calculating free space.
    *
    * @param operation The type of page operation for which free space is
    * requested.
@@ -313,11 +314,13 @@ public:
     size_t size = header.GetTail() - header.GetStorageSize();
     // Compute size for INSERT operation
     if (operation == Operation::INSERT) {
-      const size_t single_slot_span_size =
-          sizeof(Header::SlotSpan) + sizeof(PageSlotId);
+      // Amount of space occupied along with correction due to header of
+      // SlotSpan and page slot fixed size during insert operation.
+      const size_t occupied = sizeof(Header::SlotSpan) + sizeof(PageSlotId) +
+                              RecordPageSlot::GetFixedStorageSize();
       // Check if free space size is greater than header slot size
-      if (size > single_slot_span_size) {
-        size -= single_slot_span_size;
+      if (size > occupied) {
+        size -= occupied;
       } else {
         size = 0;
       }

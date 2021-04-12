@@ -151,14 +151,14 @@ public:
   /**
    * @brief Size of free space available on the page.
    */
-  size_t data_Size;
+  size_t data_size;
 
 public:
   /**
    * @brief Construct a new Log Page object
    */
   LogPage(PageId page_id = 0, size_t page_size = DEFAULT_LOG_PAGE_SIZE)
-      : header(page_id, page_size), data_Size(header.GetStorageSize()) {}
+      : header(page_id, page_size), data_size(header.GetStorageSize()) {}
 
   /**
    * Get page identifier.
@@ -169,16 +169,22 @@ public:
 
   /**
    * @brief Get the storage free space size in the page for specified operation.
+   * The method takes the log page slot fixed size into account when calculating
+   * free space.
+   *
+   * NOTE: Log pages only support INSERT operation
    *
    * @param operation Operaion to be performed
    * @returns Free space in bytes
    */
   size_t GetFreeSpaceSize(Operation operation) const override {
-    // If stored data size greater than page size then return 0
-    if (header.page_size <= data_Size) {
+    // Amount of space occupied along with the fixed size of slot
+    size_t occupied = data_size + LogPageSlot::GetFixedStorageSize();
+    // If occupied data size is greater than equal to page size then return 0
+    if (header.page_size <= occupied) {
       return 0;
     }
-    return header.page_size - data_Size;
+    return header.page_size - occupied;
   }
 
   /**
@@ -223,7 +229,7 @@ public:
    */
   LogPageSlot *InsertPageSlot(LogPageSlot &page_slot) {
     // Update data size in page
-    data_Size += page_slot.GetStorageSize();
+    data_size += page_slot.GetStorageSize();
     // Insert record block at slot
     auto inserted = slots.emplace(page_slot.GetSeqNumber(), page_slot);
 
@@ -253,15 +259,15 @@ public:
 
     // Load Page header
     header.Load(input);
-    data_Size = header.GetStorageSize();
-    input += data_Size;
+    data_size = header.GetStorageSize();
+    input += data_size;
     // Load bytes
     for (size_t i = 0; i < header.slot_count; ++i) {
       // Load slot
       LogPageSlot slot;
       slot.Load(input);
       size_t slot_size = slot.GetStorageSize();
-      data_Size += slot_size;
+      data_size += slot_size;
       input += slot_size;
       slots.emplace(slot.GetSeqNumber(), slot);
     }

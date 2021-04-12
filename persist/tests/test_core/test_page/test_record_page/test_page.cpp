@@ -327,7 +327,8 @@ TEST_F(RecordPageTestFixture, TestFreeSpace) {
   ASSERT_EQ(_page.GetFreeSpaceSize(Operation::UPDATE),
             page_size - header.GetStorageSize());
   ASSERT_EQ(_page.GetFreeSpaceSize(Operation::INSERT),
-            page_size - header.GetStorageSize() - single_slot_span_size);
+            page_size - header.GetStorageSize() - single_slot_span_size -
+                RecordPageSlot::GetFixedStorageSize());
 }
 
 TEST_F(RecordPageTestFixture, TestGetPageSlot) {
@@ -367,7 +368,8 @@ TEST_F(RecordPageTestFixture, TestAddPageSlot) {
   ASSERT_EQ(log_record->page_slot_b, RecordPageSlot());
 
   size_t new_free_size = page->header.GetTail() - page->header.GetStorageSize();
-  ASSERT_EQ(old_free_space - new_free_size, page_slot.GetStorageSize());
+  ASSERT_EQ(old_free_space - new_free_size,
+            page_slot.GetStorageSize() - RecordPageSlot::GetFixedStorageSize());
   ASSERT_EQ(page->GetPageSlot(slot_id, txn), page_slot);
 }
 

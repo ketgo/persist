@@ -29,6 +29,7 @@
 
 #include <gtest/gtest.h>
 
+#include <list>
 #include <memory>
 #include <string>
 
@@ -42,7 +43,7 @@ using namespace persist;
 class ListRecordManagerTestFixture : public ::testing::Test {
 protected:
   const uint64_t page_size = DEFAULT_PAGE_SIZE;
-  const uint64_t max_size = 2;
+  const uint64_t max_size = 20;
   const std::string data_connection_string = "file://test_list_record_manager";
   const std::string log_connection_string =
       "file://test_list_record_manager_log";
@@ -119,22 +120,27 @@ protected:
 };
 
 TEST_F(ListRecordManagerTestFixture, TestInsert) {
-  // Insert record
-  Record record("test");
-  RecordLocation location;
-  {
+  std::list<std::pair<RecordLocation, std::string>> records;
+  const size_t num_records = 2;
+
+  // Insert records
+  for (size_t i = 0; i < num_records; ++i) {
+    std::string data((i + 3) * page_size, 'A');
+    Record record(data);
     auto txn = txn_manager->Begin();
-    location = record_manager->Insert(record, txn);
+    RecordLocation location = record_manager->Insert(record, txn);
     txn_manager->Commit(txn);
+
+    records.push_back({location, data});
   }
 
-  // Get record
-  Record _record;
-  {
+  // Get and assert records
+  for (auto &element : records) {
+    Record record;
     auto txn = txn_manager->Begin();
-    record_manager->Get(_record, location, txn);
+    record_manager->Get(record, element.first, txn);
     txn_manager->Commit(txn);
-  }
 
-  ASSERT_EQ(record, _record);
+    ASSERT_EQ(element.second, record.data);
+  }
 }

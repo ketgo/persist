@@ -248,6 +248,7 @@ public:
       if (force) {
 
         // TODO: Use page IDs in log records instead of a staged list?
+        // TODO: Flush free space manager pages.
 
         // Flush all staged pages
         for (auto page_id : txn.GetStaged()) {

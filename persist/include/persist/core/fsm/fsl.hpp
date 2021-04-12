@@ -148,6 +148,7 @@ public:
         auto new_page = buffer_manager.GetNew();
         last_page_id = new_page->GetId();
       }
+      started = true;
     }
   }
 
@@ -163,6 +164,7 @@ public:
     if (started) {
       // Stop buffer manager.
       buffer_manager.Stop();
+      started = false;
     }
   }
 

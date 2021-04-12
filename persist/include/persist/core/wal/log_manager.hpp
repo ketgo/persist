@@ -202,11 +202,9 @@ public:
       // Create slot to add to page
       LogPageSlot slot(log_record.GetSeqNumber());
       // Compute availble space to write data in page. Here the greedy approach
-      // is utilized where all the available free space can be used to store the
-      // data. The amount of data that can be stored in the page is the
-      // (freeSpace of page) - (fixedSize of page slot).
-      size_t write_space = page->GetFreeSpaceSize(Operation::INSERT) -
-                           (slot.GetStorageSize() - slot.data.size());
+      // is utilized where all the available free space is used to store the
+      // data.
+      size_t write_space = page->GetFreeSpaceSize(Operation::INSERT);
       if (to_write_size < write_space) {
         write_space = to_write_size;
       }

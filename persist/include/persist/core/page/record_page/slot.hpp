@@ -224,6 +224,15 @@ public:
   }
 
   /**
+   * @brief Get the fixied minimum storage size occupied the slot inside a page.
+   *
+   * @returns storage size in bytes.
+   */
+  static size_t GetFixedStorageSize() {
+    return sizeof(Header) + sizeof(size_t);
+  }
+
+  /**
    * @brief Get the next page slot location
    *
    * @return Location of the next linked page slot

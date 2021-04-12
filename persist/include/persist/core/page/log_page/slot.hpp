@@ -245,9 +245,19 @@ public:
   /**
    * Get storage size of page slot.
    *
+   * @returns storage size in bytes.
    */
   size_t GetStorageSize() const override {
     return header.GetStorageSize() + sizeof(size_t) + data.size();
+  }
+
+  /**
+   * @brief Get the fixied minimum storage size occupied the slot inside a page.
+   *
+   * @returns storage size in bytes.
+   */
+  static size_t GetFixedStorageSize() {
+    return sizeof(Header) + sizeof(size_t);
   }
 
   /**
