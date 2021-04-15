@@ -53,23 +53,6 @@ public:
 };
 
 /**
- * @brief Page slot base class. A slot is a block of space inside a page
- * containing complete or part of a data record. Each page type comprises of its
- * own type of slot. However, any type of slot should expose the following
- * interface.
- *
- */
-class PageSlot : public virtual Storable {
-public:
-  /**
-   * @brief Get the fixied minimum storage size occupied the slot inside a page.
-   *
-   * @returns storage size in bytes.
-   */
-  virtual size_t GetFixedStorageSize() const = 0;
-};
-
-/**
  * @brief Page Base Class
  *
  * A Page is a logical chunk of space on a backend storage. The base class

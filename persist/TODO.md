@@ -112,12 +112,17 @@
 
 13. Transaction Manager for a group of collections.
 
+14. Remove the observer pattern and put all the logic to PageHandle.
+
+15. Implement read-only and read-write PageHandle classes.
+
 ------------------------------------------------------------
 
 ## Collections
 
 1. [IN-PROGRESS] Implement List collection
     - [IN-PROGRESS] implement record manager for list collection
+    - [TODO] implement metadata manager to store: location of the first and the last object and the number of elements in the collection.
     - [IN-PROGRESS] implement list collection class
 
 ------------------------------------------------------------
