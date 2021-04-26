@@ -52,7 +52,7 @@ class ListRecordManager
 
   PERSIST_PRIVATE
   /**
-   * @brief Insert bytes as doubly linked page slots in storage. This method is
+   * @brief Insert bytes as doubly linked page slots in storage. The method is
    * used for inserting and in-place updating of records stored in backend
    * storage.
    *
@@ -118,12 +118,27 @@ class ListRecordManager
   }
 
   /**
-   * @brief
+   * @brief Remove doubly linked slots from backend storage.
    *
-   * @param txn
-   * @param location
+   * @param txn Reference to transaction object.
+   * @param location Location of the starting record slot to remove.
    */
-  void Remove(Transaction &txn, const RecordPageSlot::Location &location) {}
+  void Remove(Transaction &txn, const RecordPageSlot::Location &location) {
+    // Location of the slot to remove
+    RecordPageSlot::Location remove_location = location;
+    while (!remove_location.IsNull()) {
+      // Current slot ID
+      PageSlotId slot_id = remove_location.slot_id;
+      // Get handle to the record page
+      auto page = page_manager.GetPage(remove_location.page_id);
+      // Get reference to the slot to remove
+      const RecordPageSlot &slot = page->GetPageSlot(slot_id, txn);
+      // Set next remove location
+      remove_location = slot.GetNextLocation();
+      // Remove record block
+      page->RemovePageSlot(slot_id, txn);
+    }
+  }
 
 public:
   /**
@@ -195,7 +210,14 @@ public:
    * @param location Constant reference to location of the record to delete.
    * @param txn Reference to an active transaction.
    */
-  void Delete(const RecordLocation &location, Transaction &txn) override {}
+  void Delete(const RecordLocation &location, Transaction &txn) override {
+    // Check if provided location is null
+    if (location.IsNull()) {
+      throw RecordNotFoundError("Invalid location provided.");
+    }
+    // Rmove record slots
+    Remove(txn, location);
+  }
 };
 
 } // namespace persist

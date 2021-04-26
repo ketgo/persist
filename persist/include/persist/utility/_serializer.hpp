@@ -146,7 +146,7 @@ inline void _copy(Span &input, std::unordered_map<K, V> &data) {
 // -------------------------------------
 
 // Internal method to copy content from data variable to memory location
-// specified by span object
+// specified by span object.
 template <class T> inline void _copy(const T &data, Span &output) {
   // Dump bytes
   std::memcpy((void *)output.start, (const void *)&data, sizeof(T));
@@ -155,7 +155,7 @@ template <class T> inline void _copy(const T &data, Span &output) {
 }
 
 // Internal method to copy content from data variable to memory location
-// specified by span object
+// specified by span object.
 template <> inline void _copy(const std::string &data, Span &output) {
   // Dump size of string
   size_t size = data.size();
@@ -166,7 +166,7 @@ template <> inline void _copy(const std::string &data, Span &output) {
 }
 
 // Internal method to copy content from data variable to memory location
-// specified by span object
+// specified by span object.
 template <class K, class V>
 inline void _copy(const std::pair<K, V> &data, Span &output) {
   // Copy pair
@@ -174,8 +174,8 @@ inline void _copy(const std::pair<K, V> &data, Span &output) {
   _copy(data.second, output);
 }
 
-// Internal method to copy content from memory location specified by span object
-// to a data variable.
+// Internal method to copy content from data variable to memory location
+// specified by span object.
 template <class T, template <class, class...> class C, class... Args>
 inline void _copy(const C<T, Args...> &data, Span &output) {
   // Copy number of elements in the container

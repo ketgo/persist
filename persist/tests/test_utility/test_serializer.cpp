@@ -48,7 +48,7 @@ struct MockData {
   bool operator==(const MockData &other) const {
     return other.a == a && other.c == c;
   }
-};
+} __attribute__((packed));
 
 class UtilitySerializerTestFixture : public ::testing::Test {
 protected:
@@ -91,16 +91,15 @@ protected:
     // Unordered map data size
     umapSize = umap.size() * (sizeof(char) + sizeof(int)) + sizeof(size_t);
     // Map data size
-    mapSize = umap.size() * (sizeof(char) + sizeof(MockData)) + sizeof(size_t);
+    mapSize = map.size() * (sizeof(char) + sizeof(MockData)) + sizeof(size_t);
     // Combined data size
     allSize = vector2dSize + setSize + listSize + umapSize + mapSize;
 
     // Byte buffer
-    input_vector2d = {2, 0, 0, 0, 0,  0, 0,  0, 2,  0, 0,  0, 0, 0, 0, 0, 1, 0,
-                      0, 0, 0, 0, 0,  0, 49, 0, 0,  0, 0,  0, 0, 0, 2, 0, 0, 0,
-                      0, 0, 0, 0, 50, 0, 0,  0, 0,  0, 0,  0, 2, 0, 0, 0, 0, 0,
-                      0, 0, 3, 0, 0,  0, 0,  0, 0,  0, 51, 0, 0, 0, 0, 0, 0, 0,
-                      4, 0, 0, 0, 0,  0, 0,  0, 52, 0, 0,  0, 0, 0, 0, 0};
+    input_vector2d = {2, 0, 0, 0,  0, 0,  0, 0, 2, 0,  0, 0, 0, 0, 0,
+                      0, 1, 0, 0,  0, 0,  0, 0, 0, 49, 2, 0, 0, 0, 0,
+                      0, 0, 0, 50, 2, 0,  0, 0, 0, 0,  0, 0, 3, 0, 0,
+                      0, 0, 0, 0,  0, 51, 4, 0, 0, 0,  0, 0, 0, 0, 52};
 
     input_set = {5, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
                  2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0,
@@ -111,24 +110,20 @@ protected:
     input_umap = {3, 0,  0, 0, 0, 0, 0,  0, 51, 3, 0, 0,
                   0, 50, 2, 0, 0, 0, 49, 1, 0,  0, 0};
 
-    input_map = {3, 0, 0,  0, 0,  0, 0,  0, 52, 4, 0,  0, 0,  0, 0,
-                 0, 0, 52, 0, 0,  0, 0,  0, 0,  0, 53, 5, 0,  0, 0,
-                 0, 0, 0,  0, 53, 0, 0,  0, 0,  0, 0,  0, 54, 6, 0,
-                 0, 0, 0,  0, 0,  0, 54, 0, 0,  0, 0,  0, 0,  0};
+    input_map = {3, 0, 0, 0, 0, 0, 0, 0, 52, 4,  0, 0, 0, 0, 0, 0, 0, 52, 53,
+                 5, 0, 0, 0, 0, 0, 0, 0, 53, 54, 6, 0, 0, 0, 0, 0, 0, 0,  54};
 
-    input_all = {
-        2,  0, 0,  0,  0,  0,  0,  0,   2,   0,  0, 0, 0, 0, 0,  0, 1, 0,  0, 0,
-        0,  0, 0,  0,  49, 0,  0,  0,   0,   0,  0, 0, 2, 0, 0,  0, 0, 0,  0, 0,
-        50, 0, 0,  0,  0,  0,  0,  0,   2,   0,  0, 0, 0, 0, 0,  0, 3, 0,  0, 0,
-        0,  0, 0,  0,  51, 0,  0,  0,   0,   0,  0, 0, 4, 0, 0,  0, 0, 0,  0, 0,
-        52, 0, 0,  0,  0,  0,  0,  0,   5,   0,  0, 0, 0, 0, 0,  0, 1, 0,  0, 0,
-        0,  0, 0,  0,  2,  0,  0,  0,   0,   0,  0, 0, 3, 0, 0,  0, 0, 0,  0, 0,
-        4,  0, 0,  0,  0,  0,  0,  0,   5,   0,  0, 0, 0, 0, 0,  0, 5, 0,  0, 0,
-        0,  0, 0,  0,  97, 98, 99, 100, 101, 3,  0, 0, 0, 0, 0,  0, 0, 51, 3, 0,
-        0,  0, 50, 2,  0,  0,  0,  49,  1,   0,  0, 0, 3, 0, 0,  0, 0, 0,  0, 0,
-        52, 4, 0,  0,  0,  0,  0,  0,   0,   52, 0, 0, 0, 0, 0,  0, 0, 53, 5, 0,
-        0,  0, 0,  0,  0,  0,  53, 0,   0,   0,  0, 0, 0, 0, 54, 6, 0, 0,  0, 0,
-        0,  0, 0,  54, 0,  0,  0,  0,   0,   0,  0};
+    input_all = {2,   0,   0,  0,  0, 0, 0, 0,  2,  0,  0,  0, 0, 0, 0,  0,  1,
+                 0,   0,   0,  0,  0, 0, 0, 49, 2,  0,  0,  0, 0, 0, 0,  0,  50,
+                 2,   0,   0,  0,  0, 0, 0, 0,  3,  0,  0,  0, 0, 0, 0,  0,  51,
+                 4,   0,   0,  0,  0, 0, 0, 0,  52, 5,  0,  0, 0, 0, 0,  0,  0,
+                 1,   0,   0,  0,  0, 0, 0, 0,  2,  0,  0,  0, 0, 0, 0,  0,  3,
+                 0,   0,   0,  0,  0, 0, 0, 4,  0,  0,  0,  0, 0, 0, 0,  5,  0,
+                 0,   0,   0,  0,  0, 0, 5, 0,  0,  0,  0,  0, 0, 0, 97, 98, 99,
+                 100, 101, 3,  0,  0, 0, 0, 0,  0,  0,  51, 3, 0, 0, 0,  50, 2,
+                 0,   0,   0,  49, 1, 0, 0, 0,  3,  0,  0,  0, 0, 0, 0,  0,  52,
+                 4,   0,   0,  0,  0, 0, 0, 0,  52, 53, 5,  0, 0, 0, 0,  0,  0,
+                 0,   53,  54, 6,  0, 0, 0, 0,  0,  0,  0,  54};
   }
 };
 
@@ -145,6 +140,8 @@ TEST_F(UtilitySerializerTestFixture, TestDumpVector) {
   ByteBuffer output(vector2dSize);
   Span span(output);
   dump(span, vector2d);
+
+  ASSERT_EQ(output, input_vector2d);
 }
 
 TEST_F(UtilitySerializerTestFixture, TestLoadSet) {
@@ -199,7 +196,7 @@ TEST_F(UtilitySerializerTestFixture, TestDumpUmap) {
 }
 
 TEST_F(UtilitySerializerTestFixture, TestLoadMap) {
-  std::unordered_map<char, MockData> _map;
+  std::map<char, MockData> _map;
 
   Span span(input_map);
   load(span, _map);
