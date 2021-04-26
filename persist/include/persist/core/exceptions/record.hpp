@@ -64,6 +64,9 @@ private:
 public:
   RecordNotFoundError() : msg("Record not found.") {}
   RecordNotFoundError(const std::string &msg) : msg(msg) {}
+  RecordNotFoundError(const PageId &page_id, const PageSlotId &slot_id)
+      : msg("Record at location (" + std::to_string(page_id) + ", " +
+            std::to_string(slot_id) + ") not found.") {}
 
   const char *what() const throw() { return msg.c_str(); }
 };

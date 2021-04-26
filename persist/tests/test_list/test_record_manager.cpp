@@ -119,7 +119,16 @@ protected:
   }
 };
 
-TEST_F(ListRecordManagerTestFixture, TestInsert) {
+TEST_F(ListRecordManagerTestFixture, TestGetNullLocation) {
+  Record record;
+  RecordLocation location;
+
+  auto txn = txn_manager->Begin();
+  ASSERT_THROW(record_manager->Get(record, location, txn), RecordNotFoundError);
+  txn_manager->Commit(txn);
+}
+
+TEST_F(ListRecordManagerTestFixture, TestInsertGet) {
   std::list<std::pair<RecordLocation, std::string>> records;
   const size_t num_records = 2;
 
@@ -142,5 +151,45 @@ TEST_F(ListRecordManagerTestFixture, TestInsert) {
     txn_manager->Commit(txn);
 
     ASSERT_EQ(element.second, record.data);
+  }
+}
+
+TEST_F(ListRecordManagerTestFixture, TestUpdateNullLocation) {}
+
+TEST_F(ListRecordManagerTestFixture, TestInsertUpdateGet) {}
+
+TEST_F(ListRecordManagerTestFixture, TestDeleteNullLocation) {
+  RecordLocation location;
+
+  auto txn = txn_manager->Begin();
+  ASSERT_THROW(record_manager->Delete(location, txn), RecordNotFoundError);
+  txn_manager->Commit(txn);
+}
+
+TEST_F(ListRecordManagerTestFixture, TestInsertDeleteGet) {
+  RecordLocation location;
+  std::string data(3 * page_size, 'A');
+  Record record(data);
+
+  // Insert record
+  {
+    auto txn = txn_manager->Begin();
+    location = record_manager->Insert(record, txn);
+    txn_manager->Commit(txn);
+  }
+  // Delete record
+  {
+    auto txn = txn_manager->Begin();
+    record_manager->Delete(location, txn);
+    txn_manager->Commit(txn);
+  }
+
+  // Assert record not found
+  {
+    Record _record;
+    auto txn = txn_manager->Begin();
+    ASSERT_THROW(record_manager->Get(_record, location, txn),
+                 RecordNotFoundError);
+    txn_manager->Commit(txn);
   }
 }

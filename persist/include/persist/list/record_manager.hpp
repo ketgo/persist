@@ -157,24 +157,28 @@ public:
 
     // Get the first page slot at the given location and create the record
     // by joining all related slots.
-
-    // Byte buffer to read
-    ByteBuffer read_buffer;
-    // Start reading slots
-    RecordPageSlot::Location read_location = location;
-    while (!read_location.IsNull()) {
-      // Get page
-      auto page = page_manager.GetPage(read_location.page_id);
-      // Get page slot
-      const RecordPageSlot &slot =
-          page->GetPageSlot(read_location.slot_id, txn);
-      // Append data stored in slot to output buffer
-      read_buffer.insert(read_buffer.end(), slot.data.begin(), slot.data.end());
-      // Update read location to next block
-      read_location = slot.GetNextLocation();
+    try {
+      // Byte buffer to read
+      ByteBuffer read_buffer;
+      // Start reading slots
+      RecordPageSlot::Location read_location = location;
+      while (!read_location.IsNull()) {
+        // Get page
+        auto page = page_manager.GetPage(read_location.page_id);
+        // Get page slot
+        const RecordPageSlot &slot =
+            page->GetPageSlot(read_location.slot_id, txn);
+        // Append data stored in slot to output buffer
+        read_buffer.insert(read_buffer.end(), slot.data.begin(),
+                           slot.data.end());
+        // Update read location to next block
+        read_location = slot.GetNextLocation();
+      }
+      // Load record from byte buffer
+      record.Load(read_buffer);
+    } catch (NotFoundException &) {
+      throw RecordNotFoundError(location.page_id, location.slot_id);
     }
-    // Load record from byte buffer
-    record.Load(read_buffer);
   }
 
   /**
