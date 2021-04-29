@@ -154,9 +154,51 @@ TEST_F(ListRecordManagerTestFixture, TestInsertGet) {
   }
 }
 
-TEST_F(ListRecordManagerTestFixture, TestUpdateNullLocation) {}
+TEST_F(ListRecordManagerTestFixture, TestUpdateNullLocation) {
+  RecordLocation location;
+  Record record;
 
-TEST_F(ListRecordManagerTestFixture, TestInsertUpdateGet) {}
+  auto txn = txn_manager->Begin();
+  ASSERT_THROW(record_manager->Update(record, location, txn),
+               RecordNotFoundError);
+  txn_manager->Commit(txn);
+}
+
+TEST_F(ListRecordManagerTestFixture, TestInsertUpdateGtGet) {
+  RecordLocation location;
+  std::string old_data(2 * page_size, 'A');
+  Record old_record(old_data);
+
+  // Insert record
+  {
+    auto txn = txn_manager->Begin();
+    location = record_manager->Insert(old_record, txn);
+    txn_manager->Commit(txn);
+  }
+  // Update record
+  std::cout << "\n";
+  std::string new_data(3, 'B');
+  Record new_record(new_data);
+  {
+    auto txn = txn_manager->Begin();
+    record_manager->Update(new_record, location, txn);
+    txn_manager->Commit(txn);
+  }
+  // Assert updated record
+  {
+    Record record;
+    auto txn = txn_manager->Begin();
+    record_manager->Get(record, location, txn);
+    txn_manager->Commit(txn);
+
+    std::cout << new_data.size() << ", " << record.data.size() << "\n";
+    ASSERT_EQ(new_data, record.data);
+  }
+}
+
+TEST_F(ListRecordManagerTestFixture, TestInsertUpdateLtGet) {}
+
+TEST_F(ListRecordManagerTestFixture, TestInsertUpdateEqGet) {}
 
 TEST_F(ListRecordManagerTestFixture, TestDeleteNullLocation) {
   RecordLocation location;
@@ -183,7 +225,6 @@ TEST_F(ListRecordManagerTestFixture, TestInsertDeleteGet) {
     record_manager->Delete(location, txn);
     txn_manager->Commit(txn);
   }
-
   // Assert record not found
   {
     Record _record;

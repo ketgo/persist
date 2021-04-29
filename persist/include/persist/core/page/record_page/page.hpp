@@ -303,7 +303,7 @@ public:
   const PageId &GetId() const override { return header.page_id; }
 
   /**
-   * Get free space in bytes available in the page. The method takes the log
+   * Get free space in bytes available in the page. The method takes the record
    * page slot fixed size into account when calculating free space.
    *
    * @param operation The type of page operation for which free space is
