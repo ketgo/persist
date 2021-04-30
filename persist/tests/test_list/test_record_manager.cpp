@@ -164,9 +164,12 @@ TEST_F(ListRecordManagerTestFixture, TestUpdateNullLocation) {
   txn_manager->Commit(txn);
 }
 
+/**
+ * Test update of record with new value length greater than that of old value,
+ */
 TEST_F(ListRecordManagerTestFixture, TestInsertUpdateGtGet) {
   RecordLocation location;
-  std::string old_data(2 * page_size, 'A');
+  std::string old_data(3 * page_size, 'A');
   Record old_record(old_data);
 
   // Insert record
@@ -177,7 +180,42 @@ TEST_F(ListRecordManagerTestFixture, TestInsertUpdateGtGet) {
   }
   // Update record
   std::cout << "\n";
-  std::string new_data(3, 'B');
+  std::string new_data(4 * page_size, 'B');
+  Record new_record(new_data);
+  {
+    auto txn = txn_manager->Begin();
+    record_manager->Update(new_record, location, txn);
+    txn_manager->Commit(txn);
+  }
+  // Assert updated record
+  std::cout << "\n";
+  {
+    Record record;
+    auto txn = txn_manager->Begin();
+    record_manager->Get(record, location, txn);
+    txn_manager->Commit(txn);
+
+    std::cout << new_data.size() << ", " << record.data.size() << "\n";
+    ASSERT_EQ(new_data, record.data);
+  }
+}
+
+/**
+ * Test update of record with new value length less than that of old value,
+ */
+TEST_F(ListRecordManagerTestFixture, TestInsertUpdateLtGet) {
+  RecordLocation location;
+  std::string old_data(3 * page_size, 'A');
+  Record old_record(old_data);
+
+  // Insert record
+  {
+    auto txn = txn_manager->Begin();
+    location = record_manager->Insert(old_record, txn);
+    txn_manager->Commit(txn);
+  }
+  // Update record
+  std::string new_data(2 * page_size, 'B');
   Record new_record(new_data);
   {
     auto txn = txn_manager->Begin();
@@ -191,14 +229,42 @@ TEST_F(ListRecordManagerTestFixture, TestInsertUpdateGtGet) {
     record_manager->Get(record, location, txn);
     txn_manager->Commit(txn);
 
-    std::cout << new_data.size() << ", " << record.data.size() << "\n";
     ASSERT_EQ(new_data, record.data);
   }
 }
 
-TEST_F(ListRecordManagerTestFixture, TestInsertUpdateLtGet) {}
+/**
+ * Test update of record with new value length equal to that of old value,
+ */
+TEST_F(ListRecordManagerTestFixture, TestInsertUpdateEqGet) {
+  RecordLocation location;
+  std::string old_data(3 * page_size, 'A');
+  Record old_record(old_data);
 
-TEST_F(ListRecordManagerTestFixture, TestInsertUpdateEqGet) {}
+  // Insert record
+  {
+    auto txn = txn_manager->Begin();
+    location = record_manager->Insert(old_record, txn);
+    txn_manager->Commit(txn);
+  }
+  // Update record
+  std::string new_data(3 * page_size, 'B');
+  Record new_record(new_data);
+  {
+    auto txn = txn_manager->Begin();
+    record_manager->Update(new_record, location, txn);
+    txn_manager->Commit(txn);
+  }
+  // Assert updated record
+  {
+    Record record;
+    auto txn = txn_manager->Begin();
+    record_manager->Get(record, location, txn);
+    txn_manager->Commit(txn);
+
+    ASSERT_EQ(new_data, record.data);
+  }
+}
 
 TEST_F(ListRecordManagerTestFixture, TestDeleteNullLocation) {
   RecordLocation location;

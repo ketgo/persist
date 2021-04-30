@@ -78,8 +78,6 @@ class ListRecordManager
     const RecordPageSlot::Location *prev_location = &location;
     // Start loop to write content in linked slots
     while (to_write_size > 0) {
-      std::cout << "To Write Size: " << to_write_size << "\n";
-
       // Get a free page
       auto page = page_manager.GetFreeOrNewPage(to_write_size);
       PageId page_id = page->GetId();
@@ -93,7 +91,6 @@ class ListRecordManager
       if (to_write_size < write_space) {
         write_space = to_write_size;
       }
-      std::cout << "Write Space [" << page_id << "]: " << write_space << "\n";
       // Pointer to one past element already written
       Byte *pos = span.start + written_size;
       // Write data to slot and add to page
@@ -135,7 +132,6 @@ class ListRecordManager
     RecordPageSlot::Location update_location = location;
     // Start update
     while (to_write_size > 0) {
-      std::cout << "To Write Size: " << to_write_size << "\n";
       // Current slot ID
       PageSlotId slot_id = update_location.slot_id;
       // Get handle to the record page
@@ -152,8 +148,6 @@ class ListRecordManager
       if (to_write_size < write_space) {
         write_space = to_write_size;
       }
-      std::cout << "Write Space [" << update_location.page_id << ", " << slot_id
-                << "]: " << write_space << "\n";
       // Pointer to one past element already written
       Byte *pos = span.start + written_size;
       // Create updated slot
@@ -169,8 +163,6 @@ class ListRecordManager
       // Update double linkage between slots
       RecordPageSlot::Location next_location = slot.GetNextLocation();
       if (next_location.IsNull() && to_write_size != 0) {
-        std::cout << "INSERT: " << to_write_size << "\n";
-        std::cout << "INSERT: " << written_size << "\n";
         // Insert remaining byte buffer as no more slots to in-place update
         // exist.
         Span insert_span(span.start + written_size, to_write_size);
@@ -178,7 +170,7 @@ class ListRecordManager
         to_write_size = 0;
       } else if (!next_location.IsNull() && to_write_size == 0) {
         // Remove any remaining linked slots.
-        Remove(txn, update_location);
+        Remove(txn, next_location);
         next_location.SetNull();
       }
       updated_slot.SetNextLocation(next_location);
@@ -203,7 +195,6 @@ class ListRecordManager
     // Location of the slot to remove
     RecordPageSlot::Location remove_location = location;
     while (!remove_location.IsNull()) {
-      std::cout << remove_location << "\n";
       // Current slot ID
       PageSlotId slot_id = remove_location.slot_id;
       // Get handle to the record page
