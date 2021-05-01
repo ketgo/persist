@@ -105,8 +105,6 @@ class ListRecordManager
       prev_slot->SetNextLocation(next_location);
       inserted.second->SetPrevLocation(*prev_location);
 
-      std::cout << "Insert: " << next_location << "\n";
-
       // Update previous slot and location pointers
       prev_location = &prev_slot->GetNextLocation();
       prev_slot = inserted.second;
@@ -134,7 +132,6 @@ class ListRecordManager
     RecordPageSlot::Location update_location = location, updated_location;
     // Perform in-place update of existing linked slots
     while (to_write_size > 0 && !update_location.IsNull()) {
-      std::cout << "Update: " << update_location << "\n";
       // Get handle to the record page
       auto page = page_manager.GetPage(update_location.page_id);
       // Get reference to the slot to update
@@ -178,6 +175,20 @@ class ListRecordManager
     // Remove any remaining linked slots in case present.
     if (!update_location.IsNull()) {
       Remove(txn, update_location);
+      update_location.SetNull();
+
+      // Get handle to the record page
+      auto page = page_manager.GetPage(updated_location.page_id);
+      // Get reference to the slot to update
+      const RecordPageSlot &slot =
+          page->GetPageSlot(updated_location.slot_id, txn);
+
+      // Create updated slot
+      RecordPageSlot updated_slot;
+      updated_slot.data = slot.data;
+      updated_slot.SetNextLocation(update_location);
+      updated_slot.SetPrevLocation(slot.GetPrevLocation());
+      page->UpdatePageSlot(updated_location.slot_id, updated_slot, txn);
     }
 
     // Insert remaining byte buffer if present since no more slots exist to
@@ -212,7 +223,6 @@ class ListRecordManager
     // Location of the slot to remove
     RecordPageSlot::Location remove_location = location;
     while (!remove_location.IsNull()) {
-      std::cout << "Remove: " << remove_location << "\n";
       // Current slot ID
       PageSlotId slot_id = remove_location.slot_id;
       // Get handle to the record page
