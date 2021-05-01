@@ -187,8 +187,6 @@ public:
     }
     PageId free_page_id = last_page->Last();
     last_page->Remove(free_page_id);
-    std::cout << "Returning Free Page: " << free_page_id << "\n";
-    std::cout << *last_page.Get() << "\n";
 
     return free_page_id;
   }
