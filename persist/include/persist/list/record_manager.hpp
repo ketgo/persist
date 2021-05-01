@@ -81,6 +81,7 @@ class ListRecordManager
       // Get a free page
       auto page = page_manager.GetFreeOrNewPage(to_write_size);
       PageId page_id = page->GetId();
+      std::cout << "INSERT: " << page_id << "\n";
 
       // Create slot to add to page
       RecordPageSlot slot;
@@ -132,6 +133,7 @@ class ListRecordManager
     RecordPageSlot::Location update_location = location;
     // Start update
     while (to_write_size > 0) {
+      std::cout << "UPDATE: " << update_location << "\n";
       // Current slot ID
       PageSlotId slot_id = update_location.slot_id;
       // Get handle to the record page

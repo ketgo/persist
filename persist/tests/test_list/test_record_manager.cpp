@@ -43,7 +43,7 @@ using namespace persist;
 class ListRecordManagerTestFixture : public ::testing::Test {
 protected:
   const uint64_t page_size = DEFAULT_PAGE_SIZE;
-  const uint64_t max_size = 20;
+  const uint64_t max_size = 10;
   const std::string data_connection_string = "file://test_list_record_manager";
   const std::string log_connection_string =
       "file://test_list_record_manager_log";
@@ -108,10 +108,10 @@ protected:
   }
 
   void TearDown() override {
-    buffer_manager->Stop();
-    fsl_manager->Stop();
-    txn_manager->Stop();
-    record_manager->Stop();
+    //buffer_manager->Stop();
+    //fsl_manager->Stop();
+    //txn_manager->Stop();
+    //record_manager->Stop();
 
     data_storage->Remove();
     fsl_storage->Remove();
@@ -179,7 +179,6 @@ TEST_F(ListRecordManagerTestFixture, TestInsertUpdateGtGet) {
     txn_manager->Commit(txn);
   }
   // Update record
-  std::cout << "\n";
   std::string new_data(4 * page_size, 'B');
   Record new_record(new_data);
   {
@@ -188,14 +187,12 @@ TEST_F(ListRecordManagerTestFixture, TestInsertUpdateGtGet) {
     txn_manager->Commit(txn);
   }
   // Assert updated record
-  std::cout << "\n";
   {
     Record record;
     auto txn = txn_manager->Begin();
     record_manager->Get(record, location, txn);
     txn_manager->Commit(txn);
 
-    std::cout << new_data.size() << ", " << record.data.size() << "\n";
     ASSERT_EQ(new_data, record.data);
   }
 }
