@@ -43,7 +43,8 @@ using namespace persist;
 class ListRecordManagerTestFixture : public ::testing::Test {
 protected:
   const uint64_t page_size = DEFAULT_PAGE_SIZE;
-  const uint64_t max_size = 20;
+  // TODO: Check why cache size of 3 and not 2 is mimumum allowed?
+  const uint64_t max_size = 3;
   const std::string data_connection_string = "file://test_list_record_manager";
   const std::string log_connection_string =
       "file://test_list_record_manager_log";
@@ -130,7 +131,7 @@ TEST_F(ListRecordManagerTestFixture, TestGetNullLocation) {
 
 TEST_F(ListRecordManagerTestFixture, TestInsertGet) {
   std::list<std::pair<RecordLocation, std::string>> records;
-  const size_t num_records = 2;
+  const size_t num_records = 3;
 
   // Insert records
   for (size_t i = 0; i < num_records; ++i) {
@@ -179,7 +180,6 @@ TEST_F(ListRecordManagerTestFixture, TestInsertUpdateGtGet) {
     txn_manager->Commit(txn);
   }
   // Update record
-  std::cout << "\n";
   std::string new_data(4 * page_size, 'B');
   Record new_record(new_data);
   {
@@ -188,14 +188,12 @@ TEST_F(ListRecordManagerTestFixture, TestInsertUpdateGtGet) {
     txn_manager->Commit(txn);
   }
   // Assert updated record
-  std::cout << "\n";
   {
     Record record;
     auto txn = txn_manager->Begin();
     record_manager->Get(record, location, txn);
     txn_manager->Commit(txn);
 
-    std::cout << new_data.size() << ", " << record.data.size() << "\n";
     ASSERT_EQ(new_data, record.data);
   }
 }

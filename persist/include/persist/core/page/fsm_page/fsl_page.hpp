@@ -186,6 +186,25 @@ public:
     // Dump free space
     std::memset((void *)output.start, 0, output.size);
   }
+
+#ifdef __PERSIST_DEBUG__
+  /**
+   * @brief Write page to output stream
+   */
+  friend std::ostream &operator<<(std::ostream &os, const FSLPage &page) {
+    os << "--------- Page " << page.page_id << " ---------\n";
+    os << "max_page_id: " << page.max_page_id << "\n";
+    os << "min_page_id: " << page.min_page_id << "\n";
+    os << "free_pages: [";
+    for (auto element : page.free_pages) {
+      os << element << ", ";
+    }
+    os << "]\n";
+    os << "-----------------------------";
+
+    return os;
+  }
+#endif
 };
 
 } // namespace persist

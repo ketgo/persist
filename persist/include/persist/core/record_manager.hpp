@@ -91,6 +91,7 @@ public:
     if (!started) {
       // Start page manager
       page_manager.Start();
+      started = true;
     }
   }
 
@@ -102,6 +103,7 @@ public:
     if (started) {
       // Start page manager
       page_manager.Stop();
+      started = false;
     }
   }
 

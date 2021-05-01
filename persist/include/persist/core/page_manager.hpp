@@ -132,7 +132,7 @@ public:
     // Get page from buffer manager
     auto page = buffer_manager.Get(page_id);
     // TODO: This is inefficient since for every GetPage the fsm is getting
-    // registered.
+    // registered. Need to register only once.
     page->RegisterObserver(&fsm);
 
     return page;

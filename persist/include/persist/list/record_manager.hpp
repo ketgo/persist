@@ -129,15 +129,14 @@ class ListRecordManager
               const RecordPageSlot::Location &location) {
     // Bookkeeping variables
     size_t to_write_size = span.size, written_size = 0;
-    RecordPageSlot::Location update_location = location;
-    // Start update
-    while (to_write_size > 0) {
-      // Current slot ID
-      PageSlotId slot_id = update_location.slot_id;
+    RecordPageSlot::Location update_location = location, updated_location;
+    // Perform in-place update of existing linked slots
+    while (to_write_size > 0 && !update_location.IsNull()) {
       // Get handle to the record page
       auto page = page_manager.GetPage(update_location.page_id);
       // Get reference to the slot to update
-      const RecordPageSlot &slot = page->GetPageSlot(slot_id, txn);
+      const RecordPageSlot &slot =
+          page->GetPageSlot(update_location.slot_id, txn);
 
       // Compute availble space to write data in page. The available space is
       // the sum of the current size of the slot and the amount of free space in
@@ -156,31 +155,60 @@ class ListRecordManager
       for (int i = 0; i < write_space; i++) {
         updated_slot.data[i] = *(pos + i);
       }
-      // Update counters
-      written_size += write_space;
-      to_write_size -= write_space;
+
+      // Set next update location
+      updated_location = update_location;
+      update_location = slot.GetNextLocation();
 
       // Update double linkage between slots
-      RecordPageSlot::Location next_location = slot.GetNextLocation();
-      if (next_location.IsNull() && to_write_size != 0) {
-        // Insert remaining byte buffer as no more slots to in-place update
-        // exist.
-        Span insert_span(span.start + written_size, to_write_size);
-        next_location = Insert(txn, insert_span, update_location);
-        to_write_size = 0;
-      } else if (!next_location.IsNull() && to_write_size == 0) {
-        // Remove any remaining linked slots.
-        Remove(txn, next_location);
-        next_location.SetNull();
-      }
-      updated_slot.SetNextLocation(next_location);
+      updated_slot.SetNextLocation(update_location);
       updated_slot.SetPrevLocation(slot.GetPrevLocation());
 
       // Update page
-      page->UpdatePageSlot(slot_id, updated_slot, txn);
+      page->UpdatePageSlot(updated_location.slot_id, updated_slot, txn);
 
-      // Set next update location
-      update_location = slot.GetNextLocation();
+      // Update counters
+      written_size += write_space;
+      to_write_size -= write_space;
+    }
+
+    // Remove any remaining linked slots in case present.
+    if (!update_location.IsNull()) {
+      Remove(txn, update_location);
+      update_location.SetNull();
+
+      // Get handle to the record page
+      auto page = page_manager.GetPage(updated_location.page_id);
+      // Get reference to the slot to update
+      const RecordPageSlot &slot =
+          page->GetPageSlot(updated_location.slot_id, txn);
+
+      // Create updated slot
+      RecordPageSlot updated_slot;
+      updated_slot.data = slot.data;
+      updated_slot.SetNextLocation(update_location);
+      updated_slot.SetPrevLocation(slot.GetPrevLocation());
+      page->UpdatePageSlot(updated_location.slot_id, updated_slot, txn);
+    }
+
+    // Insert remaining byte buffer if present since no more slots exist to
+    // update in-place.
+    if (to_write_size > 0) {
+      Span insert_span(span.start + written_size, to_write_size);
+      update_location = Insert(txn, insert_span, updated_location);
+
+      // Get handle to the record page
+      auto page = page_manager.GetPage(updated_location.page_id);
+      // Get reference to the slot to update
+      const RecordPageSlot &slot =
+          page->GetPageSlot(updated_location.slot_id, txn);
+
+      // Create updated slot
+      RecordPageSlot updated_slot;
+      updated_slot.data = slot.data;
+      updated_slot.SetNextLocation(update_location);
+      updated_slot.SetPrevLocation(slot.GetPrevLocation());
+      page->UpdatePageSlot(updated_location.slot_id, updated_slot, txn);
     }
   }
 

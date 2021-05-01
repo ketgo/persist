@@ -185,7 +185,10 @@ public:
     if (last_page->IsEmpty()) {
       return 0;
     }
-    return last_page->Last();
+    PageId free_page_id = last_page->Last();
+    last_page->Remove(free_page_id);
+
+    return free_page_id;
   }
 
   /**

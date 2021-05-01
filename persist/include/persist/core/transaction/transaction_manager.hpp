@@ -161,6 +161,7 @@ public:
     if (!started) {
       // Start log manager.
       log_manager->Start();
+      started = true;
     }
   }
 
@@ -172,6 +173,7 @@ public:
     if (started) {
       // Stop log manager.
       log_manager->Stop();
+      started = false;
     }
   }
 
