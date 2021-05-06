@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_CORE_BUFFER_MANAGER_HPP
-#define PERSIST_CORE_BUFFER_MANAGER_HPP
+#ifndef PERSIST__CORE__BUFFER__BUFFER_MANAGER_HPP
+#define PERSIST__CORE__BUFFER__BUFFER_MANAGER_HPP
 
 #include <persist/core/buffer/base.hpp>
 #include <persist/core/buffer/replacer/lru_replacer.hpp>
@@ -364,4 +364,4 @@ public:
 
 } // namespace persist
 
-#endif /* PERSIST_CORE_BUFFER_MANAGER_HPP */
+#endif /* PERSIST__CORE__BUFFER__BUFFER_MANAGER_HPP */

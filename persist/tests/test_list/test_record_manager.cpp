@@ -43,7 +43,7 @@ using namespace persist;
 class ListRecordManagerTestFixture : public ::testing::Test {
 protected:
   const uint64_t page_size = DEFAULT_PAGE_SIZE;
-  // TODO: Check why cache size of 3 and not 2 is mimumum allowed?
+  // TODO: Check why minimum cache size of 3 and not 2 works?
   const uint64_t max_size = 3;
   const std::string data_connection_string = "file://test_list_record_manager";
   const std::string log_connection_string =
@@ -54,6 +54,8 @@ protected:
   std::unique_ptr<Storage<LogPage>> log_storage;
   std::unique_ptr<BufferManager<RecordPage, LRUReplacer>> buffer_manager;
   std::unique_ptr<FSLManager> fsl_manager;
+  std::unique_ptr<PageManager<RecordPage, LRUReplacer, FSLManager>>
+      page_manager;
   std::unique_ptr<TransactionManager> txn_manager;
 
   /**
@@ -96,6 +98,11 @@ protected:
         std::make_unique<FSLManager>(data_connection_string, max_size);
     fsl_manager->Start();
 
+    // Setup page manager
+    page_manager =
+        std::make_unique<PageManager<RecordPage, LRUReplacer, FSLManager>>(
+            *buffer_manager, *fsl_manager);
+
     // Setup transaction manager
     txn_manager = std::make_unique<TransactionManager>(
         *buffer_manager, log_connection_string, max_size);
@@ -104,13 +111,14 @@ protected:
     // Setup record manager
     record_manager =
         std::make_unique<ListRecordManager<Record, LRUReplacer, FSLManager>>(
-            *buffer_manager, *fsl_manager);
+            *page_manager);
     record_manager->Start();
   }
 
   void TearDown() override {
     buffer_manager->Stop();
     fsl_manager->Stop();
+    page_manager->Stop();
     txn_manager->Stop();
     record_manager->Stop();
 

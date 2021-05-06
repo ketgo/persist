@@ -28,17 +28,11 @@
 #include <memory>
 
 #include <persist/core/page/record_page/page.hpp>
-#include <persist/core/page/record_page/slot.hpp>
 #include <persist/core/page_manager.hpp>
+#include <persist/core/record.hpp>
 #include <persist/core/transaction/transaction.hpp>
 
 namespace persist {
-/**
- * @brief Record location type.
- *
- */
-typedef RecordPageSlot::Location RecordLocation;
-
 /**
  * @brief Record manager abstract base class. Each collection should implement
  * the interfaces defined in the base class.
@@ -55,10 +49,10 @@ class RecordManager {
 
   PERSIST_PROTECTED
   /**
-   * @brief Page Allocator
+   * @brief Reference to page manager
    *
    */
-  PageManager<RecordPage, ReplacerType, FreeSpaceManagerType> page_manager;
+  PageManager<RecordPage, ReplacerType, FreeSpaceManagerType> &page_manager;
 
   /**
    * @brief Flag indicating manager started.
@@ -70,12 +64,11 @@ public:
   /**
    * @brief Construct a new Record Manager object
    *
-   * @param buffer_manager Reference to buffer manager.
-   * @param fsm Reference to free space manager.
+   * @param page_manager Reference to page manager.
    */
-  RecordManager(BufferManager<RecordPage, ReplacerType> &buffer_manager,
-                FreeSpaceManagerType &fsm)
-      : page_manager(buffer_manager, fsm) {}
+  RecordManager(
+      PageManager<RecordPage, ReplacerType, FreeSpaceManagerType> &page_manager)
+      : page_manager(page_manager) {}
 
   /**
    * @brief Destroy the RecordManager object.

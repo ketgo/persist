@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_CORE_COMMON_HPP
-#define PERSIST_CORE_COMMON_HPP
+#ifndef PERSIST__CORE__COMMON_HPP
+#define PERSIST__CORE__COMMON_HPP
 
 #include <vector>
 
@@ -160,4 +160,4 @@ public:
 
 } // namespace persist
 
-#endif /* PERSIST_CORE_COMMON_HPP */
+#endif /* PERSIST__CORE__COMMON_HPP */

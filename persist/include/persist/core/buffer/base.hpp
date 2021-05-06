@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_CORE_BUFFER_BASE_HPP
-#define PERSIST_CORE_BUFFER_BASE_HPP
+#ifndef PERSIST__CORE__BUFFER__BASE_HPP
+#define PERSIST__CORE__BUFFER__BASE_HPP
 
 #include <persist/core/buffer/page_handle.hpp>
 #include <persist/core/page/base.hpp>
@@ -125,4 +125,4 @@ public:
 
 } // namespace persist
 
-#endif /* PERSIST_CORE_BUFFER_BASE_HPP */
+#endif /* PERSIST__CORE__BUFFER__BASE_HPP */

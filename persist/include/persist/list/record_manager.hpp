@@ -118,7 +118,10 @@ class ListRecordManager
   }
 
   /**
-   * On-place updat5e bytes stored in doubly linked page slots in storage.
+   * On-place update bytes stored in doubly linked page slots in storage.
+   * 
+   * ISSUES: 1. Update of last page slot is being logged twice since the slot is being updated twice. 
+   *         2. Twice update of last page slot results in redundent data copy.
    *
    * @param txn Reference to transaction object.
    * @param span Constant reference to span of updated byte buffer.
