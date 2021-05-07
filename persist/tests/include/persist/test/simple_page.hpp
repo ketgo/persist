@@ -243,7 +243,10 @@ public:
   friend std::ostream &operator<<(std::ostream &os, const SimplePage &page) {
     os << "--------- Page " << page.header.page_id << " ---------\n";
     os << page.header << "\n";
-    os << page.record << "\n";
+    for (int x : page.record) {
+      os << x << ", ";
+    }
+    os << "\n";
     os << "-----------------------------";
 
     return os;

@@ -114,7 +114,9 @@ public:
    */
   void Open() {
     if (!openned) {
+      metadata_manager.Start();
       record_manager.Start();
+      openned = true;
     }
   }
 
@@ -124,7 +126,9 @@ public:
    */
   void Close() {
     if (openned) {
+      metadata_manager.Stop();
       record_manager.Stop();
+      openned = false;
     }
   }
 };

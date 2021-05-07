@@ -99,6 +99,20 @@ public:
       started = false;
     }
   }
+
+  /**
+   * @brief Load metadata from backend storage.
+   *
+   * @param metadata
+   */
+  void LoadMetadata(Metadata &metadata);
+
+  /**
+   * @brief Dump metadata to backend storage.
+   *
+   * @param metadata
+   */
+  void DumpMetadata(Metadata &metadata);
 };
 
 } // namespace persist

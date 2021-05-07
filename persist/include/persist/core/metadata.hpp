@@ -40,10 +40,19 @@ struct Metadata : public Storable {
   RecordLocation first; //<- Location of the first node in the collection.
   RecordLocation last;  //<- Location of the last node in the collection.
 
+  /**
+   * @brief Get the metadata storage size.
+   *
+   */
   size_t GetStorageSize() const override {
     return sizeof(size_t) + 2 * sizeof(RecordLocation);
   }
 
+  /**
+   * @brief Load metadata from byte buffer.
+   *
+   * @param input input buffer span to load
+   */
   void Load(Span input) override {
     if (input.size < GetStorageSize()) {
       throw MetadataParseError();
@@ -51,11 +60,32 @@ struct Metadata : public Storable {
     persist::load(input, count, first, last);
   }
 
+  /**
+   * @brief Dump metadata as bytebuffer.
+   *
+   * @param output output buffer span to dump
+   */
   void Dump(Span output) override {
     if (output.size < GetStorageSize()) {
       throw MetadataParseError();
     }
     persist::dump(output, count, first, last);
+  }
+
+  /**
+   * @brief Equality comparision operator.
+   *
+   */
+  bool operator==(const Metadata &other) const {
+    return count == other.count && first == other.first && last == other.last;
+  }
+
+  /**
+   * @brief Non-equality comparision operator.
+   *
+   */
+  bool operator!=(const Metadata &other) const {
+    return count != other.count || first != other.first || last == other.last;
   }
 };
 
