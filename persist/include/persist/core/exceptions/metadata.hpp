@@ -53,6 +53,40 @@ public:
   const char *what() const throw() { return msg.c_str(); }
 };
 
+/**
+ * Metadata Setup Error
+ *
+ * This error is thrown upon invalid setup of metadata.
+ */
+class MetadataSetupError : public PersistException {
+private:
+  std::string msg;
+
+public:
+  MetadataSetupError() : msg("Metadata invalid setup.") {}
+  MetadataSetupError(const char *msg) : msg(msg) {}
+  MetadataSetupError(std::string &msg) : msg(msg) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
+/**
+ * Metadata Not Found Error
+ *
+ * This error is thrown when metadata not found.
+ */
+class MetadataNotFoundError : public NotFoundException {
+private:
+  std::string msg;
+
+public:
+  MetadataNotFoundError() : msg("Metadata not found error.") {}
+  MetadataNotFoundError(const char *msg) : msg(msg) {}
+  MetadataNotFoundError(std::string &msg) : msg(msg) {}
+
+  const char *what() const throw() { return msg.c_str(); }
+};
+
 } // namespace persist
 
 #endif /* PERSIST__CORE__EXCEPTIONS__METADATA_HPP */

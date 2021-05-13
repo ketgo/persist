@@ -111,11 +111,14 @@ public:
   /**
    * @brief Open collection.
    *
+   * TODO:
+   *  1. Register with an external transaction manager.
+   *  2. Insert an empty metadata object via metadata manager.
    */
   void Open() {
     if (!openned) {
-      metadata_manager.Start();
       record_manager.Start();
+      metadata_manager.Start();
       openned = true;
     }
   }

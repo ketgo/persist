@@ -31,6 +31,12 @@
 namespace persist {
 
 /**
+ * @brief Metadata location
+ *
+ */
+typedef RecordLocation MetadataLocation;
+
+/**
  * @brief Metadata containing the number of elements in the collection and the
  * location of the first and last elemenet.
  *
@@ -39,6 +45,22 @@ struct Metadata : public Storable {
   size_t count;         //<- Number of elements in the collection.
   RecordLocation first; //<- Location of the first node in the collection.
   RecordLocation last;  //<- Location of the last node in the collection.
+
+  /**
+   * @brief Construct a new Metadata object.
+   *
+   */
+  Metadata() : count(0), first(0, 0), last(0, 0) {}
+
+  /**
+   * @brief Clear metadata object.
+   *
+   */
+  void Clear() {
+    count = 0;
+    first.SetNull();
+    last.SetNull();
+  }
 
   /**
    * @brief Get the metadata storage size.

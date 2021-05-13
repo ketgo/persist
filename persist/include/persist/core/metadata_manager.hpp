@@ -26,7 +26,9 @@
 #define PERSIST__CORE__METADATA_MANAGER_HPP
 
 #include <persist/core/metadata.hpp>
+#include <persist/core/page/record_page/page.hpp>
 #include <persist/core/page_manager.hpp>
+#include <persist/core/transaction/transaction.hpp>
 
 namespace persist {
 
@@ -45,13 +47,13 @@ namespace persist {
  */
 template <class ReplacerType, class FreeSpaceManagerType>
 class MetadataManager {
-  PERSIST_PRIVATE :
-      /**
-       * @brief Metadata storage location. It is always stored as the first
-       * record in the collection.
-       *
-       */
-      const RecordLocation location = {1, 1};
+  PERSIST_PRIVATE
+  /**
+   * @brief Metadata storage location. It is always stored as the first
+   * record in the collection.
+   *
+   */
+  const MetadataLocation location = {1, 1};
 
   /**
    * @brief Reference to the collections page manager.
@@ -79,6 +81,8 @@ public:
   /**
    * @brief Start metadata manager.
    *
+   * TODO: Take transaction manager an input argument and insert an empty
+   * metadata object.
    */
   void Start() {
     if (!started) {
@@ -101,18 +105,75 @@ public:
   }
 
   /**
-   * @brief Load metadata from backend storage.
+   * @brief Read metadata from backend storage.
    *
-   * @param metadata
+   * @param metadata Reference to the metadata object to read
+   * @param txn Reference to an active transaction
    */
-  void LoadMetadata(Metadata &metadata);
+  void Read(Metadata &metadata, Transaction &txn) {
+    try {
+      // Get page handle
+      auto page = page_manager.GetPage(location.page_id);
+      // Get page slot
+      const RecordPageSlot &slot = page->GetPageSlot(location.slot_id, txn);
+      // Byte buffer to read
+      ByteBuffer read_buffer(slot.data);
+      // Load metadata
+      metadata.Load(read_buffer);
+    } catch (NotFoundException &err) {
+      throw MetadataNotFoundError();
+    }
+  }
 
   /**
-   * @brief Dump metadata to backend storage.
+   * @brief Insert metadata to backend storage.
    *
-   * @param metadata
+   * @param metadata Reference to the metadata object to insert
+   * @param txn Reference to an active transaction
    */
-  void DumpMetadata(Metadata &metadata);
+  MetadataLocation Insert(Metadata &metadata, Transaction &txn) {
+    // Get new page handle
+    auto page = page_manager.GetNewPage();
+    // Create page slot
+    RecordPageSlot slot;
+    // Dump metadata to slot
+    slot.data.resize(metadata.GetStorageSize());
+    metadata.Dump(slot.data);
+    // Insert page slot
+    auto inserted = page->InsertPageSlot(slot, txn);
+
+    // NOTE: Since the setup happens during collection startup, it is assumed
+    // that the above operation results in the metadata to be stored at
+    // location [1, 1].
+    // TODO: Store metadata location as part of storage header in case the
+    // storage location in not [1, 1].
+
+    // Throw setup exception if metadata inserted at an invalid location.
+    MetadataLocation inserted_location(page->GetId(), inserted.first);
+    if (inserted_location != location) {
+      throw MetadataSetupError();
+    }
+
+    return inserted_location;
+  }
+
+  /**
+   * @brief Update metadata in backend storage.
+   *
+   * @param metadata Reference to the metadata object to update
+   * @param txn Reference to an active transaction
+   */
+  void Update(Metadata &metadata, Transaction &txn) {
+    // Create updated slot
+    RecordPageSlot slot;
+    // Dump metadata to slot
+    slot.data.resize(metadata.GetStorageSize());
+    metadata.Dump(slot.data);
+    // Get page handle
+    auto page = page_manager.GetPage(location.page_id);
+    // Update page
+    page->UpdatePageSlot(location.slot_id, slot, txn);
+  }
 };
 
 } // namespace persist
