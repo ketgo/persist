@@ -89,7 +89,7 @@
 8. [DONE] Design a Storable object interface. A storable object should expose the interface:
     - [DONE] size_t GetStorageSize(): The amount of storage space in bytes occupied by the object
     - [SKIPPED] size_t GetMinSize(): The minimum amount of storage space in bytes occupied by the object.
-    -  [SKIPPED] size_t GetMaxSize(): The maximum amount of storage space in bytes occupied by the object. A returned value of 0 indicates no max size.
+    - [SKIPPED] size_t GetMaxSize(): The maximum amount of storage space in bytes occupied by the object. A returned value of 0 indicates no max size.
     - [DONE] void Load(Span input): Load object from byte buffer
     - [DONE] void Dump(Span output): Dump object to byte buffer
 
@@ -121,8 +121,8 @@
 ## Collections
 
 1. [IN-PROGRESS] Implement List collection
-    - [IN-PROGRESS] implement record manager for list collection
-    - [TODO] implement metadata manager to store: location of the first and the last object and the number of elements in the collection.
+    - [Done] implement record manager for list collection
+    - [DONE] implement metadata manager to store the location of the first and the last object and the number of elements in the collection.
     - [IN-PROGRESS] implement list collection class
 
 ------------------------------------------------------------

@@ -30,6 +30,7 @@
 #include <persist/core/metadata_manager.hpp>
 #include <persist/core/page/record_page/page.hpp>
 #include <persist/core/page_manager.hpp>
+#include <persist/core/transaction/transaction_manager.hpp>
 
 /**
  * @brief Collection base class containing boiler plate code.
@@ -43,6 +44,11 @@ template <class ReplacerType, class FreeSpaceManagerType,
           class RecordManagerType>
 class Collection {
   PERSIST_PROTECTED
+  /**
+   * @brief Collection metadata.
+   *
+   */
+  Metadata metadata;
 
   /**
    * @brief Unique pointer to data storage.
@@ -111,14 +117,26 @@ public:
   /**
    * @brief Open collection.
    *
+   * @param tx_manager Reference to the transaction manager.
+   *
    * TODO:
    *  1. Register with an external transaction manager.
-   *  2. Insert an empty metadata object via metadata manager.
+   *
    */
-  void Open() {
+  void Open(TransactionManager &txn_manager) {
     if (!openned) {
       record_manager.Start();
       metadata_manager.Start();
+
+      // Checking if metadata exists else save an empty metadata
+      auto txn = txn_manager.Begin();
+      try {
+        metadata_manager.Read(metadata, txn);
+      } catch (NotFoundException &err) {
+        metadata_manager.Insert(metadata, txn);
+      }
+      txn_manager.Commit(txn);
+
       openned = true;
     }
   }

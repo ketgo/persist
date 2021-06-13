@@ -146,7 +146,7 @@ public:
     // that the above operation results in the metadata to be stored at
     // location [1, 1].
     // TODO: Store metadata location as part of storage header in case the
-    // storage location in not [1, 1].
+    // storage location is not [1, 1].
 
     // Throw setup exception if metadata inserted at an invalid location.
     MetadataLocation inserted_location(page->GetId(), inserted.first);

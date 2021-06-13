@@ -330,7 +330,7 @@ public:
     if (location.IsNull()) {
       throw RecordNotFoundError("Invalid location provided.");
     }
-    // Rmove record slots
+    // Remove record slots
     Remove(txn, location);
   }
 };
