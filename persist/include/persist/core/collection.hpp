@@ -30,7 +30,8 @@
 #include <persist/core/metadata_manager.hpp>
 #include <persist/core/page/record_page/page.hpp>
 #include <persist/core/page_manager.hpp>
-#include <persist/core/transaction/transaction_manager.hpp>
+
+namespace persist {
 
 /**
  * @brief Collection base class containing boiler plate code.
@@ -39,10 +40,17 @@
  * Default set to LRUReplacer.
  * @tparam FreeSpaceManagerType The type of free space manager. Default set to
  * FSLManager.
+ * @tparam RecordManagerType The type of record manager.
  */
 template <class ReplacerType, class FreeSpaceManagerType,
           class RecordManagerType>
 class Collection {
+  /**
+   * @brief Transaction manager friend class.
+   *
+   */
+  friend class TransactionManager;
+
   PERSIST_PROTECTED
   /**
    * @brief Collection metadata.
@@ -153,5 +161,7 @@ public:
     }
   }
 };
+
+} // namespace persist
 
 #endif /* PERSIST__CORE__COLLECTION__COLLECTION_HPP */

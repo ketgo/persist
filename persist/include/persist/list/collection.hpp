@@ -25,12 +25,12 @@
 #ifndef PERSIST_LIST_COLLECTION_HPP
 #define PERSIST_LIST_COLLECTION_HPP
 
-#include <persist/core/exceptions/record.hpp>
+#include <persist/core/buffer/replacer/lru_replacer.hpp>
+#include <persist/core/collection.hpp>
 #include <persist/core/fsm/fsl.hpp>
 
+#include <persist/list/node.hpp>
 #include <persist/list/record_manager.hpp>
-
-#include <persist/utility/serializer.hpp>
 
 namespace persist {
 
@@ -46,99 +46,17 @@ namespace persist {
  */
 template <class RecordType, class ReplacerType = LRUReplacer,
           class FreeSpaceManagerType = FSLManager>
-class List {
-  PERSIST_PRIVATE
+class List
+    : public Collection<ReplacerType, FreeSpaceManagerType,
+                        ListRecordManager<ListNode<RecordType>, ReplacerType,
+                                          FreeSpaceManagerType>> {
   /**
-   * @brief Unique pointer to data storage.
+   * @brief Record manager type.
    *
    */
-  std::unique_ptr<Storage<RecordPage>> storage;
-
-  /**
-   * @brief Buffer manager.
-   *
-   */
-  BufferManager<RecordPage, ReplacerType> buffer_manager;
-
-  /**
-   * @brief Free space manager.
-   *
-   */
-  FreeSpaceManagerType fsm;
-
-  /**
-   * @brief Linked List Node
-   *
-   * The node stores the record data in bytes and the linkage between the next
-   * and prior node.
-   */
-  struct Node : public Storable {
-    /**
-     * @brief Next linked node
-     */
-    RecordLocation next;
-
-    /**
-     * @brief Previous linked node
-     */
-    RecordLocation previous;
-
-    /**
-     * @brief Record data as byte buffer
-     */
-    RecordType record;
-
-    /**
-     * @brief Get the storage size of the storable object.
-     *
-     * @returns storage size in bytes.
-     */
-    size_t GetStorageSize() const override {
-      return 2 * sizeof(RecordLocation) + record.GetStorageSize();
-    }
-
-    /**
-     * Load page object from byte string.
-     *
-     * @param input input buffer span to load
-     */
-    void Load(Span input) override {
-      if (input.size < GetStorageSize()) {
-        throw RecordParseError();
-      }
-      // Load bytes
-      persist::load(input, next, previous);
-      record.Load(input);
-    }
-
-    /**
-     * Dump page object as byte string.
-     *
-     * @param output output buffer span to dump
-     */
-    void Dump(Span output) override {
-      if (output.size < GetStorageSize()) {
-        throw RecordParseError();
-      }
-      // Load bytes
-      persist::dump(output, next, previous);
-      record.Dump(output);
-    }
-  };
-
-  /**
-   * @brief Record manager storing linked list of nodes.
-   *
-   */
-  typedef ListRecordManager<Node, ReplacerType, FreeSpaceManagerType>
+  typedef ListRecordManager<ListNode<RecordType>, ReplacerType,
+                            FreeSpaceManagerType>
       RecordManager;
-  RecordManager record_manager;
-
-  /**
-   * @brief Flag indicating collection is openned.
-   *
-   */
-  bool openned;
 
 public:
   /**
@@ -162,12 +80,18 @@ public:
     /**
      * @brief Node stored at the above location.
      */
-    Node node;
+    ListNode<RecordType> node;
+
+    /**
+     * @brief Transaction used by iterator.
+     *
+     */
+    Transaction txn;
 
     /**
      * @brief The method loads the node at current location.
      */
-    void LoadNode();
+    void LoadNode() { record_manager.Get(node, location, txn); }
 
   public:
     typedef Iterator self_type;
@@ -185,8 +109,8 @@ public:
      */
     Iterator() = default;
     Iterator(const RecordManager &record_manager,
-             const RecordLocation &location)
-        : record_manager(record_manager), location(location) {}
+             const RecordLocation &location, const Transaction &txn)
+        : record_manager(record_manager), location(location), txn(txn) {}
 
     /**
      * @brief PREFIX increment operator
@@ -268,31 +192,8 @@ public:
   List(const std::string &connection_string,
        size_t cache_size = DEFAULT_BUFFER_SIZE,
        size_t fsm_cache_size = DEFAULT_FSM_BUFFER_SIZE)
-      : storage(CreateStorage<RecordPage>(
-            ConnectionString(connection_string, DATA_STORAGE_EXTENTION))),
-        buffer_manager(storage.get(), cache_size),
-        fsm(connection_string, fsm_cache_size),
-        record_manager(buffer_manager, fsm), openned(false) {}
-
-  /**
-   * @brief Open collection.
-   *
-   */
-  void Open() {
-    if (!openned) {
-      record_manager.Start();
-    }
-  }
-
-  /**
-   * @brief Close collection.
-   *
-   */
-  void Close() {
-    if (openned) {
-      record_manager.Stop();
-    }
-  }
+      : Collection<ReplacerType, FreeSpaceManagerType, RecordManager>(
+            connection_string, cache_size, fsm_cache_size) {}
 
   /**
    * @brief Insert record at specified postion in the collection. This increase
@@ -301,9 +202,17 @@ public:
    * @param postion Constant reference to iterator pointing at the
    * position in the container where the new elements is to be inserted.
    * @param record Constant reference to the record to insert.
+   * @param txn Constant reference to an active transaction.
    * @returns Iterator pointing to the inserted element.
    */
-  Iterator Insert(const Iterator &postion, const RecordType &record);
+  Iterator Insert(const Iterator &postion, const RecordType &record,
+                  const Transaction &txn) {
+    // TODO: 1. Insert record to backend storage
+    //       2. Update metadata:
+    //           2.1 Increase count of elements in list
+    //           2.2 Update/Set the location of the last element if changed
+    //           2.3 Set the location of the first element if the list is empty
+  }
 };
 
 } // namespace persist

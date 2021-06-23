@@ -32,6 +32,7 @@
 #include <memory>
 #include <string>
 
+#include <persist/core/transaction/transaction_manager.hpp>
 #include <persist/list/collection.hpp>
 #include <persist/utility/serializer.hpp>
 
@@ -49,8 +50,13 @@ protected:
     size_t GetStorageSize() const override { return data.size(); }
     void Load(Span input) override { load(input, data); }
     void Dump(Span output) override { dump(output, data); }
+    bool operator==(const Record &other) const { return data == other.data; }
   };
+
+  const std::string data_connection_string = "file://test_list";
+  const std::string log_connection_string = "file://test_list_log";
   std::unique_ptr<List<Record>> list;
+  std::unique_ptr<TransactionManager> txn_manager;
 
   void SetUp() override {}
 

@@ -81,8 +81,6 @@ public:
   /**
    * @brief Start metadata manager.
    *
-   * TODO: Take transaction manager an input argument and insert an empty
-   * metadata object.
    */
   void Start() {
     if (!started) {
