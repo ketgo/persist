@@ -34,9 +34,6 @@
 
 namespace persist {
 
-// TODO: Refactor template class to use page traits. The buffer manager does not
-// need PageType anymore due to polymorphic serialization.
-
 /**
  * @brief Transaction Manager Class
  *
@@ -48,10 +45,9 @@ class TransactionManager {
   /**
    * @brief Reference to Buffer Manager base class.
    *
-   * NOTE: The reference to the base class enables referring to buffer managers
-   * with different replacer types.
-   *
    */
+
+  // TODO: Change this to pointer and add a register method for collection.
   BufferManagerBase<RecordPage> &buffer_manager;
 
   /**

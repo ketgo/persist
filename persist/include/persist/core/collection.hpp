@@ -30,6 +30,7 @@
 #include <persist/core/metadata_manager.hpp>
 #include <persist/core/page/record_page/page.hpp>
 #include <persist/core/page_manager.hpp>
+#include <persist/core/transaction/transaction_manager.hpp>
 
 namespace persist {
 
