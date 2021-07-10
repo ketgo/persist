@@ -201,9 +201,11 @@ TEST_F(LogPageTestFixture, TestFreeSpace) {
   LogPage _page(page_id, page_size);
 
   ASSERT_EQ(_page.GetFreeSpaceSize(Operation::UPDATE),
-            page_size - header.GetStorageSize());
+            page_size - header.GetStorageSize() -
+                LogPageSlot::GetFixedStorageSize());
   ASSERT_EQ(_page.GetFreeSpaceSize(Operation::INSERT),
-            page_size - header.GetStorageSize());
+            page_size - header.GetStorageSize() -
+                LogPageSlot::GetFixedStorageSize());
 }
 
 TEST_F(LogPageTestFixture, TestGetPageSlot) {

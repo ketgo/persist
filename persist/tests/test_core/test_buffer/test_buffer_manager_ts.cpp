@@ -77,23 +77,23 @@ protected:
 
     // setting up storage
     storage = persist::CreateStorage<SimplePage>(connection_string);
-    insert();
+    Insert();
 
     buffer_manager =
-        std::make_unique<BufferManager<SimplePage>>(*storage, max_size);
+        std::make_unique<BufferManager<SimplePage>>(storage.get(), max_size);
     buffer_manager->Start();
   }
 
   void TearDown() override {
-    storage->Remove();
     buffer_manager->Stop();
+    storage->Remove();
   }
 
 private:
   /**
    * @brief Insert test data
    */
-  void insert() {
+  void Insert() {
     storage->Open();
     storage->Write(*page_1);
     storage->Write(*page_2);
@@ -298,6 +298,13 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestEmptyBufferGetIFlushI) {
         {"thread-b", "Flush", tstest::Event::Type::BEGIN},
         {"thread-b", "Flush", tstest::Event::Type::END},
         {"thread-a", "SetRecord", tstest::Event::Type::BEGIN},
+        {"thread-a", "SetRecord", tstest::Event::Type::END}},
+       // Sequence 3
+       {{"thread-a", "GetPage", tstest::Event::Type::BEGIN},
+        {"thread-b", "Flush", tstest::Event::Type::BEGIN},
+        {"thread-a", "GetPage", tstest::Event::Type::END},
+        {"thread-a", "SetRecord", tstest::Event::Type::BEGIN},
+        {"thread-b", "Flush", tstest::Event::Type::END},
         {"thread-a", "SetRecord", tstest::Event::Type::END}}},
       [&]() {
         // Assert Flush did not write changes to backend storage
@@ -308,16 +315,20 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestEmptyBufferGetIFlushI) {
 
   // Sequence of events which persist changes to page
   assertor.InsertMany(
-      {
-          // Sequence 1
-          {{"thread-a", "GetPage", tstest::Event::Type::BEGIN},
-           {"thread-a", "GetPage", tstest::Event::Type::END},
-           {"thread-a", "SetRecord", tstest::Event::Type::BEGIN},
-           {"thread-a", "SetRecord", tstest::Event::Type::END},
-           {"thread-b", "Flush", tstest::Event::Type::BEGIN},
-           {"thread-b", "Flush", tstest::Event::Type::END}}
-          // Sequence 2
-      },
+      {// Sequence 1
+       {{"thread-a", "GetPage", tstest::Event::Type::BEGIN},
+        {"thread-a", "GetPage", tstest::Event::Type::END},
+        {"thread-a", "SetRecord", tstest::Event::Type::BEGIN},
+        {"thread-a", "SetRecord", tstest::Event::Type::END},
+        {"thread-b", "Flush", tstest::Event::Type::BEGIN},
+        {"thread-b", "Flush", tstest::Event::Type::END}},
+       // Sequence 2
+       {{"thread-a", "GetPage", tstest::Event::Type::BEGIN},
+        {"thread-b", "Flush", tstest::Event::Type::BEGIN},
+        {"thread-a", "GetPage", tstest::Event::Type::END},
+        {"thread-a", "SetRecord", tstest::Event::Type::BEGIN},
+        {"thread-a", "SetRecord", tstest::Event::Type::END},
+        {"thread-b", "Flush", tstest::Event::Type::END}}},
       [&]() {
         // Assert Flush wrote changes to backend storage
         auto page = storage->Read(1);
@@ -378,6 +389,13 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestFullBufferGetIFlushI) {
         {"thread-b", "Flush", tstest::Event::Type::BEGIN},
         {"thread-b", "Flush", tstest::Event::Type::END},
         {"thread-a", "SetRecord", tstest::Event::Type::BEGIN},
+        {"thread-a", "SetRecord", tstest::Event::Type::END}},
+       // Sequence 3
+       {{"thread-a", "GetPage", tstest::Event::Type::BEGIN},
+        {"thread-b", "Flush", tstest::Event::Type::BEGIN},
+        {"thread-a", "GetPage", tstest::Event::Type::END},
+        {"thread-a", "SetRecord", tstest::Event::Type::BEGIN},
+        {"thread-b", "Flush", tstest::Event::Type::END},
         {"thread-a", "SetRecord", tstest::Event::Type::END}}},
       [&]() {
         // Assert Flush did not write changes to backend storage
@@ -388,16 +406,20 @@ TEST_F(BufferManagerThreadSafetyTestFixture, TestFullBufferGetIFlushI) {
 
   // Sequence of events which persist changes to page
   assertor.InsertMany(
-      {
-          // Sequence 1
-          {{"thread-a", "GetPage", tstest::Event::Type::BEGIN},
-           {"thread-a", "GetPage", tstest::Event::Type::END},
-           {"thread-a", "SetRecord", tstest::Event::Type::BEGIN},
-           {"thread-a", "SetRecord", tstest::Event::Type::END},
-           {"thread-b", "Flush", tstest::Event::Type::BEGIN},
-           {"thread-b", "Flush", tstest::Event::Type::END}}
-          // Sequence 2
-      },
+      {// Sequence 1
+       {{"thread-a", "GetPage", tstest::Event::Type::BEGIN},
+        {"thread-a", "GetPage", tstest::Event::Type::END},
+        {"thread-a", "SetRecord", tstest::Event::Type::BEGIN},
+        {"thread-a", "SetRecord", tstest::Event::Type::END},
+        {"thread-b", "Flush", tstest::Event::Type::BEGIN},
+        {"thread-b", "Flush", tstest::Event::Type::END}},
+       // Sequence 2
+       {{"thread-a", "GetPage", tstest::Event::Type::BEGIN},
+        {"thread-b", "Flush", tstest::Event::Type::BEGIN},
+        {"thread-a", "GetPage", tstest::Event::Type::END},
+        {"thread-a", "SetRecord", tstest::Event::Type::BEGIN},
+        {"thread-a", "SetRecord", tstest::Event::Type::END},
+        {"thread-b", "Flush", tstest::Event::Type::END}}},
       [&]() {
         // Assert Flush wrote changes to backend storage
         auto page = storage->Read(1);

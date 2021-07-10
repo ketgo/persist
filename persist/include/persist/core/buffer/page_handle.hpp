@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_CORE_BUFFER_PAGE_HANDLE_HPP
-#define PERSIST_CORE_BUFFER_PAGE_HANDLE_HPP
+#ifndef PERSIST__CORE__BUFFER__PAGE_HANDLE_HPP
+#define PERSIST__CORE__BUFFER__PAGE_HANDLE_HPP
 
 #include <persist/core/buffer/replacer/base.hpp>
 #include <persist/core/page/base.hpp>
@@ -85,7 +85,9 @@ template <class PageType> class PageHandle {
    */
   void Acquire() {
     // Pin page
-    replacer->Pin(page->GetId());
+    if (page) {
+      replacer->Pin(page->GetId());
+    }
   }
 
   /**
@@ -93,7 +95,7 @@ template <class PageType> class PageHandle {
    *
    */
   void Release() {
-    if (is_owner) {
+    if (page && is_owner) {
       // Unpin page
       replacer->Unpin(page->GetId());
     }
@@ -118,6 +120,13 @@ public:
     // Unset ownership of the moved object
     other.Unset();
   }
+
+  /**
+   * @brief Get handled pointer to page.
+   *
+   * @returns Pointer to page.
+   */
+  PageType *Get() const { return page; }
 
   /**
    * @brief Move assignment operator. This will relese access ownership of the
@@ -153,8 +162,14 @@ public:
     // Release access ownership of page
     Release();
   }
+
+  /**
+   * @brief Check if handle is null.
+   *
+   */
+  operator bool() const { return bool(page); }
 };
 
 } // namespace persist
 
-#endif /* PERSIST_CORE_BUFFER_PAGE_HANDLE_HPP */
+#endif /* PERSIST__CORE__BUFFER__PAGE_HANDLE_HPP */

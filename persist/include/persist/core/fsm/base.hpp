@@ -25,6 +25,7 @@
 #ifndef PERSIST_CORE_FSM_BASE_HPP
 #define PERSIST_CORE_FSM_BASE_HPP
 
+#include <persist/core/buffer/page_handle.hpp>
 #include <persist/core/defs.hpp>
 #include <persist/core/page/base.hpp>
 
@@ -50,16 +51,22 @@ public:
    *
    * @param page Constant reference to modified page.
    */
-  void HandleModifiedPage(const Page &page) override { Manage(page); }
+  void HandleModifiedPage(const Page &page) override {
+    Manage(page);
+  }
 
   /**
    * @brief Start free space manager.
+   *
+   * @thread_safe
    *
    */
   virtual void Start() = 0;
 
   /**
    * @brief Stop free space manager.
+   *
+   * @thread_safe
    *
    */
   virtual void Stop() = 0;
@@ -69,6 +76,11 @@ public:
    * is treated only as a hint and the manager is free to ignore it. In case no
    * page with free space found then '0' is returned.
    *
+   * TODO: If a page with free space is exclusively locked then return another
+   * free page.
+   *
+   * @thread_safe
+   *
    * @param size_hint Desired free space size.
    * @returns Page identifer if a page with free space found else '0'.
    */
@@ -76,6 +88,8 @@ public:
 
   /**
    * @brief Manage free space details of specified page.
+   *
+   * @thread_safe
    *
    * @param page Constant reference to a Page object.
    */

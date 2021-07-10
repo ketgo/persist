@@ -31,6 +31,11 @@
 
 #include <memory>
 
+/**
+ * Enabled intrusive testing
+ */
+#define PERSIST_INTRUSIVE_TESTING
+
 #include <persist/core/storage/creator.hpp>
 #include <persist/core/transaction/transaction_manager.hpp>
 
@@ -46,26 +51,23 @@ protected:
   std::unique_ptr<BufferManager<RecordPage>> buffer_manager;
   std::unique_ptr<Storage<RecordPage>> data_storage;
   std::unique_ptr<Storage<LogPage>> log_storage;
-  std::unique_ptr<LogManager> log_manager;
   std::unique_ptr<TransactionManager> txn_manager;
 
   void SetUp() override {
     // Setting up storage
     data_storage = persist::CreateStorage<RecordPage>(data_connection_string);
+    data_storage->Open();
     log_storage = persist::CreateStorage<LogPage>(log_connection_string);
+    log_storage->Open();
 
     // Setting up buffer manager
-    buffer_manager =
-        std::make_unique<BufferManager<RecordPage>>(*data_storage, max_size);
+    buffer_manager = std::make_unique<BufferManager<RecordPage>>(
+        data_storage.get(), max_size);
     buffer_manager->Start();
 
-    // Setting up log manager
-    log_manager = std::make_unique<LogManager>(*log_storage, max_size);
-    log_manager->Start();
-
     // Setup transaction manager
-    txn_manager =
-        std::make_unique<TransactionManager>(*buffer_manager, *log_manager);
+    txn_manager = std::make_unique<TransactionManager>(
+        *buffer_manager, log_connection_string, max_size);
     txn_manager->Start();
 
     // Setup data for test
@@ -73,11 +75,13 @@ protected:
   }
 
   void TearDown() override {
-    data_storage->Remove();
     buffer_manager->Stop();
-    log_storage->Remove();
-    log_manager->Stop();
     txn_manager->Stop();
+
+    data_storage->Remove();
+    data_storage->Close();
+    log_storage->Remove();
+    log_storage->Close();
   }
 
   /**
@@ -89,10 +93,10 @@ protected:
    */
   void RetriveLogRecord(Transaction &txn, std::vector<LogRecord> &log_records) {
     std::unique_ptr<LogRecord> log_record =
-        log_manager->Get(txn.GetLogLocation());
+        txn_manager->log_manager->Get(txn.GetLogLocation());
     log_records.push_back(*log_record);
     while (!log_record->GetPrevLocation().IsNull()) {
-      log_record = log_manager->Get(log_record->GetPrevLocation());
+      log_record = txn_manager->log_manager->Get(log_record->GetPrevLocation());
       log_records.push_back(*log_record);
     }
   }

@@ -49,15 +49,11 @@ class FSLPage : public Page {
   PageId max_page_id;    //<- Maximum page ID value stored in page.
   PageId min_page_id;    //<- Minimum page ID value stored in page.
 
-public:
-  PageId next_page_id; //<- ID of linked next page
-  PageId prev_page_id; //<- ID of linked previous page. This is set to the last
-                       // FSLPage for root node.
-
   std::set<PageId>
       free_pages; //<- Sorted set of free page identifiers. Note a set data
                   // structure is used to prevent duplicates.
 
+public:
   /**
    * @brief Construct a new FSLPage object
    *
@@ -68,8 +64,7 @@ public:
       : page_id(page_id), page_size(page_size),
         max_free_space(page_size - 3 * sizeof(PageId) - sizeof(size_t)),
         max_page_id(page_id * (max_free_space / sizeof(PageId))),
-        min_page_id((page_id - 1) * (max_free_space / sizeof(PageId)) + 1),
-        next_page_id(0), prev_page_id(0) {}
+        min_page_id((page_id - 1) * (max_free_space / sizeof(PageId)) + 1) {}
 
   /**
    * Get page identifier.
@@ -124,6 +119,43 @@ public:
   size_t GetMaxFreeSpace() const { return max_free_space; }
 
   /**
+   * @brief Insert page identifer in set of free pages.
+   *
+   * @param page_id Page identifier to insert.
+   */
+  void Insert(PageId page_id) {
+    free_pages.insert(page_id);
+
+    NotifyObservers();
+  }
+
+  /**
+   * @brief Remove page identifer in set of free pages.
+   *
+   * @param page_id Page identifier to insert.
+   */
+  void Remove(PageId page_id) {
+    if (free_pages.erase(page_id)) {
+      NotifyObservers();
+    }
+  }
+
+  /**
+   * @brief Check if page is empty.
+   *
+   * @returns `true` if no free page identifers are stored in the page else
+   * `false`.
+   */
+  bool IsEmpty() const { return free_pages.empty(); }
+
+  /**
+   * @brief Get the last free page identifier stored in the page.
+   *
+   * @returns Last free page identifier.
+   */
+  PageId Last() const { return *std::prev(free_pages.end()); }
+
+  /**
    * Load page object from byte string.
    *
    * @param input input buffer span to load
@@ -134,7 +166,7 @@ public:
     }
     free_pages.clear(); //<- clears free pages in case they are loaded
     // Load bytes
-    persist::load(input, page_id, next_page_id, prev_page_id, free_pages);
+    persist::load(input, page_id, free_pages);
     // Re-calculate max and min page ID
     max_page_id = page_id * (max_free_space / sizeof(PageId));
     min_page_id = (page_id - 1) * (max_free_space / sizeof(PageId)) + 1;
@@ -150,10 +182,29 @@ public:
       throw PageParseError();
     }
     // Dump bytes
-    persist::dump(output, page_id, next_page_id, prev_page_id, free_pages);
+    persist::dump(output, page_id, free_pages);
     // Dump free space
     std::memset((void *)output.start, 0, output.size);
   }
+
+#ifdef __PERSIST_DEBUG__
+  /**
+   * @brief Write page to output stream
+   */
+  friend std::ostream &operator<<(std::ostream &os, const FSLPage &page) {
+    os << "--------- Page " << page.page_id << " ---------\n";
+    os << "max_page_id: " << page.max_page_id << "\n";
+    os << "min_page_id: " << page.min_page_id << "\n";
+    os << "free_pages: [";
+    for (auto element : page.free_pages) {
+      os << element << ", ";
+    }
+    os << "]\n";
+    os << "-----------------------------";
+
+    return os;
+  }
+#endif
 };
 
 } // namespace persist

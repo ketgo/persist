@@ -1,5 +1,5 @@
 /**
- * tests/common.hpp - Persist
+ * record.hpp - Persist
  *
  * Copyright 2021 Ketan Goyal
  *
@@ -22,30 +22,19 @@
  * SOFTWARE.
  */
 
+#ifndef PERSIST__CORE__RECORD_HPP
+#define PERSIST__CORE__RECORD_HPP
+
+#include <persist/core/page/record_page/slot.hpp>
+
+namespace persist {
+
 /**
- * @brief The header file contains common definitions and methods used for
- * testing.
+ * @brief Record location type.
  *
  */
-#ifndef TESTS_COMMON_HPP
-#define TESTS_COMMON_HPP
+typedef RecordPageSlot::Location RecordLocation;
 
-#include <gtest/gtest.h>
+} // namespace persist
 
-/**
- * @brief Location of the test data.
- */
-#define DATA_PATH "/Users/ketan/Projects/persist/build/persist/tests/data"
-
-/**
- * @brief Global testing environment setup.
- *
- */
-class Environment : public ::testing::Environment {
-public:
-  void SetUp() override {}
-
-  void TearDown() override {}
-};
-
-#endif /* TESTS_COMMON_HPP */
+#endif /* PERSIST__CORE__RECORD_HPP */

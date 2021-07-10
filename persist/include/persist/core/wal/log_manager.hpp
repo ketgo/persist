@@ -30,6 +30,7 @@
 
 #include <persist/core/buffer/buffer_manager.hpp>
 #include <persist/core/page/log_page/page.hpp>
+#include <persist/core/storage/creator.hpp>
 #include <persist/core/wal/log_record.hpp>
 
 #include <persist/utility/mutex.hpp>
@@ -65,10 +66,10 @@ class LogManager {
    */
   PageId last_page_id GUARDED_BY(lock);
   /**
-   * @brief Reference to backend log storage.
+   * @brief Unique pointer to log storage.
    *
    */
-  Storage<LogPage> &storage GUARDED_BY(lock);
+  std::unique_ptr<Storage<LogPage>> storage;
   /**
    * @brief Log record buffer manager.
    *
@@ -104,15 +105,17 @@ class LogManager {
 
 public:
   /**
-   * @brief Construct a new log manager object.
+   * @brief Construct a new Log Manager object
    *
-   * @param storage Reference to backend log storage
-   * @param cache_size Log buffer cache size
+   * @param connection_string Constant reference to connection string for log
+   * storage.
+   * @param cache_size Log buffer cache size.
    */
-  LogManager(Storage<LogPage> &storage,
+  LogManager(const std::string &connection_string,
              size_t cache_size = DEFAULT_LOG_BUFFER_SIZE)
-      : seq_number(0), last_page_id(0), started(false), storage(storage),
-        buffer_manager(storage, cache_size) {}
+      : seq_number(0), last_page_id(0), started(false),
+        storage(CreateStorage<LogPage>(connection_string)),
+        buffer_manager(storage.get(), cache_size) {}
 
   /**
    * @brief Start log manager.
@@ -128,12 +131,12 @@ public:
       // Start buffer manager
       buffer_manager.Start();
       // Load last page in buffer
-      last_page_id = storage.GetPageCount();
+      auto last_page = buffer_manager.Last();
       // Get last sequence number if last page ID is not 0 else create a new
       // page and set its ID to the last page ID.
-      if (last_page_id) {
-        auto page = buffer_manager.Get(last_page_id);
-        seq_number = page->GetLastSeqNumber();
+      if (last_page) {
+        last_page_id = last_page->GetId();
+        seq_number = last_page->GetLastSeqNumber();
       } else {
         auto new_page = buffer_manager.GetNew();
         last_page_id = new_page->GetId();
@@ -199,11 +202,9 @@ public:
       // Create slot to add to page
       LogPageSlot slot(log_record.GetSeqNumber());
       // Compute availble space to write data in page. Here the greedy approach
-      // is utilized where all the available free space can be used to store the
-      // data. The amount of data that can be stored in the page is the
-      // (freeSpace of page) - (fixedSize of page slot).
-      size_t write_space = page->GetFreeSpaceSize(Operation::INSERT) -
-                           (slot.GetStorageSize() - slot.data.size());
+      // is utilized where all the available free space is used to store the
+      // data.
+      size_t write_space = page->GetFreeSpaceSize(Operation::INSERT);
       if (to_write_size < write_space) {
         write_space = to_write_size;
       }
@@ -246,7 +247,7 @@ public:
 
     // Byte buffer to read
     ByteBuffer read;
-    // Start reading record blocks
+    // Start reading slots
     LogPageSlot::Location read_location = location;
     while (!read_location.IsNull()) {
       // Get page

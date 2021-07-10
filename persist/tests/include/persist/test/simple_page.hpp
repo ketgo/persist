@@ -178,10 +178,20 @@ public:
   /**
    * @brief Set data record
    *
-   * @param record reference to data record to be stored
+   * @param record Constant reference to data record to be stored
    */
-  void SetRecord(ByteBuffer &record) {
+  void SetRecord(const ByteBuffer &record) {
     this->record = record;
+    NotifyObservers();
+  }
+
+  /**
+   * @brief Append data record
+   *
+   * @param record Constant reference to data to be appended.
+   */
+  void AppendRecord(const ByteBuffer &record) {
+    this->record.insert(this->record.end(), record.begin(), record.end());
     NotifyObservers();
   }
 
@@ -233,7 +243,10 @@ public:
   friend std::ostream &operator<<(std::ostream &os, const SimplePage &page) {
     os << "--------- Page " << page.header.page_id << " ---------\n";
     os << page.header << "\n";
-    os << page.record << "\n";
+    for (int x : page.record) {
+      os << x << ", ";
+    }
+    os << "\n";
     os << "-----------------------------";
 
     return os;

@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_CORE_BUFFER_LRU_REPLACER_HPP
-#define PERSIST_CORE_BUFFER_LRU_REPLACER_HPP
+#ifndef PERSIST__CORE__BUFFER__REPLACER__LRU_REPLACER_HPP
+#define PERSIST__CORE__BUFFER__REPLACER__LRU_REPLACER_HPP
 
 #include <list>
 #include <unordered_map>
@@ -157,4 +157,4 @@ public:
 
 } // namespace persist
 
-#endif /* PERSIST_CORE_BUFFER_LRU_REPLACER_HPP */
+#endif /* PERSIST__CORE__BUFFER__REPLACER__LRU_REPLACER_HPP */

@@ -26,13 +26,13 @@
 
 ## Introduction
 
-This document describes the design and implementation of different components in the Persist package. From a high-level, the package exposes API for persisting the following data structures
+This document describes the design and implementation of different components in the Persist library. From a high level, the library exposes APIs for persisting the following data structures:
 
 - List
 - Hash Table
 - Binary Tree
 
-where each data structure is a collection of objects. These collections can be persisted on backend storages like RAM, Disk, S3, etc. The exposed API has been designed to comply with ACID requirements.
+Here each data structure is a collection of storable objects. The collections can be saved on a backend storage like RAM, Disk, S3, etc. The exposed APIs have been designed to comply with ACID requirements.
 
 ## Usage Cases
 
@@ -48,6 +48,8 @@ The following uses cases are supported:
 
 - Search objects in a persistent collection.
 
+- Iterate through the collection.
+
 The proposed API for each use case is the rest of the document.
 
 ## Implementation Design
@@ -60,7 +62,7 @@ A `Collection` comprises of one or more objects which can be persisted in backen
 
 #### Objects
 
-This is any C++ data type that can be parsed from and into a binary form. The package supports both, primitive types as well as composite types like `struct` and `class`. An object is stored by splitting its binary form into chunks called [record blocks](#record-blocks). This approach enables efficient usage of storage space as large-sized objects are split into manageable sizes.
+This is any C++ data type that can be parsed from and dumped into a binary form. The package supports primitive types as well as composite types like `struct` and `class`. An object is stored by splitting its binary form into chunks called [record blocks](#record-blocks). This approach enables efficient usage of storage space as large-sized objects are split into manageable sizes.
 
 #### Iterator
 

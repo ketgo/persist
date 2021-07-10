@@ -32,10 +32,6 @@ target_include_directories(
 # Setup code coverage
 target_code_coverage(${TEST_BINARY} AUTO)
 
-# Add executable to run by ctest
-# TODO: This runs all the tests as one test. Need to use gtest_Add_test function.
-add_test(NAME ${TEST_BINARY} COMMAND ${TEST_BINARY})
-
 # Add tests folder to targets include directories
 target_include_directories(
     ${TEST_BINARY}

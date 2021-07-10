@@ -65,13 +65,13 @@ protected:
     Insert();
 
     buffer_manager =
-        std::make_unique<BufferManager<SimplePage>>(*storage, max_size);
+        std::make_unique<BufferManager<SimplePage>>(storage.get(), max_size);
     buffer_manager->Start();
   }
 
   void TearDown() override {
-    storage->Remove();
     buffer_manager->Stop();
+    storage->Remove();
   }
 
 private:
@@ -88,7 +88,7 @@ private:
 };
 
 TEST_F(BufferManagerTestFixture, TestBufferManagerError) {
-  ASSERT_THROW(BufferManager<SimplePage> manager(*storage, 1),
+  ASSERT_THROW(BufferManager<SimplePage> manager(storage.get(), 1),
                BufferManagerError);
 }
 
@@ -110,6 +110,18 @@ TEST_F(BufferManagerTestFixture, TestGetNew) {
 
   // A new page with ID 4 should be created
   ASSERT_EQ(page->GetId(), 4);
+}
+
+TEST_F(BufferManagerTestFixture, TestFirst) {
+  auto page = buffer_manager->First();
+
+  ASSERT_EQ(page->GetId(), 1);
+}
+
+TEST_F(BufferManagerTestFixture, TestLast) {
+  auto page = buffer_manager->Last();
+
+  ASSERT_EQ(page->GetId(), 3);
 }
 
 TEST_F(BufferManagerTestFixture, TestFlush) {

@@ -303,7 +303,8 @@ public:
   const PageId &GetId() const override { return header.page_id; }
 
   /**
-   * Get free space in bytes available in the page.
+   * Get free space in bytes available in the page. The method takes the record
+   * page slot fixed size into account when calculating free space.
    *
    * @param operation The type of page operation for which free space is
    * requested.
@@ -313,11 +314,13 @@ public:
     size_t size = header.GetTail() - header.GetStorageSize();
     // Compute size for INSERT operation
     if (operation == Operation::INSERT) {
-      const size_t single_slot_span_size =
-          sizeof(Header::SlotSpan) + sizeof(PageSlotId);
+      // Amount of space occupied along with correction due to header of
+      // SlotSpan and page slot fixed size during insert operation.
+      const size_t occupied = sizeof(Header::SlotSpan) + sizeof(PageSlotId) +
+                              RecordPageSlot::GetFixedStorageSize();
       // Check if free space size is greater than header slot size
-      if (size > single_slot_span_size) {
-        size -= single_slot_span_size;
+      if (size > occupied) {
+        size -= occupied;
       } else {
         size = 0;
       }
@@ -338,9 +341,9 @@ public:
    * Set next page ID. This is the ID for the next linked page when there is
    * data overflow. A value of `0` means there is no next page.
    *
-   * @param page_id next page ID value to set
+   * @param page_id Constant reference to the next page ID value to set
    */
-  void SetNextPageId(PageId page_id) {
+  void SetNextPageId(const PageId &page_id) {
     header.next_page_id = page_id;
     // Notify observers of modification
     NotifyObservers();
@@ -358,9 +361,9 @@ public:
    * Set previous page ID. This is the ID for the previous linked page when
    * there is data overflow. A value of 0 means there is no previous page.
    *
-   * @param page_id previous page ID value to set
+   * @param page_id Constant reference to the previous page ID value to set
    */
-  void SetPrevPageId(PageId page_id) {
+  void SetPrevPageId(const PageId &page_id) {
     header.prev_page_id = page_id;
     // Notify observers of modification
     NotifyObservers();

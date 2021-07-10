@@ -32,7 +32,7 @@
 #include <persist/core/buffer/buffer_manager.hpp>
 #include <persist/core/fsm/base.hpp>
 #include <persist/core/page/fsm_page/fsl_page.hpp>
-#include <persist/core/storage/base.hpp>
+#include <persist/core/storage/creator.hpp>
 
 #include <persist/utility/mutex.hpp>
 
@@ -56,10 +56,10 @@ class FSLManager : public FreeSpaceManager {
   typedef typename persist::LockGuard<Mutex> LockGuard;
 
   /**
-   * @brief Reference to backend storage.
+   * @brief Unique pointer to FSL storage.
    *
    */
-  Storage<FSLPage> &storage GUARDED_BY(lock);
+  std::unique_ptr<Storage<FSLPage>> storage;
   /**
    * @brief Log record buffer manager.
    *
@@ -103,7 +103,7 @@ class FSLManager : public FreeSpaceManager {
       // Loop through rest of the FSLPages
       while (rvalue > 0) {
         auto page = buffer_manager.Get(rvalue);
-        if (page_id > page->GetMinPageId()) {
+        if (page_id >= page->GetMinPageId()) {
           break;
         }
         --rvalue;
@@ -117,14 +117,17 @@ public:
   /**
    * @brief Construct a new FSL object
    *
-   * @param storage Reference to backend FSL sotrage
-   * @param cache_size FSL buffer cache
+   * @param connection_string Constant reference to connection string for
+   * backend FSL sotrage.
+   * @param cache_size FSL buffer cache.
    *
    */
-  explicit FSLManager(Storage<FSLPage> &storage,
-                      size_t cache_size = DEFAULT_FSL_BUFFER_SIZE)
-      : started(false), last_page_id(0), storage(storage),
-        buffer_manager(storage, cache_size) {}
+  explicit FSLManager(const std::string &connection_string,
+                      size_t cache_size = DEFAULT_FSM_BUFFER_SIZE)
+      : started(false), last_page_id(0),
+        storage(CreateStorage<FSLPage>(
+            ConnectionString(connection_string, FSM_STORAGE_EXTENTION))),
+        buffer_manager(storage.get(), cache_size) {}
 
   /**
    * @brief Start free space manager.
@@ -136,13 +139,16 @@ public:
     if (!started) {
       // Start buffer manager.
       buffer_manager.Start();
-      // Get last page ID
-      last_page_id = storage.GetPageCount();
+      // Get last page
+      auto last_page = buffer_manager.Last();
       // Create a new page if no last page found
-      if (!last_page_id) {
+      if (last_page) {
+        last_page_id = last_page->GetId();
+      } else {
         auto new_page = buffer_manager.GetNew();
         last_page_id = new_page->GetId();
       }
+      started = true;
     }
   }
 
@@ -158,6 +164,7 @@ public:
     if (started) {
       // Stop buffer manager.
       buffer_manager.Stop();
+      started = false;
     }
   }
 
@@ -175,10 +182,13 @@ public:
     LockGuard guard(lock);
 
     auto last_page = buffer_manager.Get(last_page_id);
-    if (last_page->free_pages.empty()) {
+    if (last_page->IsEmpty()) {
       return 0;
     }
-    return *std::prev(last_page->free_pages.end());
+    PageId free_page_id = last_page->Last();
+    last_page->Remove(free_page_id);
+
+    return free_page_id;
   }
 
   /**
@@ -197,9 +207,9 @@ public:
     // that since FSL is used to get pages with free space for INSERT page
     // operation, free space for only INSERT is checked.
     if (page.GetFreeSpaceSize(Operation::INSERT) > 0) {
-      _page->free_pages.insert(page_id);
+      _page->Insert(page_id);
     } else {
-      _page->free_pages.erase(page_id);
+      _page->Remove(page_id);
     }
   }
 

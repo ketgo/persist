@@ -25,28 +25,51 @@
 #ifndef PERSIST_CORE_RECORDMANAGER_HPP
 #define PERSIST_CORE_RECORDMANAGER_HPP
 
-#include <persist/core/page/record_page/slot.hpp>
+#include <memory>
+
+#include <persist/core/page/record_page/page.hpp>
+#include <persist/core/page_manager.hpp>
+#include <persist/core/record.hpp>
 #include <persist/core/transaction/transaction.hpp>
 
 namespace persist {
-/**
- * @brief Record location type.
- *
- */
-typedef RecordPageSlot::Location RecordLocation;
-
 /**
  * @brief Record manager abstract base class. Each collection should implement
  * the interfaces defined in the base class.
  *
  * @tparam RecordType Data record type.
+ * @tparam ReplacerType The type of page replacer to be used by buffer manager.
+ * @tparam FreeSpaceManagerType The type of free space manager.
  */
-template <class RecordType> class RecordManager {
+template <class RecordType, class ReplacerType, class FreeSpaceManagerType>
+class RecordManager {
   // Record should be storage
   static_assert(std::is_base_of<Storable, RecordType>::value,
                 "RecordType must be derived from persist::Storable");
 
+  PERSIST_PROTECTED
+  /**
+   * @brief Reference to page manager
+   *
+   */
+  PageManager<RecordPage, ReplacerType, FreeSpaceManagerType> &page_manager;
+
+  /**
+   * @brief Flag indicating manager started.
+   *
+   */
+  bool started;
+
 public:
+  /**
+   * @brief Construct a new Record Manager object
+   *
+   * @param page_manager Reference to page manager.
+   */
+  RecordManager(
+      PageManager<RecordPage, ReplacerType, FreeSpaceManagerType> &page_manager)
+      : page_manager(page_manager) {}
+
   /**
    * @brief Destroy the RecordManager object.
    *
@@ -57,22 +80,34 @@ public:
    * @brief Start record manager.
    *
    */
-  virtual void Start() = 0;
+  void Start() {
+    if (!started) {
+      // Start page manager
+      page_manager.Start();
+      started = true;
+    }
+  }
 
   /**
    * @brief Stop record manager.
    *
    */
-  virtual void Stop() = 0;
+  void Stop() {
+    if (started) {
+      // Start page manager
+      page_manager.Stop();
+      started = false;
+    }
+  }
 
   /**
    * @brief Get record stored at given location.
    *
    * @param record Reference to the record to get.
-   * @param location Location of the stored record.
+   * @param location Constant reference to the location of the stored record.
    * @param txn Reference to an active transaction.
    */
-  virtual void Get(RecordType &record, RecordLocation location,
+  virtual void Get(RecordType &record, const RecordLocation &location,
                    Transaction &txn) = 0;
 
   /**
@@ -89,19 +124,19 @@ public:
    * @brief Update record stored at given location.
    *
    * @param record Reference to the updated record.
-   * @param location Location of the record.
+   * @param location Constant reference to the location of the record.
    * @param txn Reference to an active transaction.
    */
-  virtual void Update(RecordType &record, RecordLocation location,
+  virtual void Update(RecordType &record, const RecordLocation &location,
                       Transaction &txn) = 0;
 
   /**
    * @brief Delete record stored at given location.
    *
-   * @param location Location of the record to delete.
+   * @param location Constant reference to the location of the record to delete.
    * @param txn Reference to an active transaction.
    */
-  virtual void Delete(RecordLocation location, Transaction &txn) = 0;
+  virtual void Delete(const RecordLocation &location, Transaction &txn) = 0;
 };
 
 } // namespace persist

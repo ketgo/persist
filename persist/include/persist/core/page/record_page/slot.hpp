@@ -224,6 +224,15 @@ public:
   }
 
   /**
+   * @brief Get the fixied minimum storage size occupied the slot inside a page.
+   *
+   * @returns storage size in bytes.
+   */
+  static size_t GetFixedStorageSize() {
+    return sizeof(Header) + sizeof(size_t);
+  }
+
+  /**
    * @brief Get the next page slot location
    *
    * @return Location of the next linked page slot
@@ -233,9 +242,12 @@ public:
   /**
    * @brief Set the next page slot location
    *
-   * @param location Location of the next linked page slot
+   * @param location Constant reference to the location of the next linked page
+   * slot
    */
-  void SetNextLocation(Location &location) { header.next_location = location; }
+  void SetNextLocation(const Location &location) {
+    header.next_location = location;
+  }
 
   /**
    * @brief Get the previous page slot location
@@ -247,9 +259,12 @@ public:
   /**
    * @brief Set the previous page slot location
    *
-   * @param location Location of the previous linked page slot
+   * @param location Constant reference to the location of the previous linked
+   * page slot
    */
-  void SetPrevLocation(Location &location) { header.prev_location = location; }
+  void SetPrevLocation(const Location &location) {
+    header.prev_location = location;
+  }
 
   /**
    * Load page slot object from byte string.

@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef PERSIST_CORE_BUFFER_BASE_HPP
-#define PERSIST_CORE_BUFFER_BASE_HPP
+#ifndef PERSIST__CORE__BUFFER__BASE_HPP
+#define PERSIST__CORE__BUFFER__BASE_HPP
 
 #include <persist/core/buffer/page_handle.hpp>
 #include <persist/core/page/base.hpp>
@@ -86,6 +86,26 @@ public:
   virtual PageHandle<PageType> GetNew() = 0;
 
   /**
+   * @brief Get first page in backend storage. A null page handle is returned if
+   * no page found.
+   *
+   * @thread_safe
+   *
+   * @returns Page handle object.
+   */
+  virtual PageHandle<PageType> First() = 0;
+
+  /**
+   * @brief Get last page in backend storage. A null page handle is returned if
+   * no page found.
+   *
+   * @thread_safe
+   *
+   * @returns Page handle object.
+   */
+  virtual PageHandle<PageType> Last() = 0;
+
+  /**
    * Dump a single page to backend storage if modified and unpinned.
    *
    * @thread_safe
@@ -102,6 +122,7 @@ public:
    */
   virtual void FlushAll() = 0;
 };
+
 } // namespace persist
 
-#endif /* PERSIST_CORE_BUFFER_BASE_HPP */
+#endif /* PERSIST__CORE__BUFFER__BASE_HPP */

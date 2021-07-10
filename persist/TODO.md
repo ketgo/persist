@@ -89,7 +89,7 @@
 8. [DONE] Design a Storable object interface. A storable object should expose the interface:
     - [DONE] size_t GetStorageSize(): The amount of storage space in bytes occupied by the object
     - [SKIPPED] size_t GetMinSize(): The minimum amount of storage space in bytes occupied by the object.
-    -  [SKIPPED] size_t GetMaxSize(): The maximum amount of storage space in bytes occupied by the object. A returned value of 0 indicates no max size.
+    - [SKIPPED] size_t GetMaxSize(): The maximum amount of storage space in bytes occupied by the object. A returned value of 0 indicates no max size.
     - [DONE] void Load(Span input): Load object from byte buffer
     - [DONE] void Dump(Span output): Dump object to byte buffer
 
@@ -102,23 +102,33 @@
 
 10. Implement recovery manager and checkpoint manager
 
-11. Create collection metadata manager:
-    - handles metadata containing the starting location, ending location, and number of records in a collection
-    - writes metadata to the first record block of the collection
+11. [DONE] Create collection metadata manager:
+    - [DONE] handles metadata containing the starting location, ending location, and number of records in a collection
+    - [DONE] writes metadata to the first record block of the collection
+    - improve interface
 
-12. Refactor LogManager and LogRecord:
-    - Use polymorphic log record to allow the logging of operations on different types of pages.
-    - Add collection name as part of log record so that the transaction manager can manage multiple collections.
+12. Transaction Manager for a group of collections.
+    - Use a map data structure with key as collection namespace and value as a pointer to collection buffer manager.
+    - Add collection namespace as part of log record so that the transaction manager can manage multiple collections.
+    - Refactor abort and commit routines of transaction manager to handle multiple collections. The collection to operate upon can be obtained from the stored collection namespace in the log records.
+    - Add context field to transaction class. The context stores operational information such as:
+        a. currently operated upon collection namespace
+        b. operation start time
+        c. operation end time
 
-13. Transaction Manager for a group of collections.
+13. Remove the observer pattern and put all the logic to PageHandle.
+
+14. Implement read-only and read-write PageHandle classes.
 
 ------------------------------------------------------------
 
 ## Collections
 
 1. [IN-PROGRESS] Implement List collection
-    - [IN-PROGRESS] implement record manager for list collection
+    - [Done] implement record manager for list collection
     - [IN-PROGRESS] implement list collection class
+        - Refactor transaction manager to use a pointer instead of a reference to collection buffer manager.
+        - Add register method in transaction manager to store a pointer to the buffer manager of a collection.
 
 ------------------------------------------------------------
 

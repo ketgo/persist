@@ -99,6 +99,15 @@ public:
   virtual void Close() = 0;
 
   /**
+   * @brief Re-Open storage.
+   *
+   */
+  void ReOpen() {
+    Close();
+    Open();
+  }
+
+  /**
    * @brief Remove storage.
    */
   virtual void Remove() = 0;

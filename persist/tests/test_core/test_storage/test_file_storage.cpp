@@ -72,11 +72,9 @@ TEST_F(NewFileStorageTestFixture, TestOpen) {
   ByteBuffer buffer;
   FileHeader header;
   std::fstream write_file =
-      file::open(write_path + FILE_STORAGE_DATA_FILE_EXTENTION,
-                 std::ios::in | std::ios::binary);
+      file::open(write_path, std::ios::in | std::ios::binary);
   std::fstream read_file =
-      file::open(read_path + FILE_STORAGE_DATA_FILE_EXTENTION,
-                 std::ios::in | std::ios::binary);
+      file::open(read_path, std::ios::in | std::ios::binary);
 
   buffer.resize(header.GetStorageSize());
   file::read(write_file, buffer, 0);
@@ -100,8 +98,7 @@ TEST_F(NewFileStorageTestFixture, TestWritePage) {
 
   write_storage->Write(*page);
 
-  std::fstream file = file::open(write_path + FILE_STORAGE_DATA_FILE_EXTENTION,
-                                 std::ios::in | std::ios::binary);
+  std::fstream file = file::open(write_path, std::ios::in | std::ios::binary);
   ByteBuffer buffer(page_size);
   file::read(file, buffer, FileHeader().GetStorageSize());
   auto _page = persist::LoadPage<SimplePage>(buffer);
@@ -144,11 +141,9 @@ TEST_F(ExistingFileStorageTestFixture, TestOpen) {
   ByteBuffer buffer;
   FileHeader header;
   std::fstream write_file =
-      file::open(write_path + FILE_STORAGE_DATA_FILE_EXTENTION,
-                 std::ios::in | std::ios::binary);
+      file::open(write_path, std::ios::in | std::ios::binary);
   std::fstream read_file =
-      file::open(read_path + FILE_STORAGE_DATA_FILE_EXTENTION,
-                 std::ios::in | std::ios::binary);
+      file::open(read_path, std::ios::in | std::ios::binary);
 
   buffer.resize(header.GetStorageSize());
   file::read(write_file, buffer, 0);
@@ -175,8 +170,7 @@ TEST_F(ExistingFileStorageTestFixture, TestWritePage) {
 
   write_storage->Write(*page);
 
-  std::fstream file = file::open(write_path + FILE_STORAGE_DATA_FILE_EXTENTION,
-                                 std::ios::in | std::ios::binary);
+  std::fstream file = file::open(write_path, std::ios::in | std::ios::binary);
   ByteBuffer buffer(page_size);
   file::read(file, buffer, FileHeader().GetStorageSize());
   auto _page = persist::LoadPage<SimplePage>(buffer);

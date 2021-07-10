@@ -1,7 +1,7 @@
 /**
- * test_creator.cpp - Persist
+ * test_metadata.cpp - Persist
  *
- * Copyright 2020 Ketan Goyal
+ * Copyright 2021 Ketan Goyal
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,33 +23,50 @@
  */
 
 /**
- * @brief Backend storage creator test.
+ * Collection Metadata Unit Tests
  */
 
 #include <gtest/gtest.h>
 
-#include <memory>
-#include <typeinfo>
-
-#include <persist/core/storage/base.hpp>
-#include <persist/core/storage/creator.hpp>
-
-#include "persist/test/simple_page.hpp"
+#include <persist/core/metadata.hpp>
 
 using namespace persist;
-using namespace persist::test;
 
-TEST(StorageFactoryTest, TestCreateMemoryStorage) {
-  auto storage = CreateStorage<SimplePage>("memory://");
-  Storage<SimplePage> *ptr = storage.get();
-  std::string className = typeid(*ptr).name();
-  ASSERT_TRUE(className.find("MemoryStorage") != std::string::npos);
+class MetadataTestFixture : public ::testing::Test {
+protected:
+  const size_t count = 5;
+  const RecordLocation first = {1, 1}, last = {10, 1};
+  Metadata metadata;
+  ByteBuffer input;
+
+  void SetUp() override {
+    // Setup metadata
+    metadata.count = count;
+    metadata.first = first;
+    metadata.last = last;
+
+    input = {5, 0, 0, 0, 0,  0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+             0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0};
+  }
+};
+
+TEST_F(MetadataTestFixture, TestLoad) {
+  Metadata _metadata;
+  _metadata.Load(input);
+
+  ASSERT_EQ(_metadata, metadata);
 }
 
-TEST(StorageFactoryTest, TestCreateFileStorage) {
-  auto storage = CreateStorage<SimplePage>("file://storage");
-  Storage<SimplePage> *ptr = storage.get();
-  std::string className = typeid(*ptr).name();
-  ASSERT_TRUE(className.find("FileStorage") != std::string::npos);
-  ASSERT_EQ(static_cast<FileStorage<SimplePage> *>(ptr)->GetPath(), "storage");
+TEST_F(MetadataTestFixture, TestLoadParseError) {
+  ByteBuffer _input;
+  Metadata _metadata;
+
+  ASSERT_THROW(_metadata.Load(_input), MetadataParseError);
+}
+
+TEST_F(MetadataTestFixture, TestDump) {
+  ByteBuffer output(metadata.GetStorageSize());
+  metadata.Dump(output);
+
+  ASSERT_EQ(input, output);
 }

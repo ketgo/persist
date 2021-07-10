@@ -31,6 +31,9 @@
 *.out
 *.app
 
+# MacOS
+.DS_Store
+
 # VSCode
 .vscode/
 
@@ -38,5 +41,9 @@
 bin/*
 build/*
 
-# Temparary
+# Temparary Folder
 tmp/*
+
+# Temporary Files
+persist/tests/include/common.hpp
+persist/include/persist/version.hpp

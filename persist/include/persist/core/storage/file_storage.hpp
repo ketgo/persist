@@ -40,8 +40,6 @@
 
 #include <persist/utility/serializer.hpp>
 
-#define FILE_STORAGE_DATA_FILE_EXTENTION ".stg"
-
 namespace persist {
 
 /*************************************************************
@@ -232,8 +230,8 @@ public:
    * Opens storage file.
    */
   void Open() override {
-    data_file = file::open(path + FILE_STORAGE_DATA_FILE_EXTENTION,
-                           std::ios::binary | std::ios::in | std::ios::out);
+    data_file =
+        file::open(path, std::ios::binary | std::ios::in | std::ios::out);
 
     // If file is not empty then set the page size and count using data from
     // file header else write a new file header
@@ -282,7 +280,7 @@ public:
    */
   void Remove() override {
     Close();
-    std::remove((path + FILE_STORAGE_DATA_FILE_EXTENTION).c_str());
+    std::remove(path.c_str());
   }
 
   /**
